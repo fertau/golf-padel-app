@@ -42,7 +42,7 @@ export default function App() {
   const previousRoleMap = useRef<Record<string, string>>({});
 
   useEffect(() => {
-    const splashTimer = window.setTimeout(() => setShowSplash(false), 2600);
+    const splashTimer = window.setTimeout(() => setShowSplash(false), 3000);
     return () => window.clearTimeout(splashTimer);
   }, []);
 
@@ -243,7 +243,10 @@ export default function App() {
         <header className="header court-header">
           <div>
             <p className="eyebrow">PWA para grupos de WhatsApp</p>
-            <h1>Golf Padel App</h1>
+            <div className="brand-shell">
+              <img src="/icon-padel.svg" alt="Golf Padel icon" className="brand-icon" />
+              <h1>Golf Padel App</h1>
+            </div>
             <p>Reservas, titulares y suplentes con reglas por partido.</p>
           </div>
           <div className="header-pill">{isCloudMode() ? "Modo Firebase" : "Modo Local"}</div>

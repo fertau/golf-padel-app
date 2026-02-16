@@ -15,13 +15,14 @@ export default function ReservationCard({ reservation, currentUser, onOpen }: Pr
 
   return (
     <button className="reservation-card" onClick={() => onOpen(reservation.id)}>
-      <div>
+      <div className="reservation-card-top">
         <strong>{reservation.courtName}</strong>
-        <p>{formatDateTime(reservation.startDateTime)}</p>
+        <span className="reservation-date">{formatDateTime(reservation.startDateTime)}</span>
       </div>
+
       <div className="meta">
-        <span>Titulares {titulares.length}</span>
-        <span>Suplentes {suplentes.length}</span>
+        <span className="meta-pill">Titulares {titulares.length}</span>
+        <span className="meta-pill">Suplentes {suplentes.length}</span>
         {joined ? <span className="tag">Anotado</span> : null}
         {reservation.status === "cancelled" ? <span className="tag danger">Cancelada</span> : null}
       </div>

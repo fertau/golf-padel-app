@@ -7,20 +7,26 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg"],
+      includeAssets: ["favicon.svg", "icon-padel.svg", "apple-touch-icon.svg"],
       manifest: {
-        name: "Golf Padel",
+        name: "Golf Padel App",
         short_name: "GolfPadel",
         description: "Reservas e inscripciones de padel para grupos de WhatsApp",
-        theme_color: "#0f3d2f",
-        background_color: "#f5f2e9",
+        theme_color: "#0a2b85",
+        background_color: "#04113d",
         display: "standalone",
         start_url: "/",
         icons: [
           {
-            src: "favicon.svg",
+            src: "icon-padel.svg",
             sizes: "any",
             type: "image/svg+xml"
+          },
+          {
+            src: "icon-padel.svg",
+            sizes: "any",
+            type: "image/svg+xml",
+            purpose: "maskable any"
           }
         ]
       }
