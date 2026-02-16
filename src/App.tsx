@@ -56,13 +56,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!isCloudMode() || !auth) {
+    const cloudAuth = auth;
+    if (!isCloudMode() || !cloudAuth) {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(cloudAuth, (firebaseUser) => {
       if (!firebaseUser) {
-        void signInAnonymously(auth);
+        void signInAnonymously(cloudAuth);
         return;
       }
 
@@ -81,8 +82,8 @@ export default function App() {
       });
     });
 
-    if (!auth.currentUser) {
-      void signInAnonymously(auth);
+    if (!cloudAuth.currentUser) {
+      void signInAnonymously(cloudAuth);
     }
 
     return unsubscribe;

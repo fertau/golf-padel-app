@@ -30,11 +30,12 @@ const normalizeReservation = (id: string, data: Omit<Reservation, "id">): Reserv
 export const isCloudMode = () => firebaseEnabled && Boolean(db);
 
 export const subscribeReservations = (onChange: (reservations: Reservation[]) => void) => {
-  if (!isCloudMode() || !db) {
+  const cloudDb = db;
+  if (!isCloudMode() || !cloudDb) {
     return subscribeLocalReservations(onChange);
   }
 
-  const q = query(collection(db, "reservations"), orderBy("startDateTime", "asc"));
+  const q = query(collection(cloudDb, "reservations"), orderBy("startDateTime", "asc"));
   return onSnapshot(q, (snapshot) => {
     const reservations = snapshot.docs.map((snapshotDoc) => {
       const data = snapshotDoc.data() as Omit<Reservation, "id">;
@@ -56,7 +57,8 @@ const uploadScreenshotIfNeeded = async (reservationId: string, screenshotUrl?: s
 };
 
 export const createReservation = async (input: ReservationInput, currentUser: User) => {
-  if (!isCloudMode() || !db) {
+  const cloudDb = db;
+  if (!isCloudMode() || !cloudDb) {
     createReservationLocal(input, currentUser);
     return;
   }
@@ -83,7 +85,7 @@ export const createReservation = async (input: ReservationInput, currentUser: Us
     updatedAt: nowIso()
   };
 
-  await setDoc(doc(db, "reservations", id), payload);
+  await setDoc(doc(cloudDb, "reservations", id), payload);
 };
 
 export const updateReservationRules = async (
@@ -91,7 +93,8 @@ export const updateReservationRules = async (
   rules: ReservationRules,
   currentUser: User
 ) => {
-  if (!isCloudMode() || !db) {
+  const cloudDb = db;
+  if (!isCloudMode() || !cloudDb) {
     updateReservationLocal(reservationId, (reservation) => {
       if (reservation.createdBy.id !== currentUser.id) {
         return reservation;
@@ -105,8 +108,8 @@ export const updateReservationRules = async (
     return;
   }
 
-  await runTransaction(db, async (transaction) => {
-    const reservationRef = doc(db, "reservations", reservationId);
+  await runTransaction(cloudDb, async (transaction) => {
+    const reservationRef = doc(cloudDb, "reservations", reservationId);
     const snapshot = await transaction.get(reservationRef);
 
     if (!snapshot.exists()) {
@@ -127,7 +130,8 @@ export const updateReservationRules = async (
 };
 
 export const joinReservation = async (reservationId: string, user: User) => {
-  if (!isCloudMode() || !db) {
+  const cloudDb = db;
+  if (!isCloudMode() || !cloudDb) {
     const { error } = addSignupLocal(reservationId, user);
     if (error) {
       throw new Error(error);
@@ -135,8 +139,8 @@ export const joinReservation = async (reservationId: string, user: User) => {
     return;
   }
 
-  await runTransaction(db, async (transaction) => {
-    const reservationRef = doc(db, "reservations", reservationId);
+  await runTransaction(cloudDb, async (transaction) => {
+    const reservationRef = doc(cloudDb, "reservations", reservationId);
     const snapshot = await transaction.get(reservationRef);
 
     if (!snapshot.exists()) {
@@ -167,13 +171,14 @@ export const joinReservation = async (reservationId: string, user: User) => {
 };
 
 export const leaveReservation = async (reservationId: string, userId: string) => {
-  if (!isCloudMode() || !db) {
+  const cloudDb = db;
+  if (!isCloudMode() || !cloudDb) {
     removeSignupLocal(reservationId, userId);
     return;
   }
 
-  await runTransaction(db, async (transaction) => {
-    const reservationRef = doc(db, "reservations", reservationId);
+  await runTransaction(cloudDb, async (transaction) => {
+    const reservationRef = doc(cloudDb, "reservations", reservationId);
     const snapshot = await transaction.get(reservationRef);
 
     if (!snapshot.exists()) {
@@ -194,7 +199,8 @@ export const leaveReservation = async (reservationId: string, userId: string) =>
 };
 
 export const cancelReservation = async (reservationId: string, currentUser: User) => {
-  if (!isCloudMode() || !db) {
+  const cloudDb = db;
+  if (!isCloudMode() || !cloudDb) {
     updateReservationLocal(reservationId, (reservation) => {
       if (reservation.createdBy.id !== currentUser.id) {
         return reservation;
@@ -208,8 +214,8 @@ export const cancelReservation = async (reservationId: string, currentUser: User
     return;
   }
 
-  await runTransaction(db, async (transaction) => {
-    const reservationRef = doc(db, "reservations", reservationId);
+  await runTransaction(cloudDb, async (transaction) => {
+    const reservationRef = doc(cloudDb, "reservations", reservationId);
     const snapshot = await transaction.get(reservationRef);
 
     if (!snapshot.exists()) {
@@ -234,7 +240,8 @@ export const updateReservationScreenshot = async (
   screenshotUrl: string,
   currentUser: User
 ) => {
-  if (!isCloudMode() || !db) {
+  const cloudDb = db;
+  if (!isCloudMode() || !cloudDb) {
     updateReservationLocal(reservationId, (reservation) => {
       if (reservation.createdBy.id !== currentUser.id) {
         return reservation;
@@ -250,8 +257,8 @@ export const updateReservationScreenshot = async (
 
   const nextUrl = await uploadScreenshotIfNeeded(reservationId, screenshotUrl);
 
-  await runTransaction(db, async (transaction) => {
-    const reservationRef = doc(db, "reservations", reservationId);
+  await runTransaction(cloudDb, async (transaction) => {
+    const reservationRef = doc(cloudDb, "reservations", reservationId);
     const snapshot = await transaction.get(reservationRef);
 
     if (!snapshot.exists()) {
