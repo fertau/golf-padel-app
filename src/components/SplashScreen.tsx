@@ -9,21 +9,16 @@ export default function SplashScreen({ visible }: Props) {
 
   return (
     <div className="splash" aria-hidden>
-      <div className="splash-stage">
-        <div className="splash-sky" />
-        <div className="splash-fence" />
-
-        <div className="splash-court-surface">
-          <div className="court-texture" />
-          <div className="court-line-vertical" />
-          <div className="court-line-horizontal" />
-          <div className="court-line-left" />
-          <div className="court-line-right" />
+      <div className="splash-stage splash-zoom">
+        <div className="splash-court-top">
+          <div className="court-grid" />
+          <div className="court-line-v" />
+          <div className="court-line-h" />
+          <div className="court-line-side left" />
+          <div className="court-line-side right" />
         </div>
-
-        <div className="splash-net" />
-        <div className="splash-ball-trail" />
-        <div className="splash-ball" />
+        <div className="shockwave" />
+        <div className="splash-ball single-bounce" />
 
         <h1 className="splash-brand" aria-label="Golf Padel App">
           <span className="brand-in">G</span>
