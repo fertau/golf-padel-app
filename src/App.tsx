@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import ReservationCard from "./components/ReservationCard";
 import ReservationDetail from "./components/ReservationDetail";
@@ -11,10 +11,9 @@ import {
   joinReservation,
   leaveReservation,
   subscribeReservations,
-  updateReservationRules,
   updateReservationScreenshot
 } from "./lib/dataStore";
-import { calculateSignupResult, slugifyId } from "./lib/utils";
+import { slugifyId } from "./lib/utils";
 import type { Reservation, User } from "./lib/types";
 import { auth } from "./lib/firebase";
 import { registerPushToken } from "./lib/push";
@@ -39,7 +38,6 @@ export default function App() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const previousRoleMap = useRef<Record<string, string>>({});
 
   useEffect(() => {
     const splashTimer = window.setTimeout(() => setShowSplash(false), 3000);
@@ -88,38 +86,6 @@ export default function App() {
 
     return unsubscribe;
   }, []);
-
-  useEffect(() => {
-    const nextMap: Record<string, string> = {};
-
-    reservations.forEach((reservation) => {
-      const result = calculateSignupResult(reservation);
-      const mine = reservation.signups.find(
-        (signup) => signup.userId === currentUser.id && signup.active
-      );
-
-      if (!mine) {
-        return;
-      }
-
-      const role = result.titulares.some((signup) => signup.id === mine.id)
-        ? "TITULAR"
-        : "SUPLENTE";
-
-      const key = `${reservation.id}:${currentUser.id}`;
-      const prev = previousRoleMap.current[key];
-
-      if (prev === "SUPLENTE" && role === "TITULAR" && Notification.permission === "granted") {
-        new Notification("Fuiste promovido a titular", {
-          body: `${reservation.courtName} - ${new Date(reservation.startDateTime).toLocaleString()}`
-        });
-      }
-
-      nextMap[key] = role;
-    });
-
-    previousRoleMap.current = nextMap;
-  }, [reservations, currentUser.id]);
 
   const selectedReservation = useMemo(
     () => reservations.find((reservation) => reservation.id === selectedId) ?? null,
@@ -193,20 +159,6 @@ export default function App() {
     }
   };
 
-  const onUpdateRules: React.ComponentProps<typeof ReservationDetail>["onUpdateRules"] = async (
-    reservationId,
-    rules
-  ) => {
-    try {
-      setBusy(true);
-      await updateReservationRules(reservationId, rules, currentUser);
-    } catch (error) {
-      alert((error as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const onUpdateScreenshot: React.ComponentProps<typeof ReservationDetail>["onUpdateScreenshot"] = async (
     reservationId,
     screenshotUrl
@@ -247,7 +199,7 @@ export default function App() {
               <img src="/icon-padel.svg" alt="Golf Padel icon" className="brand-icon" />
               <h1>Golf Padel App</h1>
             </div>
-            <p>Reservas, titulares y suplentes con reglas por partido.</p>
+            <p>Reservas simples para que se anoten todos los que quieran.</p>
           </div>
           <div className="header-pill">{isCloudMode() ? "Modo Firebase" : "Modo Local"}</div>
         </header>
@@ -273,11 +225,7 @@ export default function App() {
         </section>
 
         <div className="layout">
-          <ReservationForm
-            currentUser={currentUser}
-            allReservations={reservations}
-            onCreate={onCreateReservation}
-          />
+          <ReservationForm currentUser={currentUser} onCreate={onCreateReservation} />
 
           <section className="panel">
             <h2>Reservas activas</h2>
@@ -303,7 +251,6 @@ export default function App() {
             onJoin={onJoin}
             onLeave={onLeave}
             onCancel={onCancel}
-            onUpdateRules={onUpdateRules}
             onUpdateScreenshot={onUpdateScreenshot}
           />
         ) : null}

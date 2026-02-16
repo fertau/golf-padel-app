@@ -1,11 +1,6 @@
-import { useMemo, useState, type ChangeEvent } from "react";
+import { type ChangeEvent } from "react";
 import type { Reservation, User } from "../lib/types";
-import {
-  buildWhatsAppMessage,
-  calculateSignupResult,
-  canJoinReservation,
-  formatDateTime
-} from "../lib/utils";
+import { buildWhatsAppMessage, canJoinReservation, formatDateTime, getActiveSignups } from "../lib/utils";
 
 type Props = {
   reservation: Reservation;
@@ -14,15 +9,6 @@ type Props = {
   onJoin: (reservationId: string) => void;
   onLeave: (reservationId: string) => void;
   onCancel: (reservationId: string) => void;
-  onUpdateRules: (
-    reservationId: string,
-    rules: {
-      maxPlayersAccepted: number;
-      priorityUserIds: string[];
-      allowWaitlist: boolean;
-      signupDeadline?: string;
-    }
-  ) => void;
   onUpdateScreenshot: (reservationId: string, screenshotUrl: string) => void;
 };
 
@@ -41,25 +27,13 @@ export default function ReservationDetail({
   onJoin,
   onLeave,
   onCancel,
-  onUpdateRules,
   onUpdateScreenshot
 }: Props) {
   const isCreator = reservation.createdBy.id === currentUser.id;
-  const { titulares, suplentes } = calculateSignupResult(reservation);
-  const mySignup = reservation.signups.find(
-    (signup) => signup.userId === currentUser.id && signup.active
-  );
+  const players = getActiveSignups(reservation);
+  const mySignup = players.find((signup) => signup.userId === currentUser.id);
 
   const eligibility = canJoinReservation(reservation, currentUser);
-  const [priorityInput, setPriorityInput] = useState("");
-
-  const myRole = useMemo(() => {
-    if (!mySignup) {
-      return undefined;
-    }
-    const titular = titulares.find((signup) => signup.id === mySignup.id);
-    return titular ? "TITULAR" : "SUPLENTE";
-  }, [mySignup, titulares]);
 
   const message = buildWhatsAppMessage(reservation, appUrl);
 
@@ -98,8 +72,6 @@ export default function ReservationDetail({
         <img src={reservation.screenshotUrl} alt="Captura de reserva" className="preview" />
       ) : null}
 
-      {myRole ? <p className="role">Tu estado: {myRole}</p> : null}
-
       <div className="actions">
         <button onClick={() => onJoin(reservation.id)} disabled={!eligibility.ok || Boolean(mySignup)}>
           Unirme
@@ -111,23 +83,14 @@ export default function ReservationDetail({
 
       {!eligibility.ok && !mySignup ? <p className="warning">{eligibility.reason}</p> : null}
 
-      <div className="list-grid">
-        <div>
-          <h3>Titulares</h3>
-          <ul>
-            {titulares.map((signup) => (
-              <li key={signup.id}>{signup.userName}</li>
-            ))}
-          </ul>
-        </div>
-        <div>
-          <h3>Suplentes</h3>
-          <ul>
-            {suplentes.map((signup) => (
-              <li key={signup.id}>{signup.userName}</li>
-            ))}
-          </ul>
-        </div>
+      <div>
+        <h3>Jugadores anotados</h3>
+        {players.length === 0 ? <p className="private-hint">Todavía no hay anotados.</p> : null}
+        <ul>
+          {players.map((signup) => (
+            <li key={signup.id}>{signup.userName}</li>
+          ))}
+        </ul>
       </div>
 
       <div className="actions">
@@ -136,85 +99,16 @@ export default function ReservationDetail({
       </div>
 
       {isCreator ? (
-        <div className="creator-only">
-          <h3>Reglas privadas (solo creador)</h3>
-          <label>
-            Máximo titulares
-            <input
-              type="number"
-              value={reservation.rules.maxPlayersAccepted}
-              onChange={(e) =>
-                onUpdateRules(reservation.id, {
-                  ...reservation.rules,
-                  maxPlayersAccepted: Number(e.target.value)
-                })
-              }
-            />
-          </label>
-
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={reservation.rules.allowWaitlist}
-              onChange={(e) =>
-                onUpdateRules(reservation.id, {
-                  ...reservation.rules,
-                  allowWaitlist: e.target.checked
-                })
-              }
-            />
-            Permitir suplentes
-          </label>
-
-          <label>
-            Deadline
-            <input
-              type="datetime-local"
-              value={reservation.rules.signupDeadline ?? ""}
-              onChange={(e) =>
-                onUpdateRules(reservation.id, {
-                  ...reservation.rules,
-                  signupDeadline: e.target.value || undefined
-                })
-              }
-            />
-          </label>
-
-          <label>
-            Prioridad (ids separados por coma)
-            <input
-              value={priorityInput}
-              placeholder={reservation.rules.priorityUserIds.join(",") || "usuario-1,usuario-2"}
-              onChange={(e) => setPriorityInput(e.target.value)}
-            />
-          </label>
-
-          <button
-            onClick={() =>
-              onUpdateRules(reservation.id, {
-                ...reservation.rules,
-                priorityUserIds: priorityInput
-                  .split(",")
-                  .map((value) => value.trim())
-                  .filter(Boolean)
-              })
-            }
-          >
-            Guardar prioridad
-          </button>
-
+        <div className="actions">
           <label>
             Cambiar captura
             <input type="file" accept="image/*" onChange={handleScreenshot} />
           </label>
-
           <button className="danger" onClick={() => onCancel(reservation.id)}>
             Cancelar reserva
           </button>
         </div>
-      ) : (
-        <p className="private-hint">Las reglas internas son visibles solo para el creador.</p>
-      )}
+      ) : null}
     </section>
   );
 }

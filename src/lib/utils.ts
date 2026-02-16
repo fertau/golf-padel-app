@@ -24,7 +24,9 @@ export const isDeadlinePassed = (reservation: Reservation): boolean => {
 };
 
 export const getActiveSignups = (reservation: Reservation): Signup[] =>
-  reservation.signups.filter((signup) => signup.active);
+  reservation.signups
+    .filter((signup) => signup.active)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
 export const calculateSignupResult = (reservation: Reservation): SignupResult => {
   const activeSignups = getActiveSignups(reservation);
@@ -53,23 +55,10 @@ export const canJoinReservation = (
     return { ok: false, reason: "La reserva está cancelada" };
   }
 
-  if (isDeadlinePassed(reservation)) {
-    return { ok: false, reason: "Inscripción cerrada por horario límite" };
-  }
-
-  const alreadyJoined = getActiveSignups(reservation).some(
-    (signup) => signup.userId === user.id
-  );
+  const alreadyJoined = getActiveSignups(reservation).some((signup) => signup.userId === user.id);
 
   if (alreadyJoined) {
     return { ok: false, reason: "Ya estás anotado" };
-  }
-
-  const { titulares } = calculateSignupResult(reservation);
-  const isFull = titulares.length >= reservation.rules.maxPlayersAccepted;
-
-  if (isFull && !reservation.rules.allowWaitlist) {
-    return { ok: false, reason: "Cupos completos" };
   }
 
   return { ok: true };
