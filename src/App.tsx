@@ -196,7 +196,7 @@ export default function App() {
           <div>
             <p className="eyebrow">PWA para grupos de WhatsApp</p>
             <div className="brand-shell">
-              <img src="/icon-padel.svg" alt="Golf Padel icon" className="brand-icon" />
+              <img src="/icon-192.png" alt="Golf Padel icon" className="brand-icon" />
               <h1>Golf Padel App</h1>
             </div>
             <p>Reservas simples para que se anoten todos los que quieran.</p>
