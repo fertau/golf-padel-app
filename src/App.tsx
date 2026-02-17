@@ -7,7 +7,8 @@ import {
   setPersistence,
   signInWithPopup,
   signInWithRedirect,
-  signOut
+  signOut,
+  updateProfile
 } from "firebase/auth";
 
 // Components
@@ -35,7 +36,14 @@ import {
 } from "./lib/dataStore";
 import { registerPushToken } from "./lib/push";
 import type { Reservation } from "./lib/types";
-import { getUserAttendance, isReservationCreator, triggerHaptic } from "./lib/utils";
+import {
+  getUserAttendance,
+  isGenericDisplayName,
+  isReservationCreator,
+  isValidDisplayName,
+  normalizeDisplayName,
+  triggerHaptic
+} from "./lib/utils";
 import { auth } from "./lib/firebase";
 
 const googleProvider = new GoogleAuthProvider();
@@ -105,6 +113,9 @@ export default function App() {
   const [matchesFilter, setMatchesFilter] = useState<"all" | "pending" | "confirmed">("all");
   const [quickDateFilter, setQuickDateFilter] = useState<"all" | "hoy" | "manana" | "semana">("all");
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [savingName, setSavingName] = useState(false);
   const shareBaseUrl = getShareBaseUrl();
 
   // 1. Connectivity & Cleanup
@@ -217,6 +228,43 @@ export default function App() {
 
   const selectedReservation = expandedReservationId ? reservations.find(r => r.id === expandedReservationId) || null : null;
   const isSynchronized = Boolean(currentUser && isCloudDbEnabled() && isOnline);
+  const requiresNameSetup = Boolean(currentUser && !isValidDisplayName(currentUser.name));
+
+  const signupNameByAuthUid = useMemo(() => {
+    const map = new Map<string, { name: string; updatedAt: number }>();
+    for (const reservation of reservations) {
+      if (reservation.createdByAuthUid && !isGenericDisplayName(reservation.createdBy.name)) {
+        map.set(reservation.createdByAuthUid, {
+          name: reservation.createdBy.name,
+          updatedAt: new Date(reservation.updatedAt).getTime()
+        });
+      }
+      for (const signup of reservation.signups) {
+        if (!signup.authUid || isGenericDisplayName(signup.userName)) {
+          continue;
+        }
+        const timestamp = new Date(signup.updatedAt || signup.createdAt).getTime();
+        const existing = map.get(signup.authUid);
+        if (!existing || timestamp >= existing.updatedAt) {
+          map.set(signup.authUid, { name: signup.userName, updatedAt: timestamp });
+        }
+      }
+    }
+    return Object.fromEntries(
+      Array.from(map.entries()).map(([authUid, value]) => [authUid, value.name])
+    ) as Record<string, string>;
+  }, [reservations]);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setNameDraft("");
+      setNameError(null);
+      return;
+    }
+    const suggested = isGenericDisplayName(currentUser.name) ? "" : currentUser.name;
+    setNameDraft(suggested);
+    setNameError(null);
+  }, [currentUser?.id, currentUser?.name]);
 
   // 6. Actions
   const loginGoogle = async () => {
@@ -264,6 +312,39 @@ export default function App() {
       alert(err.message);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleUpdateDisplayName = async (nextName: string) => {
+    const firebaseAuth = auth;
+    if (!firebaseAuth?.currentUser) {
+      throw new Error("Necesitás iniciar sesión.");
+    }
+
+    const normalized = normalizeDisplayName(nextName);
+    if (!isValidDisplayName(normalized)) {
+      throw new Error("Elegí un nombre válido (2-32 caracteres, no genérico).");
+    }
+
+    await updateProfile(firebaseAuth.currentUser, { displayName: normalized });
+    setFirebaseUser(firebaseAuth.currentUser);
+  };
+
+  const saveMandatoryDisplayName = async () => {
+    const normalized = normalizeDisplayName(nameDraft);
+    if (!isValidDisplayName(normalized)) {
+      setNameError("Ingresá un nombre válido (2-32 caracteres, no genérico).");
+      return;
+    }
+    try {
+      setSavingName(true);
+      setNameError(null);
+      await handleUpdateDisplayName(normalized);
+      triggerHaptic("medium");
+    } catch (error) {
+      setNameError((error as Error).message);
+    } finally {
+      setSavingName(false);
     }
   };
 
@@ -400,7 +481,15 @@ export default function App() {
           </>
         )}
 
-        {activeTab === "perfil" && <ProfileView user={currentUser} onLogout={handleLogout} onRequestNotifications={registerPushToken} busy={busy} />}
+        {activeTab === "perfil" && (
+          <ProfileView
+            user={currentUser}
+            onLogout={handleLogout}
+            onRequestNotifications={registerPushToken}
+            onUpdateDisplayName={handleUpdateDisplayName}
+            busy={busy}
+          />
+        )}
 
         <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
       </main>
@@ -420,10 +509,36 @@ export default function App() {
             <div className="sheet-handle" /><div className="sheet-head"><h3>Partido</h3><button className="sheet-close" onClick={() => setExpandedReservationId(null)}>Cerrar</button></div>
             <ReservationDetail
               reservation={selectedReservation} currentUser={currentUser} appUrl={shareBaseUrl}
+              signupNameByAuthUid={signupNameByAuthUid}
               onSetAttendanceStatus={(rid, s) => setAttendanceStatus(rid, currentUser, s)}
               onCancel={id => cancelReservation(id, currentUser)}
               onUpdateReservation={(id, up) => updateReservationDetails(id, up, currentUser)}
             />
+          </section>
+        </div>
+      )}
+
+      {requiresNameSetup && (
+        <div className="sheet-backdrop" onClick={(event) => event.stopPropagation()}>
+          <section className="sheet forced-name-sheet" onClick={(event) => event.stopPropagation()}>
+            <div className="sheet-head">
+              <h3>Elegí tu nombre</h3>
+            </div>
+            <p className="private-hint">Ese nombre se verá en reservas y asistencias.</p>
+            <label>
+              Nombre visible
+              <input
+                type="text"
+                value={nameDraft}
+                onChange={(event) => setNameDraft(event.target.value)}
+                maxLength={32}
+                autoFocus
+              />
+            </label>
+            {nameError ? <p className="warning">{nameError}</p> : null}
+            <button type="button" onClick={saveMandatoryDisplayName} disabled={savingName}>
+              {savingName ? "Guardando..." : "Guardar nombre"}
+            </button>
           </section>
         </div>
       )}

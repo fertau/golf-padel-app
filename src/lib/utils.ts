@@ -25,6 +25,20 @@ export const triggerHaptic = (style: "light" | "medium" | "heavy" = "light") => 
   window.navigator.vibrate(patterns[style]);
 };
 
+const GENERIC_DISPLAY_NAMES = new Set(["jugador", "player", "usuario", "user", "guest"]);
+
+export const normalizeDisplayName = (value: string): string =>
+  value.trim().replace(/\s+/g, " ");
+
+export const isGenericDisplayName = (value: string): boolean => {
+  const normalized = normalizeDisplayName(value).toLowerCase();
+  return normalized.length === 0 || GENERIC_DISPLAY_NAMES.has(normalized);
+};
+
+export const isValidDisplayName = (value: string): boolean => {
+  const normalized = normalizeDisplayName(value);
+  return normalized.length >= 2 && normalized.length <= 32 && !isGenericDisplayName(normalized);
+};
 
 export const isDeadlinePassed = (reservation: Reservation): boolean => {
   if (!reservation.rules.signupDeadline) return false;

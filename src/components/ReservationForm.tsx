@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useState } from "react";
 import type { User } from "../lib/types";
+import { triggerHaptic } from "../lib/utils";
 
 type Props = {
   currentUser: User;
@@ -23,16 +24,8 @@ const getTodayLocalDate = (): string => {
 
 const isHalfHourSlot = (time: string): boolean => {
   const parts = time.split(":");
-  if (parts.length !== 2) {
-    return false;
-  }
-
-  const hour = Number(parts[0]);
+  if (parts.length !== 2) return false;
   const minute = Number(parts[1]);
-  if (Number.isNaN(hour) || Number.isNaN(minute)) {
-    return false;
-  }
-
   return minute === 0 || minute === 30;
 };
 
@@ -44,120 +37,98 @@ export default function ReservationForm({ onCreate, onCancel, currentUser }: Pro
   const [customTime, setCustomTime] = useState("17:00");
   const [durationMinutes, setDurationMinutes] = useState(90);
 
-  const finalTime = useMemo(
-    () => (useCustomTime ? customTime : selectedTime),
-    [customTime, selectedTime, useCustomTime]
-  );
+  const finalTime = useMemo(() => (useCustomTime ? customTime : selectedTime), [customTime, selectedTime, useCustomTime]);
   const hasValidTime = useMemo(() => isHalfHourSlot(finalTime), [finalTime]);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
+    if (!courtName || !reservationDate || !finalTime || !hasValidTime || durationMinutes <= 0) return;
+    onCreate({ courtName, startDateTime: `${reservationDate}T${finalTime}`, durationMinutes });
+    triggerHaptic("medium");
+  };
 
-    if (!courtName || !reservationDate || !finalTime || !hasValidTime || durationMinutes <= 0) {
-      return;
-    }
-
-    onCreate({
-      courtName,
-      startDateTime: `${reservationDate}T${finalTime}`,
-      durationMinutes
-    });
-
-    setCourtName("Cancha 1");
-    setReservationDate(getTodayLocalDate());
-    setSelectedTime("17:00");
-    setUseCustomTime(false);
-    setCustomTime("17:00");
-    setDurationMinutes(90);
+  const handleChoiceHaptic = (action: () => void) => {
+    action();
+    triggerHaptic("light");
   };
 
   return (
-    <form className="panel" onSubmit={handleSubmit}>
-      <h2 className="section-title">Reservá un partido</h2>
-      <p className="private-hint">{currentUser.name}, cargá cancha, fecha y horario.</p>
+    <form className="elite-form" onSubmit={handleSubmit}>
+      <header className="form-header-elite">
+        <h2>Reservá un partido</h2>
+        <p>{currentUser.name}, seleccioná los detalles del turno.</p>
+      </header>
 
-      <div className="field-group">
-        <p className="field-title">Cancha</p>
-        <div className="choice-row">
+      <div className="elite-field-group">
+        <label className="elite-field-label">Cancha</label>
+        <div className="elite-choice-grid">
           <button
             type="button"
-            className={courtName === "Cancha 1" ? "choice-btn active" : "choice-btn"}
-            onClick={() => setCourtName("Cancha 1")}
+            className={`elite-btn-choice ${courtName === "Cancha 1" ? "active" : ""}`}
+            onClick={() => handleChoiceHaptic(() => setCourtName("Cancha 1"))}
           >
             Cancha 1
           </button>
           <button
             type="button"
-            className={courtName === "Cancha 2" ? "choice-btn active" : "choice-btn"}
-            onClick={() => setCourtName("Cancha 2")}
+            className={`elite-btn-choice ${courtName === "Cancha 2" ? "active" : ""}`}
+            onClick={() => handleChoiceHaptic(() => setCourtName("Cancha 2"))}
           >
             Cancha 2
           </button>
         </div>
       </div>
 
-      <label>
-        Fecha
-        <input type="date" value={reservationDate} onChange={(event) => setReservationDate(event.target.value)} required />
-      </label>
+      <div className="elite-field-group">
+        <label className="elite-field-label">Fecha del turno</label>
+        <input type="date" className="elite-input" value={reservationDate} onChange={(e) => setReservationDate(e.target.value)} required />
+      </div>
 
-      <div className="field-group">
-        <p className="field-title">Horario</p>
-        <div className="choice-row">
+      <div className="elite-field-group">
+        <label className="elite-field-label">Horario</label>
+        <div className="elite-choice-grid times">
           {SUGGESTED_TIMES.map((time) => (
             <button
               key={time}
               type="button"
-              className={selectedTime === time && !useCustomTime ? "choice-btn active" : "choice-btn"}
-              onClick={() => {
-                setUseCustomTime(false);
-                setSelectedTime(time);
-              }}
+              className={`elite-btn-choice ${selectedTime === time && !useCustomTime ? "active" : ""}`}
+              onClick={() => handleChoiceHaptic(() => { setUseCustomTime(false); setSelectedTime(time); })}
             >
               {time}
             </button>
           ))}
+          <button
+            type="button"
+            className={`elite-btn-choice icon-btn ${useCustomTime ? "active" : ""}`}
+            onClick={() => handleChoiceHaptic(() => setUseCustomTime(!useCustomTime))}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+            Otro
+          </button>
         </div>
       </div>
 
-      <button type="button" className={useCustomTime ? "link-btn active" : "link-btn"} onClick={() => setUseCustomTime((prev) => !prev)}>
-        {useCustomTime ? "Usar horario sugerido" : "Otro horario"}
-      </button>
+      {useCustomTime && (
+        <div className="elite-field-group animate-in">
+          <label className="elite-field-label">Horario específico (00 o 30 min)</label>
+          <input type="time" className="elite-input" value={customTime} onChange={(e) => setCustomTime(e.target.value)} step={1800} required />
+          {!hasValidTime && <p className="elite-error">El horario debe ser en bloques de 30 min.</p>}
+        </div>
+      )}
 
-      {useCustomTime ? (
-        <label>
-          Otro horario
-          <input
-            type="time"
-            value={customTime}
-            onChange={(event) => setCustomTime(event.target.value)}
-            step={1800}
-            required
-          />
-        </label>
-      ) : null}
-
-      {!hasValidTime ? (
-        <p className="warning">El horario específico debe ser en bloques de 30 minutos (ej: 17:00 o 18:30).</p>
-      ) : null}
-
-      <label>
-        Duración
-        <select value={durationMinutes} onChange={(event) => setDurationMinutes(Number(event.target.value))}>
+      <div className="elite-field-group">
+        <label className="elite-field-label">Duración</label>
+        <select className="elite-select" value={durationMinutes} onChange={(e) => setDurationMinutes(Number(e.target.value))}>
           <option value={60}>60 minutos</option>
           <option value={90}>90 minutos</option>
           <option value={120}>120 minutos</option>
         </select>
-      </label>
-
-      <div className="actions">
-        <button type="submit" disabled={!hasValidTime}>
-          Reservá
-        </button>
-        <button type="button" onClick={onCancel}>
-          Cancelar
-        </button>
       </div>
+
+      <footer className="form-actions-elite">
+        <button type="submit" className="btn-primary-elite" disabled={!hasValidTime}>Confirmar Reserva</button>
+        <button type="button" className="btn-ghost-elite" onClick={onCancel}>Cancelar</button>
+      </footer>
     </form>
   );
 }

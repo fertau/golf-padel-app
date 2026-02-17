@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { User as FirebaseUser } from 'firebase/auth';
 import { User } from '../lib/types';
+import { normalizeDisplayName } from '../lib/utils';
 
 interface AuthState {
   firebaseUser: FirebaseUser | null;
@@ -58,10 +59,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   currentUserId: readCurrentUserId(),
   rememberedIds: readRememberedIds(),
   setFirebaseUser: (firebaseUser) => {
+    const displayName = normalizeDisplayName(firebaseUser?.displayName ?? "");
     const currentUser: User | null = firebaseUser
       ? {
         id: firebaseUser.uid,
-        name: firebaseUser.displayName || firebaseUser.email || "Jugador",
+        name: displayName || "Jugador",
         avatar: firebaseUser.photoURL || undefined
       }
       : null;

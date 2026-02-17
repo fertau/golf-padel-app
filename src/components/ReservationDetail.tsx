@@ -5,6 +5,7 @@ import {
   canJoinReservation,
   getSignupsByStatus,
   getUserAttendance,
+  isGenericDisplayName,
   isReservationCreator,
   triggerHaptic
 } from "../lib/utils";
@@ -13,6 +14,7 @@ type Props = {
   reservation: Reservation;
   currentUser: User;
   appUrl: string;
+  signupNameByAuthUid: Record<string, string>;
   onSetAttendanceStatus: (reservationId: string, status: AttendanceStatus) => void;
   onCancel: (reservationId: string) => void;
   onUpdateReservation: (
@@ -25,6 +27,7 @@ export default function ReservationDetail({
   reservation,
   currentUser,
   appUrl,
+  signupNameByAuthUid,
   onSetAttendanceStatus,
   onCancel,
   onUpdateReservation
@@ -38,7 +41,6 @@ export default function ReservationDetail({
   const endDate = new Date(startDate.getTime() + reservation.durationMinutes * 60 * 1000);
   const reservationUrl = `${appUrl}/r/${reservation.id}`;
   const message = buildWhatsAppMessage(reservation, appUrl);
-
 
   const handleSetAttendance = (status: AttendanceStatus) => {
     onSetAttendanceStatus(reservation.id, status);
@@ -69,15 +71,9 @@ export default function ReservationDetail({
         await navigator.share({ title: "Reserva de padel", text: message });
         return;
       } catch (e) {
-        // Fallback to clipboard if share cancelled or failed
+        // Fallback
       }
     }
-    await navigator.clipboard.writeText(message);
-    alert("Mensaje copiado");
-  };
-
-  const copyMessage = async () => {
-    triggerHaptic("light");
     await navigator.clipboard.writeText(message);
     alert("Mensaje copiado");
   };
@@ -99,7 +95,7 @@ export default function ReservationDetail({
     const mm = `${date.getMonth() + 1}`.padStart(2, "0");
     const hh = `${date.getHours()}`.padStart(2, "0");
     const min = `${date.getMinutes()}`.padStart(2, "0");
-    return `${dd}/${mm} ${hh}:${min}`;
+    return `${dd}/${mm} a las ${hh}:${min}`;
   };
 
   const eligibility = canJoinReservation(reservation, currentUser);
@@ -115,17 +111,20 @@ export default function ReservationDetail({
   };
 
   const renderPlayerList = (list: Signup[], label: string, isOpen = false) => (
-    <details className="player-collapse" open={isOpen}>
+    <details className="player-collapse-elite" open={isOpen}>
       <summary>
-        <span>{label}</span>
-        <strong>{list.length}</strong>
+        <div className="summary-content">
+          <span>{label}</span>
+          <div className="summary-badge">{list.length}</div>
+        </div>
       </summary>
-      <div className="player-list compact">
-        {list.length === 0 ? <p className="private-hint">Sin jugadores.</p> : null}
+      <div className="player-list-elite">
+        {list.length === 0 ? <p className="empty-state-list">Sin registros aún.</p> : null}
         {list.map((signup, index) => (
-          <div key={signup.id} className="player-row compact">
-            <span className="player-index">{index + 1}</span>
-            <span className="player-name text-dynamic">{formatSignupName(signup)}</span>
+          <div key={signup.id} className="player-row-elite">
+            <div className="player-avatar-mini">{formatSignupName(signup).charAt(0)}</div>
+            <span className="player-name">{formatSignupName(signup)}</span>
+            {index === 0 && label === "Juego" && <span className="host-label">Organizador</span>}
           </div>
         ))}
       </div>
@@ -133,89 +132,87 @@ export default function ReservationDetail({
   );
 
   const formatSignupName = (signup: Signup): string => {
-    const normalizedName = signup.userName?.trim() || "Jugador";
-    if (normalizedName.toLowerCase() !== "jugador") {
-      return normalizedName;
+    if (!isGenericDisplayName(signup.userName)) {
+      return signup.userName;
+    }
+    if (signup.authUid && signupNameByAuthUid[signup.authUid]) {
+      return signupNameByAuthUid[signup.authUid];
     }
     const suffixSource = signup.authUid || signup.userId || signup.id;
     return `Jugador #${suffixSource.slice(-4).toUpperCase()}`;
   };
 
   return (
-    <section className="panel panel-detail">
-      <div className="detail-title-row">
-        <h3>Detalle del partido</h3>
-        <span className="meta-pill">{reservation.durationMinutes} min</span>
+    <div className="reservation-hero-view">
+      <header className="hero-header">
+        <div className="hero-badge">{reservation.durationMinutes} min</div>
+        <h1>{reservation.courtName}</h1>
+        <p className="hero-subtitle">{formatCompactDate(reservation.startDateTime)}</p>
+      </header>
+
+      <div className="hero-stats-grid">
+        <div className="hero-stat-card">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+          <div className="stat-info"><strong>{confirmed.length}/4</strong><span>Jugadores</span></div>
+        </div>
+        <div className="hero-stat-card">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+          <div className="stat-info"><strong>{reservation.durationMinutes}m</strong><span>Duración</span></div>
+        </div>
       </div>
 
-      <div className="detail-meta-grid">
-        <div className="detail-meta-item"><span>Cancha</span><strong>{reservation.courtName}</strong></div>
-        <div className="detail-meta-item"><span>Fecha y hora</span><strong>{formatCompactDate(reservation.startDateTime)}</strong></div>
-        <div className="detail-meta-item"><span>Reservó</span><small>{reservation.createdBy.name}</small></div>
-      </div>
+      <section className="attendance-section-elite">
+        <h3>Tu asistencia</h3>
+        <div className="attendance-pills-elite">
+          <button
+            className={`elite-choice confirmed ${myAttendance?.attendanceStatus === "confirmed" ? "active" : ""}`}
+            onClick={() => handleSetAttendance("confirmed")}
+          >
+            Confirmado
+          </button>
+          <button
+            className={`elite-choice maybe ${myAttendance?.attendanceStatus === "maybe" ? "active" : ""}`}
+            onClick={() => handleSetAttendance("maybe")}
+            disabled={!myAttendance && !eligibility.ok}
+          >
+            En duda
+          </button>
+          <button
+            className={`elite-choice cancelled ${myAttendance?.attendanceStatus === "cancelled" ? "active" : ""}`}
+            onClick={() => handleSetAttendance("cancelled")}
+          >
+            Fuera
+          </button>
+        </div>
+        {!eligibility.ok && !myAttendance && <p className="eligibility-warning">{eligibility.reason}</p>}
+      </section>
 
-      <div className="actions">
-        <button
-          className={`success attendance-btn ${myAttendance?.attendanceStatus === "confirmed" ? "active" : ""}`}
-          onClick={() => handleSetAttendance("confirmed")}
-          disabled={myAttendance?.attendanceStatus === "confirmed"}
-        >
-          Juego
-        </button>
-        <button
-          className={`neutral attendance-btn ${myAttendance?.attendanceStatus === "maybe" ? "active" : ""}`}
-          onClick={() => handleSetAttendance("maybe")}
-          disabled={myAttendance?.attendanceStatus === "maybe" || (!myAttendance && !eligibility.ok)}
-        >
-          Quizás
-        </button>
-        <button
-          className={`danger attendance-btn ${myAttendance?.attendanceStatus === "cancelled" ? "active" : ""}`}
-          onClick={() => handleSetAttendance("cancelled")}
-          disabled={myAttendance?.attendanceStatus === "cancelled"}
-        >
-          No juego
-        </button>
-      </div>
-
-      {!eligibility.ok && !myAttendance ? <p className="warning">{eligibility.reason}</p> : null}
-
-      <div className="players-accordion">
-        {renderPlayerList(confirmed, "Juego", true)}
+      <div className="players-section-elite">
+        {renderPlayerList(confirmed, "Confirmados", true)}
         {renderPlayerList(maybe, "Quizás")}
-        {renderPlayerList(cancelled, "No juego")}
+        {renderPlayerList(cancelled, "No juegan")}
       </div>
 
-      <div className="actions actions-calendar">
-        <button className="action-ghost" onClick={openGoogleCalendar}>
-          <span className="button-icon" aria-hidden="true">G</span>
-          Agregar a Google Calendar
+      <div className="actions-section-elite">
+        <button className="btn-secondary-elite" onClick={openGoogleCalendar}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+          Google Calendar
         </button>
+
+        {isCreator && (
+          <div className="creator-actions-elite">
+            <button className="btn-secondary-elite" onClick={openWhatsApp}>WhatsApp</button>
+            <button className="btn-secondary-elite" onClick={share}>Compartir</button>
+            <button className="btn-outline-danger-elite" onClick={() => setEditing(!editing)}>
+              {editing ? "Cerrar edición" : "Modificar reserva"}
+            </button>
+            <button className="btn-link-danger-elite" onClick={() => onCancel(reservation.id)}>Eliminar reserva</button>
+          </div>
+        )}
       </div>
 
-      {isCreator ? (
-        <div className="actions actions-share" style={{ marginTop: '16px' }}>
-          <button className="action-ghost" onClick={openWhatsApp}><span className="button-icon">W</span>Whatsapp</button>
-          <button className="action-ghost" onClick={share}><span className="button-icon">↗</span>Compartir</button>
-          <button className="action-ghost" onClick={copyMessage}><span className="button-icon">⧉</span>Copiar</button>
-        </div>
-      ) : null}
-
-      {isCreator ? (
-        <div className="danger-zone" style={{ marginTop: '24px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
-          <div className="actions danger-actions">
-            <button type="button" className="danger-outline" onClick={() => { setEditing(!editing); triggerHaptic("light"); }}>
-              {editing ? "Cancelar edición" : "Modificar reserva"}
-            </button>
-            <button className="danger" onClick={() => { onCancel(reservation.id); triggerHaptic("heavy"); }}>
-              Cancelar reserva
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {isCreator && editing ? (
-        <div className="panel account-panel" style={{ marginTop: '16px', background: 'rgba(255,255,255,0.03)' }}>
+      {editing && (
+        <div className="edit-pane-elite glass-effect">
           <label>Cancha
             <select value={editCourtName} onChange={(e) => setEditCourtName(e.target.value)}>
               <option value="Cancha 1">Cancha 1</option><option value="Cancha 2">Cancha 2</option>
@@ -229,9 +226,9 @@ export default function ReservationDetail({
               <option value={60}>60m</option><option value={90}>90m</option><option value={120}>120m</option>
             </select>
           </label>
-          <button type="button" onClick={submitEdit}>Guardar cambios</button>
+          <button className="btn-primary-elite" onClick={submitEdit}>Guardar cambios</button>
         </div>
-      ) : null}
-    </section>
+      )}
+    </div>
   );
 }
