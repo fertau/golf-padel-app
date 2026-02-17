@@ -11,6 +11,9 @@ import ReservationCard from "./components/ReservationCard";
 import ReservationDetail from "./components/ReservationDetail";
 import ReservationForm from "./components/ReservationForm";
 import SplashScreen from "./components/SplashScreen";
+import AuthView from "./components/AuthView"; // [NEW]
+import Navbar from "./components/Navbar";     // [NEW]
+import ProfileView from "./components/ProfileView"; // [NEW]
 import {
   cancelReservation,
   createReservation,
@@ -78,9 +81,10 @@ export default function App() {
 
   const currentUser: User | null = firebaseUser
     ? {
-        id: firebaseUser.uid,
-        name: firebaseUser.displayName || firebaseUser.email || "Jugador"
-      }
+      id: firebaseUser.uid,
+      name: firebaseUser.displayName || firebaseUser.email || "Jugador",
+      avatar: firebaseUser.photoURL || undefined
+    }
     : null;
 
   const activeReservations = useMemo(
@@ -114,9 +118,12 @@ export default function App() {
     }
 
     try {
+      setBusy(true);
       await signInWithPopup(auth, googleProvider);
     } catch {
       await signInWithRedirect(auth, googleProvider);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -205,7 +212,7 @@ export default function App() {
   const renderReservationList = (items: Reservation[], emptyText: string) => (
     <section className="panel">
       <p className="private-hint">
-        {items.length} reservas · {totalConfirmedAttendances} asistencias confirmadas en activas
+        {items.length} reservas · {totalConfirmedAttendances} asistencias confirmadas
       </p>
       <div className="list">
         {items.length === 0 ? <p>{emptyText}</p> : null}
@@ -238,7 +245,7 @@ export default function App() {
       <>
         <SplashScreen visible={showSplash} />
         <main className="app mobile-shell">
-          <section className="panel">
+          <section className="panel" style={{ textAlign: "center", padding: "4rem 2rem" }}>
             <p>Cargando sesión...</p>
           </section>
         </main>
@@ -250,13 +257,7 @@ export default function App() {
     return (
       <>
         <SplashScreen visible={showSplash} />
-        <main className="app mobile-shell">
-          <section className="panel account-selector">
-            <h2>Ingresar</h2>
-            <p className="private-hint">Usá tu cuenta de Google para entrar.</p>
-            <button onClick={loginGoogle}>Ingresar con Google</button>
-          </section>
-        </main>
+        <AuthView onLoginWithGoogle={loginGoogle} busy={busy} />
       </>
     );
   }
@@ -267,37 +268,12 @@ export default function App() {
 
       <main className="app mobile-shell">
         <header className="header court-header">
-          <div>
-            <p className="eyebrow">Golf Padel</p>
-            <div className="brand-shell">
-              <img src="/icon-192.png" alt="Golf Padel icon" className="brand-icon" />
-              <h1>Golf Padel App</h1>
-            </div>
-            <p>{currentUser.name}</p>
+          <div className="brand-shell">
+            <img src="/apple-touch-icon.png" alt="Golf Padel" className="brand-icon" />
+            <h1>Golf Padel App</h1>
           </div>
-          <div className="header-pill">{isCloudDbEnabled() ? "Modo Firebase" : "Modo Local"}</div>
+          <div className="header-pill">{isCloudDbEnabled() ? "Firebase Online" : "Modo Local"}</div>
         </header>
-
-        <nav className="tabs">
-          <button
-            className={activeTab === "mis-partidos" ? "choice-btn active" : "choice-btn"}
-            onClick={() => setActiveTab("mis-partidos")}
-          >
-            Mis partidos
-          </button>
-          <button
-            className={activeTab === "mis-reservas" ? "choice-btn active" : "choice-btn"}
-            onClick={() => setActiveTab("mis-reservas")}
-          >
-            Mis reservas
-          </button>
-          <button
-            className={activeTab === "perfil" ? "choice-btn active" : "choice-btn"}
-            onClick={() => setActiveTab("perfil")}
-          >
-            Perfil
-          </button>
-        </nav>
 
         {activeTab === "mis-partidos"
           ? renderReservationList(myMatches, "No hay reservas activas por ahora.")
@@ -323,15 +299,15 @@ export default function App() {
         ) : null}
 
         {activeTab === "perfil" ? (
-          <section className="panel">
-            <h2>Perfil</h2>
-            <p className="private-hint">Cuenta: {currentUser.name}</p>
-            <button onClick={requestNotifications}>Activar notificaciones</button>
-            <button className="danger" onClick={() => void logout()}>
-              Cerrar sesión
-            </button>
-          </section>
+          <ProfileView
+            user={currentUser}
+            onLogout={logout}
+            onRequestNotifications={requestNotifications}
+            busy={busy}
+          />
         ) : null}
+
+        <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
       </main>
     </>
   );

@@ -3,6 +3,7 @@ export type Role = "TITULAR" | "SUPLENTE";
 export type User = {
   id: string;
   name: string;
+  avatar?: string;
 };
 
 export type PlayerVisibility = "public" | "private";
