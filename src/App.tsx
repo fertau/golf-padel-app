@@ -34,7 +34,7 @@ import {
   updateReservationDetails
 } from "./lib/dataStore";
 import { registerPushToken } from "./lib/push";
-import type { AttendanceStatus, Reservation } from "./lib/types";
+import type { Reservation } from "./lib/types";
 import { getUserAttendance, isReservationCreator, triggerHaptic } from "./lib/utils";
 import { auth } from "./lib/firebase";
 
@@ -130,18 +130,18 @@ export default function App() {
 
   // 2. Firebase Auth Flow
   useEffect(() => {
-    if (!auth) {
+    const firebaseAuth = auth;
+    if (!firebaseAuth) {
       setAuthLoading(false);
       return;
     }
 
     let cancelled = false;
-    let gotAuthState = false;
 
     const setupRedirect = async () => {
       try {
-        await setPersistence(auth, browserLocalPersistence);
-        const result = await getRedirectResult(auth);
+        await setPersistence(firebaseAuth, browserLocalPersistence);
+        const result = await getRedirectResult(firebaseAuth);
         if (result?.user && !cancelled) {
           setFirebaseUser(result.user);
           sessionStorage.removeItem(LOGIN_PENDING_KEY);
@@ -156,7 +156,7 @@ export default function App() {
 
     setupRedirect();
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
       if (cancelled) return;
       setFirebaseUser(user);
       setAuthLoading(false);
@@ -245,6 +245,7 @@ export default function App() {
       setBusy(true);
       await signOut(auth);
       setExpandedReservationId(null);
+      triggerHaptic("medium");
     } catch (err: any) {
       alert(err.message);
     } finally {

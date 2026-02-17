@@ -25,15 +25,15 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
 
       <div className="meta">
         <span className="status-chip chip-confirmed">Confirmados {confirmed.length}</span>
-        <span className="status-chip chip-waiting">Buscando cuarto {maybe.length}</span>
+        <span className="status-chip chip-waiting">Faltan jugadores {maybe.length}</span>
         {mine ? (
           <span
-            className={`status-chip ${
+            className={`status-chip status-chip-mine ${
               mine.attendanceStatus === "confirmed"
-                ? "chip-confirmed"
+                ? "chip-mine-confirmed"
                 : mine.attendanceStatus === "maybe"
-                  ? "chip-waiting"
-                  : "chip-cancelled"
+                  ? "chip-mine-maybe"
+                  : "chip-mine-cancelled"
             }`}
           >
             {mine.attendanceStatus === "confirmed"

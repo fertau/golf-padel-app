@@ -852,6 +852,28 @@ button.neutral {
   color: #ffdbe0;
 }
 
+.status-chip-mine {
+  font-weight: 800;
+}
+
+.chip-mine-confirmed {
+  background: rgba(33, 197, 137, 0.2);
+  border-color: rgba(88, 236, 178, 0.62);
+  color: #d9ffef;
+}
+
+.chip-mine-maybe {
+  background: rgba(152, 164, 187, 0.22);
+  border-color: rgba(196, 207, 227, 0.58);
+  color: #ecf2ff;
+}
+
+.chip-mine-cancelled {
+  background: rgba(255, 109, 122, 0.2);
+  border-color: rgba(255, 153, 163, 0.58);
+  color: #ffdbe0;
+}
+
 .tag {
   border-radius: 999px;
   padding: 0.2rem 0.56rem;
