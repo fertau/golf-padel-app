@@ -73,10 +73,37 @@ export default function ReservationDetail({
 
   return (
     <section className="panel panel-detail">
-      <h2>{reservation.courtName}</h2>
-      <p>{formatDateTime(reservation.startDateTime)}</p>
-      <p>Duración: {reservation.durationMinutes} minutos</p>
-      <p>Creador: {reservation.createdBy.name}</p>
+      <div className="detail-head">
+        <div>
+          <h2>{reservation.courtName}</h2>
+          <p className="detail-time">{formatDateTime(reservation.startDateTime)}</p>
+        </div>
+        <span className="meta-pill">{reservation.durationMinutes} min</span>
+      </div>
+      <div className="detail-kpis">
+        <div className="kpi-card">
+          <span className="kpi-label">Creador</span>
+          <strong>{reservation.createdBy.name}</strong>
+        </div>
+        <div className="kpi-card">
+          <span className="kpi-label">Confirmados</span>
+          <strong>{confirmed.length}</strong>
+        </div>
+        <div className="kpi-card">
+          <span className="kpi-label">Quizás</span>
+          <strong>{maybe.length}</strong>
+        </div>
+      </div>
+      <div className="my-status-row">
+        <span className="kpi-label">Mi estado</span>
+        <strong>
+          {myAttendance?.attendanceStatus === "confirmed"
+            ? "Juego"
+            : myAttendance?.attendanceStatus === "maybe"
+              ? "Quizás"
+              : "Sin definir"}
+        </strong>
+      </div>
 
       <div className="actions">
         <button
@@ -105,7 +132,7 @@ export default function ReservationDetail({
       {!eligibility.ok && !myAttendance ? <p className="warning">{eligibility.reason}</p> : null}
 
       <div className="list-grid">
-        <div>
+        <div className="detail-list-card">
           <h3>Confirmados</h3>
           {confirmed.length === 0 ? <p className="private-hint">Sin confirmados por ahora.</p> : null}
           <ul>
@@ -115,7 +142,7 @@ export default function ReservationDetail({
           </ul>
         </div>
 
-        <div>
+        <div className="detail-list-card">
           <h3>Quizás</h3>
           {maybe.length === 0 ? <p className="private-hint">Sin jugadores en quizás.</p> : null}
           <ul>

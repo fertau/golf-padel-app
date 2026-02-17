@@ -47,6 +47,18 @@ export default function App() {
   const [expandedReservationId, setExpandedReservationId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("mis-partidos");
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const splashTimer = window.setTimeout(() => setShowSplash(false), 3000);
@@ -178,6 +190,10 @@ export default function App() {
         0
       ),
     [activeReservations]
+  );
+
+  const isSynchronized = Boolean(
+    currentUser && isCloudDbEnabled() && isOnline
   );
 
   const loginGoogle = async () => {
@@ -369,7 +385,10 @@ export default function App() {
             <img src="/apple-touch-icon.png" alt="Golf Padel" className="brand-icon" />
             <h1>Golf Padel App</h1>
           </div>
-          <div className="header-pill">{isCloudDbEnabled() ? "Firebase Online" : "Modo Local"}</div>
+          <div className={`header-pill sync-pill ${isSynchronized ? "ok" : "off"}`}>
+            <span className="sync-dot" />
+            {isSynchronized ? "Sincronizado" : "No sincronizado"}
+          </div>
         </header>
 
         {activeTab === "mis-partidos"
