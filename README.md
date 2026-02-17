@@ -3,24 +3,21 @@
 PWA para gestionar reservas de pádel y anotados (titulares/suplentes) para grupos de WhatsApp.
 
 ## Features implementadas
-- Creación de reserva con captura opcional.
-- Reglas por reserva (creador):
-  - `maxPlayersAccepted`
-  - `priorityUserIds`
-  - `allowWaitlist`
-  - `signupDeadline`
-- Algoritmo titulares/suplentes con prioridad y timestamp.
-- Re-cálculo automático cuando alguien se baja.
-- Compartir por Web Share API y copiar mensaje para WhatsApp.
+- Acceso por cuentas recordadas + búsqueda por nombre + PIN de 4 dígitos.
+- Registro de perfil con unicidad case-insensitive de username.
+- PIN hasheado con PBKDF2-SHA256 + salt aleatoria (backend).
+- Reserva manual mobile-first: fecha, cancha y horario sugerido/custom.
+- Confirmar / Quizás / Cancelar asistencia.
+- Secciones: `Mis partidos`, `Mis reservas`, `Perfil`.
+- Compartir por WhatsApp con mensaje estructurado.
 - Splash animation estilo cancha azul de pádel.
 - UI modernizada con estética padel.
-- Modo Firebase (si hay variables `VITE_FIREBASE_*`) o modo local automático.
-- Registro manual optimizado para móvil: fecha, cancha y horario sugerido/custom.
 
 ## Stack
 - React + TypeScript + Vite
 - PWA con `vite-plugin-pwa`
-- Firebase (Firestore + Auth/Messaging opcional)
+- Firebase (Auth + Firestore + Messaging opcional)
+- API routes en Vercel para auth/PIN (`/api/auth/*`)
 
 ## Desarrollo local
 ```bash
@@ -46,8 +43,7 @@ git push -u origin main
 ### 2) Firebase (Consola)
 1. Crear proyecto Firebase.
 2. Agregar app Web y copiar credenciales.
-3. Activar Authentication:
-- Sign-in method: `Anonymous` (rápido) o `Google`.
+3. Activar Authentication (necesario para custom tokens).
 4. Crear Firestore (modo production).
 5. En Firestore Rules pegar `firestore.rules`.
 6. En Cloud Messaging generar Web Push certificate (VAPID key).
@@ -64,8 +60,12 @@ VITE_FIREBASE_VAPID_KEY=...
 VITE_USE_FIREBASE_DB=true
 ```
 
-Si no querés usar Firestore todavía:
-- `VITE_USE_FIREBASE_DB=false` y la app funciona en modo local (localStorage).
+Variables server-side para Vercel API (`/api/auth/*`):
+```bash
+FIREBASE_PROJECT_ID=...
+FIREBASE_CLIENT_EMAIL=...
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+```
 
 ### 4) Service Worker de Firebase Messaging
 Editar `public/firebase-messaging-sw.js` y completar `firebaseConfig` con los valores de tu app Firebase.
@@ -80,14 +80,23 @@ Importante:
 3. Framework: Vite (auto-detectado).
 4. Build command: `npm run build`.
 5. Output directory: `dist`.
-6. Cargar las mismas variables `VITE_FIREBASE_*` en Project Settings > Environment Variables.
-7. Deploy.
+6. Cargar `VITE_FIREBASE_*` en Project Settings > Environment Variables.
+7. Cargar `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` en Vercel.
+8. Deploy.
 
 `vercel.json` ya incluye rewrite SPA para soportar rutas internas.
 
-## Seguridad y privacidad
-En este MVP, las reglas internas se ocultan en UI para no-creadores.
-Para aislamiento fuerte de reglas privadas entre usuarios, el siguiente paso recomendado es mover reglas sensibles a documentos privados gestionados por Cloud Functions.
+## Migración legacy de PIN
+- Online automático: en `/api/auth/login`, si detecta `pin` legacy en texto plano, migra a hash y loguea en servidor.
+- Script manual:
+```bash
+node scripts/migrateLegacyPins.mjs
+```
+
+## Seguridad
+- Firestore bloquea writes anónimas.
+- `players` solo accesible por dueño autenticado.
+- Unicidad de username en backend vía colección índice `usernames/{normalized}`.
 
 ### Respuesta a filtración de API key (Google abuse alert)
 1. Rotar la key comprometida en Google Cloud Console (`APIs & Services > Credentials > Regenerate key`).

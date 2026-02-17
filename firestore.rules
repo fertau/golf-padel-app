@@ -5,12 +5,36 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner(resourceData) {
-      return isSignedIn() && resourceData.ownerId == request.auth.uid;
+    function isOwnerByAuthUid(resourceData) {
+      return isSignedIn() && resourceData.createdByAuthUid == request.auth.uid;
+    }
+
+    function playerAllowedKeys(data) {
+      return data.keys().hasOnly([
+        'id',
+        'ownerId',
+        'name',
+        'usernameNormalized',
+        'avatar',
+        'createdAt',
+        'updatedAt',
+        'isPinned',
+        'visibility',
+        'isAdmin',
+        'stats',
+        'derivedStats',
+        'friends',
+        'friendRequests',
+        'sentRequests',
+        'pinHash',
+        'pinSalt',
+        'pinIterations',
+        'pinAlgorithm'
+      ]);
     }
 
     match /reservations/{reservationId} {
-      allow read: if true;
+      allow read: if isSignedIn();
 
       allow create: if isSignedIn() &&
         request.resource.data.createdByAuthUid == request.auth.uid;
@@ -18,7 +42,7 @@ service cloud.firestore {
       allow update: if isSignedIn() &&
         request.resource.data.createdByAuthUid == resource.data.createdByAuthUid &&
         (
-          resource.data.createdByAuthUid == request.auth.uid ||
+          isOwnerByAuthUid(resource.data) ||
           (
             request.resource.data.courtName == resource.data.courtName &&
             request.resource.data.startDateTime == resource.data.startDateTime &&
@@ -34,19 +58,28 @@ service cloud.firestore {
     }
 
     match /players/{playerId} {
-      allow read: if true;
+      allow read: if isSignedIn() && playerId == request.auth.token.playerId;
 
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow create: if false;
 
-      allow update: if isSignedIn() && (
-        resource.data.ownerId == request.auth.uid ||
-        (
-          (!("pin" in resource.data) || resource.data.pin == "") &&
-          request.resource.data.ownerId == request.auth.uid
-        )
-      );
+      allow update: if isSignedIn() &&
+        playerId == request.auth.token.playerId &&
+        resource.data.ownerId == request.auth.uid &&
+        request.resource.data.ownerId == resource.data.ownerId &&
+        request.resource.data.id == resource.data.id &&
+        playerAllowedKeys(request.resource.data);
 
       allow delete: if false;
+    }
+
+    match /playerDirectory/{playerId} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    match /usernames/{usernameNormalized} {
+      allow read: if false;
+      allow write: if false;
     }
   }
 }

@@ -11,7 +11,7 @@ export type Player = {
   id: string;
   name: string;
   avatar: string;
-  pin: string;
+  usernameNormalized: string;
   ownerId: string;
   createdAt: string;
   isPinned: boolean;

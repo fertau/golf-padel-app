@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
+import { onAuthStateChanged, signInWithCustomToken, signOut } from "firebase/auth";
 import AccountSelector from "./components/AccountSelector";
 import ReservationCard from "./components/ReservationCard";
 import ReservationDetail from "./components/ReservationDetail";
@@ -17,33 +17,47 @@ import { registerPushToken } from "./lib/push";
 import type { AttendanceStatus, Reservation, User } from "./lib/types";
 import { getSignupsByStatus } from "./lib/utils";
 import { auth } from "./lib/firebase";
-import {
-  clearCurrentAccountId,
-  createAccount,
-  forgetAccount,
-  getAccounts,
-  getCurrentAccountId,
-  getRememberedAccountIds,
-  rememberAccount,
-  setCurrentAccountId,
-  verifyAccountPin
-} from "./lib/accounts";
+import { loginWithPin, registerAccount, type AccountProfile } from "./lib/authApi";
+import { useAuthStore } from "./stores/useAuthStore";
+import { useUserStore } from "./stores/useUserStore";
 
 type TabId = "mis-partidos" | "mis-reservas" | "perfil";
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [busy, setBusy] = useState(false);
-
-  const [accountsVersion, setAccountsVersion] = useState(0);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [expandedReservationId, setExpandedReservationId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("mis-partidos");
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  const accounts = useMemo(() => getAccounts(), [accountsVersion]);
-  const rememberedAccountIds = useMemo(() => getRememberedAccountIds(), [accountsVersion]);
+  const currentUserId = useAuthStore((state) => state.currentUserId);
+  const rememberedIds = useAuthStore((state) => state.rememberedIds);
+  const setCurrentUserId = useAuthStore((state) => state.setCurrentUserId);
+  const remember = useAuthStore((state) => state.remember);
+  const forget = useAuthStore((state) => state.forget);
+  const logoutStore = useAuthStore((state) => state.logout);
+
+  const profilesById = useUserStore((state) => state.profilesById);
+  const upsertProfiles = useUserStore((state) => state.upsertProfiles);
+  const loadRememberedProfiles = useUserStore((state) => state.loadRememberedProfiles);
+  const searchExactByName = useUserStore((state) => state.searchExactByName);
+
+  const currentProfile = currentUserId ? profilesById[currentUserId] : undefined;
+  const currentUser: User | null = currentProfile
+    ? {
+        id: currentProfile.id,
+        name: currentProfile.name
+      }
+    : null;
+
+  const rememberedAccounts = useMemo(
+    () =>
+      rememberedIds
+        .map((id) => profilesById[id])
+        .filter((profile): profile is AccountProfile => Boolean(profile)),
+    [profilesById, rememberedIds]
+  );
 
   useEffect(() => {
     const splashTimer = window.setTimeout(() => setShowSplash(false), 3000);
@@ -51,27 +65,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const currentAccountId = getCurrentAccountId();
-    if (!currentAccountId) {
+    if (!currentUserId) {
+      setReservations([]);
       return;
     }
-
-    const account = getAccounts().find((item) => item.id === currentAccountId);
-    if (!account) {
-      clearCurrentAccountId();
-      return;
-    }
-
-    setCurrentUser({
-      id: account.id,
-      name: account.name
-    });
-  }, []);
-
-  useEffect(() => {
     const unsubscribe = subscribeReservations(setReservations);
     return unsubscribe;
-  }, []);
+  }, [currentUserId]);
 
   useEffect(() => {
     const firebaseAuth = auth;
@@ -81,16 +81,12 @@ export default function App() {
 
     const unsubscribe = onAuthStateChanged(firebaseAuth, (firebaseUser) => {
       if (!firebaseUser) {
-        void signInAnonymously(firebaseAuth);
+        logoutStore();
       }
     });
 
-    if (!firebaseAuth.currentUser) {
-      void signInAnonymously(firebaseAuth);
-    }
-
     return unsubscribe;
-  }, []);
+  }, [logoutStore]);
 
   useEffect(() => {
     const pathMatch = window.location.pathname.match(/^\/r\/([a-zA-Z0-9-]+)$/);
@@ -101,6 +97,23 @@ export default function App() {
     setExpandedReservationId(pathMatch[1]);
     setActiveTab("mis-partidos");
   }, []);
+
+  useEffect(() => {
+    const idsToLoad = Array.from(new Set([...(currentUserId ? [currentUserId] : []), ...rememberedIds]));
+    if (idsToLoad.length === 0) {
+      return;
+    }
+
+    void loadRememberedProfiles(idsToLoad).then((profiles) => {
+      if (!currentUserId) {
+        return;
+      }
+      const exists = profiles.some((profile) => profile.id === currentUserId);
+      if (!exists) {
+        logoutStore();
+      }
+    });
+  }, [currentUserId, loadRememberedProfiles, logoutStore, rememberedIds]);
 
   const activeReservations = useMemo(
     () => reservations.filter((reservation) => reservation.status === "active"),
@@ -126,39 +139,43 @@ export default function App() {
     [activeReservations]
   );
 
-  const loginAccount = (accountId: string, pin: string) => {
-    const account = verifyAccountPin(accountId, pin);
-    setCurrentAccountId(account.id);
-    rememberAccount(account.id);
-    setCurrentUser({
-      id: account.id,
-      name: account.name
-    });
-    setAccountsVersion((value) => value + 1);
-  };
-
-  const createAndLoginAccount = (name: string, pin: string) => {
-    const account = createAccount(name, pin);
-    setCurrentAccountId(account.id);
-    rememberAccount(account.id);
-    setCurrentUser({
-      id: account.id,
-      name: account.name
-    });
-    setAccountsVersion((value) => value + 1);
-  };
-
-  const handleForgetAccount = (accountId: string) => {
-    forgetAccount(accountId);
-    if (currentUser?.id === accountId) {
-      setCurrentUser(null);
+  const onLogin = async (playerId: string, pin: string) => {
+    const result = await loginWithPin(playerId, pin);
+    if (auth) {
+      await signInWithCustomToken(auth, result.customToken);
     }
-    setAccountsVersion((value) => value + 1);
+    upsertProfiles([result.profile]);
+    setCurrentUserId(result.profile.id);
+    remember(result.profile.id);
   };
 
-  const logout = () => {
-    clearCurrentAccountId();
-    setCurrentUser(null);
+  const onCreate = async (name: string, pin: string) => {
+    const result = await registerAccount(name, pin);
+    if (result.status === "exists") {
+      upsertProfiles([result.profile]);
+      return {
+        redirectedToLogin: true,
+        player: result.profile
+      };
+    }
+
+    if (auth) {
+      await signInWithCustomToken(auth, result.customToken);
+    }
+    upsertProfiles([result.profile]);
+    setCurrentUserId(result.profile.id);
+    remember(result.profile.id);
+    return {
+      redirectedToLogin: false,
+      player: result.profile
+    };
+  };
+
+  const logout = async () => {
+    if (auth) {
+      await signOut(auth);
+    }
+    logoutStore();
     setExpandedReservationId(null);
   };
 
@@ -245,11 +262,11 @@ export default function App() {
       <>
         <SplashScreen visible={showSplash} />
         <AccountSelector
-          accounts={accounts}
-          rememberedAccountIds={rememberedAccountIds}
-          onLogin={loginAccount}
-          onCreate={createAndLoginAccount}
-          onForget={handleForgetAccount}
+          rememberedAccounts={rememberedAccounts}
+          onForgetRemembered={forget}
+          onSearchExact={searchExactByName}
+          onLogin={onLogin}
+          onCreate={onCreate}
         />
       </>
     );
@@ -324,7 +341,9 @@ export default function App() {
           </button>
         </nav>
 
-        {activeTab === "mis-partidos" ? renderReservationList(myMatches, "No tenés partidos confirmados o en quizás.") : null}
+        {activeTab === "mis-partidos"
+          ? renderReservationList(myMatches, "No hay reservas activas por ahora.")
+          : null}
 
         {activeTab === "mis-reservas" ? (
           <>
@@ -350,7 +369,7 @@ export default function App() {
             <h2>Perfil</h2>
             <p className="private-hint">Cuenta: {currentUser.name}</p>
             <button onClick={requestNotifications}>Activar notificaciones</button>
-            <button className="danger" onClick={logout}>
+            <button className="danger" onClick={() => void logout()}>
               Cerrar sesión
             </button>
           </section>

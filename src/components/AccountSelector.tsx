@@ -1,139 +1,262 @@
 import { FormEvent, useMemo, useState } from "react";
-import type { LocalAccount } from "../lib/accounts";
+import type { AccountProfile } from "../lib/authApi";
+import PinInput from "./PinInput";
+
+type Mode = "home" | "search" | "pin" | "create-name" | "create-pin";
 
 type Props = {
-  accounts: LocalAccount[];
-  rememberedAccountIds: string[];
-  onLogin: (accountId: string, pin: string) => void;
-  onCreate: (name: string, pin: string) => void;
-  onForget: (accountId: string) => void;
+  rememberedAccounts: AccountProfile[];
+  onForgetRemembered: (id: string) => void;
+  onSearchExact: (name: string) => Promise<AccountProfile | null>;
+  onLogin: (playerId: string, pin: string) => Promise<void>;
+  onCreate: (name: string, pin: string) => Promise<{ redirectedToLogin: boolean; player: AccountProfile }>;
 };
 
 export default function AccountSelector({
-  accounts,
-  rememberedAccountIds,
+  rememberedAccounts,
+  onForgetRemembered,
+  onSearchExact,
   onLogin,
-  onCreate,
-  onForget
+  onCreate
 }: Props) {
-  const [selectedAccountId, setSelectedAccountId] = useState<string>("");
-  const [pinInput, setPinInput] = useState("");
-  const [newName, setNewName] = useState("");
-  const [newPin, setNewPin] = useState("");
+  const [mode, setMode] = useState<Mode>("home");
+  const [queryName, setQueryName] = useState("");
+  const [pin, setPin] = useState("");
+  const [createName, setCreateName] = useState("");
+  const [createPin, setCreatePin] = useState("");
+  const [selectedAccount, setSelectedAccount] = useState<AccountProfile | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const orderedAccounts = useMemo(() => {
-    const rememberedSet = new Set(rememberedAccountIds);
-    const remembered = accounts.filter((account) => rememberedSet.has(account.id));
-    const others = accounts.filter((account) => !rememberedSet.has(account.id));
-    return [...remembered, ...others];
-  }, [accounts, rememberedAccountIds]);
+  const remembered = useMemo(() => rememberedAccounts, [rememberedAccounts]);
 
-  const submitLogin = (event: FormEvent) => {
+  const resetPinState = () => {
+    setPin("");
+    setCreatePin("");
+  };
+
+  const goHome = () => {
+    setMode("home");
+    setError(null);
+    setMessage(null);
+    resetPinState();
+  };
+
+  const submitSearch = async (event: FormEvent) => {
     event.preventDefault();
-    if (!selectedAccountId) {
-      setError("Seleccioná una cuenta.");
-      return;
-    }
-    if (!pinInput.trim()) {
-      setError("Ingresá tu PIN.");
+    if (!queryName.trim()) {
+      setError("Ingresá un nombre exacto.");
       return;
     }
 
+    setBusy(true);
+    setError(null);
+    setMessage(null);
     try {
-      onLogin(selectedAccountId, pinInput.trim());
-      setPinInput("");
-      setError(null);
-    } catch (loginError) {
-      setError((loginError as Error).message);
+      const profile = await onSearchExact(queryName);
+      if (!profile) {
+        setError("No encontramos ese usuario.");
+        return;
+      }
+      setSelectedAccount(profile);
+      setMode("pin");
+      setPin("");
+    } catch (searchError) {
+      setError((searchError as Error).message);
+    } finally {
+      setBusy(false);
     }
   };
 
-  const submitCreate = (event: FormEvent) => {
-    event.preventDefault();
+  const submitLogin = async () => {
+    if (!selectedAccount) {
+      return;
+    }
+    if (!/^\d{4}$/.test(pin)) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
     try {
-      onCreate(newName, newPin);
-      setNewName("");
-      setNewPin("");
-      setError(null);
+      await onLogin(selectedAccount.id, pin);
+      resetPinState();
+    } catch (loginError) {
+      setError((loginError as Error).message);
+      setPin("");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitCreateName = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!createName.trim()) {
+      setError("Ingresá un nombre.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const existing = await onSearchExact(createName.trim());
+      if (existing) {
+        setSelectedAccount(existing);
+        setMode("pin");
+        setMessage("Ese nombre ya existe. Ingresá tu PIN para entrar.");
+        return;
+      }
+      setMode("create-pin");
+    } catch (searchError) {
+      setError((searchError as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitCreatePin = async () => {
+    if (!/^\d{4}$/.test(createPin)) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await onCreate(createName.trim(), createPin);
+      if (result.redirectedToLogin) {
+        setSelectedAccount(result.player);
+        setMode("pin");
+        setPin("");
+        setMessage("Ese nombre ya existía. Entrá con PIN.");
+        return;
+      }
+      resetPinState();
     } catch (createError) {
       setError((createError as Error).message);
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
     <main className="app mobile-shell">
       <section className="panel account-selector">
-        <h2>Elegí tu cuenta</h2>
-        <p className="private-hint">Ingresás con PIN y queda recordada en este dispositivo.</p>
+        <h2>Acceso</h2>
+        <p className="private-hint">Entrá con tu cuenta y PIN.</p>
 
-        <div className="account-grid">
-          {orderedAccounts.map((account) => (
-            <article key={account.id} className="account-card">
-              <button
-                type="button"
-                className="account-open"
-                onClick={() => setSelectedAccountId(account.id)}
-              >
-                <strong>{account.name}</strong>
-                <span>{rememberedAccountIds.includes(account.id) ? "Recordada" : "No recordada"}</span>
-              </button>
-              <button type="button" className="link-btn" onClick={() => onForget(account.id)}>
-                Olvidar en este dispositivo
-              </button>
-            </article>
-          ))}
-        </div>
-
-        <form onSubmit={submitLogin} className="panel account-panel">
-          <h3>Entrar con PIN</h3>
-          <label>
-            Cuenta
-            <select value={selectedAccountId} onChange={(event) => setSelectedAccountId(event.target.value)}>
-              <option value="">Seleccionar</option>
-              {orderedAccounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name}
-                </option>
+        {mode === "home" ? (
+          <>
+            <h3>Cuentas recordadas</h3>
+            <div className="account-grid">
+              {remembered.length === 0 ? <p className="private-hint">No hay cuentas recordadas.</p> : null}
+              {remembered.map((account) => (
+                <article key={account.id} className="account-card">
+                  <button
+                    type="button"
+                    className="account-open"
+                    onClick={() => {
+                      setSelectedAccount(account);
+                      setMode("pin");
+                      setPin("");
+                      setError(null);
+                    }}
+                  >
+                    <strong>{account.name}</strong>
+                    <span>{account.avatar || "Perfil"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="link-btn"
+                    onClick={() => onForgetRemembered(account.id)}
+                  >
+                    Quitar
+                  </button>
+                </article>
               ))}
-            </select>
-          </label>
-          <label>
-            PIN
-            <input
-              type="password"
-              inputMode="numeric"
-              pattern="\d{4,6}"
-              maxLength={6}
-              value={pinInput}
-              onChange={(event) => setPinInput(event.target.value)}
-              placeholder="4 a 6 dígitos"
-            />
-          </label>
-          <button type="submit">Entrar</button>
-        </form>
+            </div>
+            <div className="actions">
+              <button type="button" onClick={() => setMode("create-name")}>
+                Crear perfil
+              </button>
+              <button type="button" onClick={() => setMode("search")}>
+                Ya tengo cuenta / Buscar
+              </button>
+            </div>
+          </>
+        ) : null}
 
-        <form onSubmit={submitCreate} className="panel account-panel">
-          <h3>Crear perfil</h3>
-          <label>
-            Nombre
-            <input value={newName} onChange={(event) => setNewName(event.target.value)} />
-          </label>
-          <label>
-            PIN
-            <input
-              type="password"
-              inputMode="numeric"
-              pattern="\d{4,6}"
-              maxLength={6}
-              value={newPin}
-              onChange={(event) => setNewPin(event.target.value)}
-              placeholder="4 a 6 dígitos"
-            />
-          </label>
-          <button type="submit">Crear e ingresar</button>
-        </form>
+        {mode === "search" ? (
+          <form className="panel account-panel" onSubmit={submitSearch}>
+            <h3>Buscar usuario</h3>
+            <label>
+              Nombre exacto
+              <input value={queryName} onChange={(event) => setQueryName(event.target.value)} />
+            </label>
+            <div className="actions">
+              <button type="submit" disabled={busy}>
+                Buscar
+              </button>
+              <button type="button" className="link-btn" onClick={goHome}>
+                Volver
+              </button>
+            </div>
+          </form>
+        ) : null}
 
+        {mode === "pin" && selectedAccount ? (
+          <section className="panel account-panel">
+            <h3>{selectedAccount.name}</h3>
+            <p className="private-hint">Ingresá tu PIN de 4 dígitos.</p>
+            <PinInput value={pin} onChange={setPin} disabled={busy} />
+            <div className="actions">
+              <button type="button" onClick={submitLogin} disabled={pin.length !== 4 || busy}>
+                Ingresar
+              </button>
+              <button type="button" className="link-btn" onClick={goHome}>
+                Volver
+              </button>
+            </div>
+          </section>
+        ) : null}
+
+        {mode === "create-name" ? (
+          <form className="panel account-panel" onSubmit={submitCreateName}>
+            <h3>Crear perfil</h3>
+            <label>
+              Nombre
+              <input value={createName} onChange={(event) => setCreateName(event.target.value)} />
+            </label>
+            <div className="actions">
+              <button type="submit" disabled={busy}>
+                Continuar
+              </button>
+              <button type="button" className="link-btn" onClick={goHome}>
+                Volver
+              </button>
+            </div>
+          </form>
+        ) : null}
+
+        {mode === "create-pin" ? (
+          <section className="panel account-panel">
+            <h3>Definí tu PIN</h3>
+            <p className="private-hint">Cuenta: {createName}</p>
+            <PinInput value={createPin} onChange={setCreatePin} disabled={busy} />
+            <div className="actions">
+              <button type="button" onClick={submitCreatePin} disabled={createPin.length !== 4 || busy}>
+                Crear cuenta
+              </button>
+              <button type="button" className="link-btn" onClick={goHome}>
+                Volver
+              </button>
+            </div>
+          </section>
+        ) : null}
+
+        {message ? <p className="private-hint">{message}</p> : null}
         {error ? <p className="warning">{error}</p> : null}
       </section>
     </main>
