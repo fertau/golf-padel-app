@@ -110,25 +110,22 @@ export default function ReservationDetail({
 
   return (
     <section className="panel panel-detail">
-      <div className="detail-head">
-        <div>
-          <h2>{reservation.courtName}</h2>
-          <p className="detail-time">{formatDateTime(reservation.startDateTime)}</p>
-        </div>
+      <div className="detail-title-row">
+        <h3>Detalle del partido</h3>
         <span className="meta-pill">{reservation.durationMinutes} min</span>
       </div>
-      <div className="detail-kpis">
-        <div className="kpi-card">
-          <span className="kpi-label">Creador</span>
+      <div className="detail-meta-grid">
+        <div className="detail-meta-item">
+          <span>Cancha</span>
+          <strong>{reservation.courtName}</strong>
+        </div>
+        <div className="detail-meta-item">
+          <span>Fecha y hora</span>
+          <strong>{formatDateTime(reservation.startDateTime)}</strong>
+        </div>
+        <div className="detail-meta-item">
+          <span>Reservó</span>
           <strong>{reservation.createdBy.name}</strong>
-        </div>
-        <div className="kpi-card">
-          <span className="kpi-label">Confirmados</span>
-          <strong>{confirmed.length}</strong>
-        </div>
-        <div className="kpi-card">
-          <span className="kpi-label">Quizás</span>
-          <strong>{maybe.length}</strong>
         </div>
       </div>
       <div className="my-status-row">
@@ -170,25 +167,37 @@ export default function ReservationDetail({
 
       {!eligibility.ok && !myAttendance ? <p className="warning">{eligibility.reason}</p> : null}
 
-      <div className="list-grid">
-        <div className="detail-list-card">
-          <h3>Confirmados</h3>
+      <div className="players-board">
+        <div className="player-list-card">
+          <div className="player-list-head">
+            <h3>Confirmados</h3>
+            <span className="meta-pill">{confirmed.length}</span>
+          </div>
           {confirmed.length === 0 ? <p className="private-hint">Sin confirmados por ahora.</p> : null}
-          <ul>
-            {confirmed.map((signup) => (
-              <li key={signup.id}>{signup.userName}</li>
+          <div className="player-list">
+            {confirmed.map((signup, index) => (
+              <div key={signup.id} className="player-row">
+                <span className="player-index">{index + 1}</span>
+                <span className="player-name">{signup.userName}</span>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
 
-        <div className="detail-list-card">
-          <h3>Quizás</h3>
+        <div className="player-list-card">
+          <div className="player-list-head">
+            <h3>Quizás</h3>
+            <span className="meta-pill">{maybe.length}</span>
+          </div>
           {maybe.length === 0 ? <p className="private-hint">Sin jugadores en quizás.</p> : null}
-          <ul>
-            {maybe.map((signup) => (
-              <li key={signup.id}>{signup.userName}</li>
+          <div className="player-list">
+            {maybe.map((signup, index) => (
+              <div key={signup.id} className="player-row">
+                <span className="player-index">{index + 1}</span>
+                <span className="player-name">{signup.userName}</span>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       </div>
 
@@ -209,7 +218,6 @@ export default function ReservationDetail({
 
       {isCreator ? (
         <div className="danger-zone">
-          <p className="danger-zone-title">Zona sensible</p>
           <div className="actions danger-actions">
             <button type="button" className="danger-outline" onClick={() => setEditing((value) => !value)}>
               {editing ? "Cancelar edición" : "Modificar reserva"}

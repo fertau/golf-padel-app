@@ -47,6 +47,7 @@ export default function App() {
   const [expandedReservationId, setExpandedReservationId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("mis-partidos");
   const [matchesFilter, setMatchesFilter] = useState<"all" | "pending" | "confirmed">("all");
+  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
 
@@ -212,9 +213,13 @@ export default function App() {
         .sort(
           (a, b) =>
             new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime()
-        )
-        .slice(0, 3),
+        ),
     [activeReservations, currentUser]
+  );
+
+  const visibleUpcoming = useMemo(
+    () => (showAllUpcoming ? myUpcomingConfirmed : myUpcomingConfirmed.slice(0, 3)),
+    [myUpcomingConfirmed, showAllUpcoming]
   );
 
   const myMatchesFiltered = useMemo(() => {
@@ -420,7 +425,9 @@ export default function App() {
         <header className="header court-header">
           <div className="brand-shell">
             <img src="/apple-touch-icon.png" alt="Golf Padel" className="brand-icon" />
-            <h1>Golf Padel App</h1>
+            <h1 className="name-logo">
+              GOLF <span>PADEL</span> APP
+            </h1>
           </div>
           <div className={`header-pill sync-pill ${isSynchronized ? "ok" : "off"}`}>
             <span className="sync-dot" />
@@ -430,8 +437,8 @@ export default function App() {
 
         {activeTab === "mis-partidos" ? (
           <section className="panel my-summary">
-            <h2 className="section-title">Mi panel</h2>
-            <div className="detail-kpis">
+            <h2 className="section-title">Mis partidos</h2>
+            <div className="detail-kpis summary-kpis">
               <button
                 type="button"
                 className={`kpi-card kpi-action ${matchesFilter === "pending" ? "kpi-active" : ""}`}
@@ -463,34 +470,45 @@ export default function App() {
             {myUpcomingConfirmed.length === 0 ? (
               <p className="private-hint">Todavía no confirmaste próximos partidos.</p>
             ) : (
-              <ul className="upcoming-list">
-                {myUpcomingConfirmed.map((reservation) => (
-                  <li key={`upcoming-${reservation.id}`}>
-                    <div className="upcoming-date">
-                      <span>
-                        {new Date(reservation.startDateTime).toLocaleDateString("es-AR", {
-                          month: "short"
-                        })}
-                      </span>
-                      <strong>
-                        {new Date(reservation.startDateTime).toLocaleDateString("es-AR", {
-                          day: "2-digit"
-                        })}
-                      </strong>
-                    </div>
-                    <div className="upcoming-content">
-                      <p>{reservation.courtName}</p>
-                      <span>
-                        {new Date(reservation.startDateTime).toLocaleTimeString("es-AR", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: false
-                        })}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <ul className="upcoming-list">
+                  {visibleUpcoming.map((reservation) => (
+                    <li key={`upcoming-${reservation.id}`}>
+                      <div className="upcoming-date">
+                        <span>
+                          {new Date(reservation.startDateTime).toLocaleDateString("es-AR", {
+                            month: "short"
+                          })}
+                        </span>
+                        <strong>
+                          {new Date(reservation.startDateTime).toLocaleDateString("es-AR", {
+                            day: "2-digit"
+                          })}
+                        </strong>
+                      </div>
+                      <div className="upcoming-content">
+                        <p>{reservation.courtName}</p>
+                        <span>
+                          {new Date(reservation.startDateTime).toLocaleTimeString("es-AR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false
+                          })}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {myUpcomingConfirmed.length > 3 ? (
+                  <button
+                    type="button"
+                    className="link-btn active"
+                    onClick={() => setShowAllUpcoming((value) => !value)}
+                  >
+                    {showAllUpcoming ? "Ver menos" : "Ver más"}
+                  </button>
+                ) : null}
+              </>
             )}
           </section>
         ) : null}

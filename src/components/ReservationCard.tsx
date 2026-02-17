@@ -14,7 +14,10 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
   const mine = getUserAttendance(reservation, currentUser.id);
 
   return (
-    <button className="reservation-card" onClick={() => onOpen(reservation.id)}>
+    <button
+      className={`reservation-card ${isExpanded ? "expanded" : ""}`}
+      onClick={() => onOpen(reservation.id)}
+    >
       <div className="reservation-card-top">
         <strong>{reservation.courtName}</strong>
         <span className="reservation-date">{formatDateTime(reservation.startDateTime)}</span>
@@ -29,7 +32,7 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
           </span>
         ) : null}
         {reservation.status === "cancelled" ? <span className="tag danger">Cancelada</span> : null}
-        <span className="meta-pill">{isExpanded ? "Ocultar detalle" : "Ver detalle"}</span>
+        <span className="meta-pill">{isExpanded ? "Cerrar detalle" : "Ver detalle"}</span>
       </div>
     </button>
   );
