@@ -451,18 +451,47 @@ export default function App() {
                 <p className="private-hint">Todavía no confirmaste próximos partidos.</p>
               ) : (
                 <>
-                  <div className="list">
-                    {visibleUpcoming.map((reservation) => (
-                      <article key={`upcoming-${reservation.id}`} className="panel reservation-item">
-                        <ReservationCard
-                          reservation={reservation}
-                          currentUser={currentUser}
-                          onOpen={(id) => setExpandedReservationId(expandedReservationId === id ? null : id)}
-                          isExpanded={expandedReservationId === reservation.id}
-                        />
-                      </article>
-                    ))}
-                  </div>
+                  <ul className="upcoming-list">
+                    {visibleUpcoming.map((reservation) => {
+                      const start = new Date(reservation.startDateTime);
+                      const month = start.toLocaleDateString("es-AR", { month: "short" }).replace(".", "").toUpperCase();
+                      const day = start.toLocaleDateString("es-AR", { day: "2-digit" });
+                      const time = start.toLocaleTimeString("es-AR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false
+                      });
+                      const confirmedCount = reservation.signups.filter(
+                        (signup) => signup.attendanceStatus === "confirmed"
+                      ).length;
+                      const isActive = expandedReservationId === reservation.id;
+                      return (
+                        <li key={`upcoming-${reservation.id}`}>
+                          <button
+                            type="button"
+                            className={`upcoming-row ${isActive ? "active" : ""}`}
+                            onClick={() => setExpandedReservationId(isActive ? null : reservation.id)}
+                          >
+                            <div className="upcoming-date">
+                              <span>{month}</span>
+                              <strong>{day}</strong>
+                            </div>
+                            <div className="upcoming-content">
+                              <span className="upcoming-time">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>
+                                <span>{time}</span>
+                              </span>
+                              <p>{reservation.courtName}</p>
+                              <span className="upcoming-time">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+                                <span>{confirmedCount}/4 jugando</span>
+                              </span>
+                            </div>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
                   {myUpcomingConfirmed.length > 3 ? (
                     <button className="link-btn active" onClick={() => setShowAllUpcoming(!showAllUpcoming)}>
                       {showAllUpcoming ? "Ver menos" : "Ver más"}
