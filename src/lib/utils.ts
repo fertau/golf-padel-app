@@ -13,8 +13,19 @@ export const formatDateTime = (iso: string): string =>
     day: "2-digit",
     month: "2-digit",
     hour: "2-digit",
-    minute: "2-digit"
+    minute: "2-digit",
+    hour12: false
   }).format(new Date(iso));
+
+const formatDateTimeForMessage = (iso: string): string => {
+  const date = new Date(iso);
+  const weekday = new Intl.DateTimeFormat("es-AR", { weekday: "short" }).format(date);
+  const day = `${date.getDate()}`.padStart(2, "0");
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const hour = `${date.getHours()}`.padStart(2, "0");
+  const minute = `${date.getMinutes()}`.padStart(2, "0");
+  return `${weekday} ${day}-${month}, ${hour}:${minute}`;
+};
 
 export const isDeadlinePassed = (reservation: Reservation): boolean => {
   if (!reservation.rules.signupDeadline) {
@@ -87,11 +98,11 @@ export const canJoinReservation = (
 };
 
 export const buildWhatsAppMessage = (reservation: Reservation, appUrl: string): string => {
-  const link = `${appUrl}#reservation/${reservation.id}`;
+  const link = `${appUrl}/r/${reservation.id}`;
   return [
     `🎾 Pádel - ${reservation.courtName}`,
-    `📅 ${formatDateTime(reservation.startDateTime)} (${reservation.durationMinutes}m)`,
-    `👤 Reserva: ${reservation.createdBy.name}`,
-    `👉 Anotate acá: ${link}`
-  ].join("\n");
+    `📅 ${formatDateTimeForMessage(reservation.startDateTime)} (${reservation.durationMinutes}m)`,
+    `👤 Reserva creada por: ${reservation.createdBy.name}`,
+    `👉 Registrate y anotate acá: ${link}`
+  ].join("\n\n");
 };

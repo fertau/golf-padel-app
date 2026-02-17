@@ -151,3 +151,21 @@ export const cancelReservationLocal = (reservationId: string): Reservation[] =>
     ...reservation,
     status: "cancelled"
   }));
+
+export const updateReservationDetailsLocal = (
+  reservationId: string,
+  updates: { courtName: string; startDateTime: string; durationMinutes: number },
+  currentUser: User
+): Reservation[] =>
+  updateReservationLocal(reservationId, (reservation) => {
+    if (reservation.createdBy.id !== currentUser.id) {
+      return reservation;
+    }
+
+    return {
+      ...reservation,
+      courtName: updates.courtName.trim(),
+      startDateTime: updates.startDateTime,
+      durationMinutes: updates.durationMinutes
+    };
+  });

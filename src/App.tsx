@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
+import AccountSelector from "./components/AccountSelector";
 import ReservationCard from "./components/ReservationCard";
 import ReservationDetail from "./components/ReservationDetail";
 import ReservationForm from "./components/ReservationForm";
@@ -9,55 +10,62 @@ import {
   createReservation,
   isCloudDbEnabled,
   setAttendanceStatus,
-  subscribeReservations
+  subscribeReservations,
+  updateReservationDetails
 } from "./lib/dataStore";
 import { registerPushToken } from "./lib/push";
 import type { AttendanceStatus, Reservation, User } from "./lib/types";
-import { getSignupsByStatus, slugifyId } from "./lib/utils";
+import { getSignupsByStatus } from "./lib/utils";
 import { auth } from "./lib/firebase";
+import {
+  clearCurrentAccountId,
+  createAccount,
+  forgetAccount,
+  getAccounts,
+  getCurrentAccountId,
+  getRememberedAccountIds,
+  rememberAccount,
+  setCurrentAccountId,
+  verifyAccountPin
+} from "./lib/accounts";
 
-const USER_KEY = "golf-padel-local-user";
-
-const loadLocalUser = (): User => {
-  const raw = localStorage.getItem(USER_KEY);
-  if (!raw) {
-    const fallback = {
-      id: "organizador",
-      name: "Organizador"
-    };
-    localStorage.setItem(USER_KEY, JSON.stringify(fallback));
-    return fallback;
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as User;
-    if (!parsed.name?.trim()) {
-      throw new Error("Invalid user");
-    }
-    return parsed;
-  } catch {
-    const fallback = {
-      id: "organizador",
-      name: "Organizador"
-    };
-    localStorage.setItem(USER_KEY, JSON.stringify(fallback));
-    return fallback;
-  }
-};
+type TabId = "mis-partidos" | "mis-reservas" | "perfil";
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
-  const [currentUser, setCurrentUser] = useState<User>(() => loadLocalUser());
-  const [nameInput, setNameInput] = useState(currentUser.name);
-
-  const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const [accountsVersion, setAccountsVersion] = useState(0);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [expandedReservationId, setExpandedReservationId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabId>("mis-partidos");
   const [showCreateForm, setShowCreateForm] = useState(false);
+
+  const accounts = useMemo(() => getAccounts(), [accountsVersion]);
+  const rememberedAccountIds = useMemo(() => getRememberedAccountIds(), [accountsVersion]);
 
   useEffect(() => {
     const splashTimer = window.setTimeout(() => setShowSplash(false), 3000);
     return () => window.clearTimeout(splashTimer);
+  }, []);
+
+  useEffect(() => {
+    const currentAccountId = getCurrentAccountId();
+    if (!currentAccountId) {
+      return;
+    }
+
+    const account = getAccounts().find((item) => item.id === currentAccountId);
+    if (!account) {
+      clearCurrentAccountId();
+      return;
+    }
+
+    setCurrentUser({
+      id: account.id,
+      name: account.name
+    });
   }, []);
 
   useEffect(() => {
@@ -84,14 +92,29 @@ export default function App() {
     return unsubscribe;
   }, []);
 
-  const selectedReservation = useMemo(
-    () => reservations.find((reservation) => reservation.id === selectedId) ?? null,
-    [reservations, selectedId]
-  );
+  useEffect(() => {
+    const pathMatch = window.location.pathname.match(/^\/r\/([a-zA-Z0-9-]+)$/);
+    if (!pathMatch) {
+      return;
+    }
+
+    setExpandedReservationId(pathMatch[1]);
+    setActiveTab("mis-partidos");
+  }, []);
 
   const activeReservations = useMemo(
     () => reservations.filter((reservation) => reservation.status === "active"),
     [reservations]
+  );
+
+  const myMatches = useMemo(() => activeReservations, [activeReservations]);
+
+  const myReservations = useMemo(
+    () =>
+      activeReservations.filter((reservation) =>
+        Boolean(currentUser && reservation.createdBy.id === currentUser.id)
+      ),
+    [activeReservations, currentUser]
   );
 
   const totalConfirmedAttendances = useMemo(
@@ -103,27 +126,52 @@ export default function App() {
     [activeReservations]
   );
 
-  const saveCurrentUser = () => {
-    const nextName = nameInput.trim() || "Organizador";
-    const nextUser = {
-      id: slugifyId(nextName),
-      name: nextName
-    };
-    setCurrentUser(nextUser);
-    localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
+  const loginAccount = (accountId: string, pin: string) => {
+    const account = verifyAccountPin(accountId, pin);
+    setCurrentAccountId(account.id);
+    rememberAccount(account.id);
+    setCurrentUser({
+      id: account.id,
+      name: account.name
+    });
+    setAccountsVersion((value) => value + 1);
+  };
+
+  const createAndLoginAccount = (name: string, pin: string) => {
+    const account = createAccount(name, pin);
+    setCurrentAccountId(account.id);
+    rememberAccount(account.id);
+    setCurrentUser({
+      id: account.id,
+      name: account.name
+    });
+    setAccountsVersion((value) => value + 1);
+  };
+
+  const handleForgetAccount = (accountId: string) => {
+    forgetAccount(accountId);
+    if (currentUser?.id === accountId) {
+      setCurrentUser(null);
+    }
+    setAccountsVersion((value) => value + 1);
+  };
+
+  const logout = () => {
+    clearCurrentAccountId();
+    setCurrentUser(null);
+    setExpandedReservationId(null);
   };
 
   const onCreateReservation: React.ComponentProps<typeof ReservationForm>["onCreate"] = async (payload) => {
+    if (!currentUser) {
+      return;
+    }
+
     try {
       setBusy(true);
       await createReservation(payload, currentUser);
       setShowCreateForm(false);
-
-      if (Notification.permission === "granted") {
-        new Notification("Nueva reserva creada", {
-          body: `${payload.courtName} - ${new Date(payload.startDateTime).toLocaleString()}`
-        });
-      }
+      setActiveTab("mis-reservas");
     } catch (error) {
       alert((error as Error).message);
     } finally {
@@ -132,6 +180,10 @@ export default function App() {
   };
 
   const onSetAttendanceStatus = async (reservationId: string, status: AttendanceStatus) => {
+    if (!currentUser) {
+      return;
+    }
+
     try {
       setBusy(true);
       await setAttendanceStatus(reservationId, currentUser, status);
@@ -143,15 +195,31 @@ export default function App() {
   };
 
   const onCancel = async (reservationId: string) => {
+    if (!currentUser) {
+      return;
+    }
+
     try {
       setBusy(true);
       await cancelReservation(reservationId, currentUser);
+    } catch (error) {
+      alert((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
-      if (Notification.permission === "granted") {
-        new Notification("Reserva cancelada", {
-          body: "Se canceló una reserva en la que participabas"
-        });
-      }
+  const onUpdateReservation: React.ComponentProps<typeof ReservationDetail>["onUpdateReservation"] = async (
+    reservationId,
+    updates
+  ) => {
+    if (!currentUser) {
+      return;
+    }
+
+    try {
+      setBusy(true);
+      await updateReservationDetails(reservationId, updates, currentUser);
     } catch (error) {
       alert((error as Error).message);
     } finally {
@@ -166,12 +234,57 @@ export default function App() {
         alert("Notificaciones activadas");
         return;
       }
-
-      alert("Permiso activado. Falta configurar VAPID para Web Push.");
+      alert("Push no disponible en este navegador. Usá compartir por WhatsApp.");
     } catch (error) {
       alert((error as Error).message);
     }
   };
+
+  if (!currentUser) {
+    return (
+      <>
+        <SplashScreen visible={showSplash} />
+        <AccountSelector
+          accounts={accounts}
+          rememberedAccountIds={rememberedAccountIds}
+          onLogin={loginAccount}
+          onCreate={createAndLoginAccount}
+          onForget={handleForgetAccount}
+        />
+      </>
+    );
+  }
+
+  const renderReservationList = (items: Reservation[], emptyText: string) => (
+    <section className="panel">
+      <p className="private-hint">
+        {items.length} reservas · {totalConfirmedAttendances} asistencias confirmadas en activas
+      </p>
+      <div className="list">
+        {items.length === 0 ? <p>{emptyText}</p> : null}
+        {items.map((reservation) => (
+          <article key={reservation.id} className="panel reservation-item">
+            <ReservationCard
+              reservation={reservation}
+              currentUser={currentUser}
+              onOpen={(id) => setExpandedReservationId((current) => (current === id ? null : id))}
+              isExpanded={expandedReservationId === reservation.id}
+            />
+            {expandedReservationId === reservation.id ? (
+              <ReservationDetail
+                reservation={reservation}
+                currentUser={currentUser}
+                appUrl={window.location.origin}
+                onSetAttendanceStatus={onSetAttendanceStatus}
+                onCancel={onCancel}
+                onUpdateReservation={onUpdateReservation}
+              />
+            ) : null}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
 
   return (
     <>
@@ -185,70 +298,62 @@ export default function App() {
               <img src="/icon-192.png" alt="Golf Padel icon" className="brand-icon" />
               <h1>Golf Padel App</h1>
             </div>
-            <p>Flujo simple para registrar reservas y confirmar asistencias.</p>
+            <p>{currentUser.name}</p>
           </div>
           <div className="header-pill">{isCloudDbEnabled() ? "Modo Firebase" : "Modo Local"}</div>
         </header>
 
-        {!showCreateForm ? (
+        <nav className="tabs">
+          <button
+            className={activeTab === "mis-partidos" ? "choice-btn active" : "choice-btn"}
+            onClick={() => setActiveTab("mis-partidos")}
+          >
+            Mis partidos
+          </button>
+          <button
+            className={activeTab === "mis-reservas" ? "choice-btn active" : "choice-btn"}
+            onClick={() => setActiveTab("mis-reservas")}
+          >
+            Mis reservas
+          </button>
+          <button
+            className={activeTab === "perfil" ? "choice-btn active" : "choice-btn"}
+            onClick={() => setActiveTab("perfil")}
+          >
+            Perfil
+          </button>
+        </nav>
+
+        {activeTab === "mis-partidos" ? renderReservationList(myMatches, "No tenés partidos confirmados o en quizás.") : null}
+
+        {activeTab === "mis-reservas" ? (
           <>
-            <section className="panel">
-              <h2>Inicio</h2>
-              <p className="private-hint">Usuario actual: {currentUser.name}</p>
-              <label>
-                Cambiar usuario
-                <input
-                  value={nameInput}
-                  onChange={(event) => setNameInput(event.target.value)}
-                  placeholder="Tu nombre"
-                />
-              </label>
-              <button onClick={saveCurrentUser} disabled={busy}>
-                Guardar usuario
-              </button>
-              <button onClick={() => setShowCreateForm(true)} disabled={busy}>
-                Registrar nueva reserva
-              </button>
-              <button onClick={requestNotifications} disabled={busy}>
-                Activar notificaciones
-              </button>
-            </section>
-
-            <section className="panel">
-              <h2>Reservas activas</h2>
-              <p className="private-hint">
-                {activeReservations.length} reservas activas · {totalConfirmedAttendances} asistencias confirmadas
-              </p>
-
-              <div className="list">
-                {activeReservations.length === 0 ? <p>No hay reservas activas por ahora.</p> : null}
-                {activeReservations.map((reservation) => (
-                  <ReservationCard
-                    key={reservation.id}
-                    reservation={reservation}
-                    currentUser={currentUser}
-                    onOpen={setSelectedId}
-                  />
-                ))}
-              </div>
-            </section>
+            {!showCreateForm ? (
+              <section className="panel">
+                <button onClick={() => setShowCreateForm(true)} disabled={busy}>
+                  Registrar nueva reserva
+                </button>
+              </section>
+            ) : (
+              <ReservationForm
+                currentUser={currentUser}
+                onCreate={onCreateReservation}
+                onCancel={() => setShowCreateForm(false)}
+              />
+            )}
+            {renderReservationList(myReservations, "Todavía no creaste reservas.")}
           </>
-        ) : (
-          <ReservationForm
-            currentUser={currentUser}
-            onCreate={onCreateReservation}
-            onCancel={() => setShowCreateForm(false)}
-          />
-        )}
+        ) : null}
 
-        {selectedReservation ? (
-          <ReservationDetail
-            reservation={selectedReservation}
-            currentUser={currentUser}
-            appUrl={window.location.origin + window.location.pathname}
-            onSetAttendanceStatus={onSetAttendanceStatus}
-            onCancel={onCancel}
-          />
+        {activeTab === "perfil" ? (
+          <section className="panel">
+            <h2>Perfil</h2>
+            <p className="private-hint">Cuenta: {currentUser.name}</p>
+            <button onClick={requestNotifications}>Activar notificaciones</button>
+            <button className="danger" onClick={logout}>
+              Cerrar sesión
+            </button>
+          </section>
         ) : null}
       </main>
     </>

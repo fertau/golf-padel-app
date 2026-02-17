@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { AttendanceStatus, Reservation, User } from "../lib/types";
 import {
   buildWhatsAppMessage,
@@ -13,6 +14,10 @@ type Props = {
   appUrl: string;
   onSetAttendanceStatus: (reservationId: string, status: AttendanceStatus) => void;
   onCancel: (reservationId: string) => void;
+  onUpdateReservation: (
+    reservationId: string,
+    updates: { courtName: string; startDateTime: string; durationMinutes: number }
+  ) => void;
 };
 
 export default function ReservationDetail({
@@ -20,9 +25,16 @@ export default function ReservationDetail({
   currentUser,
   appUrl,
   onSetAttendanceStatus,
-  onCancel
+  onCancel,
+  onUpdateReservation
 }: Props) {
   const isCreator = reservation.createdBy.id === currentUser.id;
+  const [editing, setEditing] = useState(false);
+  const [editCourtName, setEditCourtName] = useState(reservation.courtName);
+  const [editStartDateTime, setEditStartDateTime] = useState(
+    reservation.startDateTime.slice(0, 16)
+  );
+  const [editDuration, setEditDuration] = useState(reservation.durationMinutes);
   const confirmed = getSignupsByStatus(reservation, "confirmed");
   const maybe = getSignupsByStatus(reservation, "maybe");
   const myAttendance = getUserAttendance(reservation, currentUser.id);
@@ -48,6 +60,15 @@ export default function ReservationDetail({
   const openWhatsApp = () => {
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/?text=${encodedMessage}`, "_blank", "noopener,noreferrer");
+  };
+
+  const submitEdit = () => {
+    onUpdateReservation(reservation.id, {
+      courtName: editCourtName,
+      startDateTime: editStartDateTime,
+      durationMinutes: editDuration
+    });
+    setEditing(false);
   };
 
   return (
@@ -110,8 +131,45 @@ export default function ReservationDetail({
 
       {isCreator ? (
         <div className="actions">
+          <button type="button" onClick={() => setEditing((value) => !value)}>
+            {editing ? "Cancelar edición" : "Modificar reserva"}
+          </button>
           <button className="danger" onClick={() => onCancel(reservation.id)}>
             Cancelar reserva
+          </button>
+        </div>
+      ) : null}
+
+      {isCreator && editing ? (
+        <div className="panel account-panel">
+          <label>
+            Cancha
+            <select value={editCourtName} onChange={(event) => setEditCourtName(event.target.value)}>
+              <option value="Cancha 1">Cancha 1</option>
+              <option value="Cancha 2">Cancha 2</option>
+            </select>
+          </label>
+          <label>
+            Fecha y hora
+            <input
+              type="datetime-local"
+              value={editStartDateTime}
+              onChange={(event) => setEditStartDateTime(event.target.value)}
+            />
+          </label>
+          <label>
+            Duración
+            <select
+              value={editDuration}
+              onChange={(event) => setEditDuration(Number(event.target.value))}
+            >
+              <option value={60}>60 minutos</option>
+              <option value={90}>90 minutos</option>
+              <option value={120}>120 minutos</option>
+            </select>
+          </label>
+          <button type="button" onClick={submitEdit}>
+            Guardar cambios
           </button>
         </div>
       ) : null}

@@ -232,6 +232,12 @@ body {
   font-weight: 700;
 }
 
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
 .panel {
   background: var(--panel);
   border: 1px solid var(--stroke);
@@ -345,6 +351,10 @@ button.danger,
 .list {
   display: grid;
   gap: 0.58rem;
+}
+
+.reservation-item {
+  gap: 0.75rem;
 }
 
 .reservation-card {

@@ -10,6 +10,7 @@ import {
 import { auth, db, firebaseEnabled } from "./firebase";
 import {
   createReservationLocal,
+  updateReservationDetailsLocal,
   setAttendanceStatusLocal,
   subscribeLocalReservations,
   updateReservationLocal,
@@ -265,5 +266,50 @@ export const cancelReservation = async (reservationId: string, currentUser: User
       status: "cancelled",
       updatedAt: nowIso()
     }));
+  });
+};
+
+export const updateReservationDetails = async (
+  reservationId: string,
+  updates: { courtName: string; startDateTime: string; durationMinutes: number },
+  currentUser: User
+) => {
+  const cloudDb = db;
+  if (!isCloudDbEnabled() || !cloudDb) {
+    updateReservationDetailsLocal(reservationId, updates, currentUser);
+    return;
+  }
+
+  await runTransaction(cloudDb, async (transaction) => {
+    const actorAuthUid = auth?.currentUser?.uid;
+    if (!actorAuthUid) {
+      throw new Error("Necesitás iniciar sesión para editar la reserva");
+    }
+
+    const reservationRef = doc(cloudDb, "reservations", reservationId);
+    const snapshot = await transaction.get(reservationRef);
+
+    if (!snapshot.exists()) {
+      throw new Error("Reserva no encontrada");
+    }
+
+    const reservation = normalizeReservation(reservationId, snapshot.data() as Omit<Reservation, "id">);
+    if (
+      reservation.createdByAuthUid
+        ? reservation.createdByAuthUid !== actorAuthUid
+        : reservation.createdBy.id !== currentUser.id
+    ) {
+      throw new Error("Solo el creador puede editar");
+    }
+
+    transaction.update(
+      reservationRef,
+      stripUndefinedDeep({
+        courtName: updates.courtName.trim(),
+        startDateTime: updates.startDateTime,
+        durationMinutes: updates.durationMinutes,
+        updatedAt: nowIso()
+      })
+    );
   });
 };
