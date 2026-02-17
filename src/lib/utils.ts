@@ -1,3 +1,5 @@
+import { format, parseISO, isAfter } from "date-fns";
+import { es } from "date-fns/locale";
 import type { AttendanceStatus, Reservation, Signup, SignupResult, User } from "./types";
 
 export const slugifyId = (value: string): string =>
@@ -8,30 +10,25 @@ export const slugifyId = (value: string): string =>
     .replace(/^-+|-+$/g, "") || crypto.randomUUID();
 
 export const formatDateTime = (iso: string): string =>
-  new Intl.DateTimeFormat("es-AR", {
-    weekday: "short",
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  }).format(new Date(iso));
+  format(parseISO(iso), "eee dd/MM, HH:mm'hs'", { locale: es });
 
-const formatDateTimeForMessage = (iso: string): string => {
-  const date = new Date(iso);
-  const weekday = new Intl.DateTimeFormat("es-AR", { weekday: "short" }).format(date);
-  const day = `${date.getDate()}`.padStart(2, "0");
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const hour = `${date.getHours()}`.padStart(2, "0");
-  const minute = `${date.getMinutes()}`.padStart(2, "0");
-  return `${weekday} ${day}-${month}, ${hour}:${minute}`;
+const formatDateTimeForMessage = (iso: string): string =>
+  format(parseISO(iso), "eee dd/MM, HH:mm'hs'", { locale: es });
+
+export const triggerHaptic = (style: "light" | "medium" | "heavy" = "light") => {
+  if (!window.navigator.vibrate) return;
+  const patterns = {
+    light: [10],
+    medium: [20],
+    heavy: [50]
+  };
+  window.navigator.vibrate(patterns[style]);
 };
 
+
 export const isDeadlinePassed = (reservation: Reservation): boolean => {
-  if (!reservation.rules.signupDeadline) {
-    return false;
-  }
-  return new Date(reservation.rules.signupDeadline).getTime() < Date.now();
+  if (!reservation.rules.signupDeadline) return false;
+  return isAfter(new Date(), parseISO(reservation.rules.signupDeadline));
 };
 
 export const getActiveSignups = (reservation: Reservation): Signup[] =>

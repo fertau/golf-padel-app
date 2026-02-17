@@ -1,3 +1,4 @@
+import { triggerHaptic } from "../lib/utils";
 
 type TabId = "mis-partidos" | "mis-reservas" | "perfil";
 
@@ -7,6 +8,10 @@ type Props = {
 };
 
 export default function Navbar({ activeTab, onTabChange }: Props) {
+    const handleTabChange = (tab: TabId) => {
+        onTabChange(tab);
+        triggerHaptic("light");
+    };
     const IconCalendar = (
         <svg viewBox="0 0 24 24" aria-hidden="true">
             <rect x="3" y="4" width="18" height="17" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" />
@@ -36,22 +41,23 @@ export default function Navbar({ activeTab, onTabChange }: Props) {
         <nav className="navbar">
             <button
                 className={`nav-item ${activeTab === "mis-reservas" ? "active" : ""}`}
-                onClick={() => onTabChange("mis-reservas")}
+                onClick={() => handleTabChange("mis-reservas")}
             >
                 <div className="nav-icon">{IconCalendar}</div>
                 <span>Reservas</span>
             </button>
             <button
                 className={`nav-item nav-item-center ${activeTab === "mis-partidos" ? "active" : ""}`}
-                onClick={() => onTabChange("mis-partidos")}
+                onClick={() => handleTabChange("mis-partidos")}
             >
                 <div className="nav-icon">{IconRacket}</div>
                 <span>Partidos</span>
             </button>
             <button
                 className={`nav-item ${activeTab === "perfil" ? "active" : ""}`}
-                onClick={() => onTabChange("perfil")}
+                onClick={() => handleTabChange("perfil")}
             >
+
                 <div className="nav-icon">{IconProfile}</div>
                 <span>Perfil</span>
             </button>

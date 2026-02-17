@@ -1,44 +1,32 @@
-import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
+import { create } from 'zustand';
+import { User as FirebaseUser } from 'firebase/auth';
+import { User } from '../lib/types';
 
-type AuthStore = {
-  currentUserId: string | null;
-  rememberedIds: string[];
-  setCurrentUserId: (userId: string | null) => void;
-  remember: (userId: string) => void;
-  forget: (userId: string) => void;
-  logout: () => void;
-};
+interface AuthState {
+  firebaseUser: FirebaseUser | null;
+  currentUser: User | null;
+  authLoading: boolean;
+  authError: string | null;
+  setFirebaseUser: (user: FirebaseUser | null) => void;
+  setAuthLoading: (loading: boolean) => void;
+  setAuthError: (error: string | null) => void;
+}
 
-const noopStorage = {
-  getItem: () => null,
-  setItem: () => undefined,
-  removeItem: () => undefined
-};
-
-export const useAuthStore = create<AuthStore>()(
-  persist(
-    (set, get) => ({
-      currentUserId: null,
-      rememberedIds: [],
-      setCurrentUserId: (userId) => set({ currentUserId: userId }),
-      remember: (userId) => {
-        const remembered = new Set(get().rememberedIds);
-        remembered.add(userId);
-        set({ rememberedIds: Array.from(remembered) });
-      },
-      forget: (userId) => {
-        const rememberedIds = get().rememberedIds.filter((id) => id !== userId);
-        const currentUserId = get().currentUserId === userId ? null : get().currentUserId;
-        set({ rememberedIds, currentUserId });
-      },
-      logout: () => set({ currentUserId: null })
-    }),
-    {
-      name: "golf-padel-auth",
-      storage: createJSONStorage(() =>
-        typeof window === "undefined" ? noopStorage : window.localStorage
-      )
-    }
-  )
-);
+export const useAuthStore = create<AuthState>((set) => ({
+  firebaseUser: null,
+  currentUser: null,
+  authLoading: true,
+  authError: null,
+  setFirebaseUser: (firebaseUser) => {
+    const currentUser: User | null = firebaseUser
+      ? {
+        id: firebaseUser.uid,
+        name: firebaseUser.displayName || firebaseUser.email || "Jugador",
+        avatar: firebaseUser.photoURL || undefined
+      }
+      : null;
+    set({ firebaseUser, currentUser, authLoading: false });
+  },
+  setAuthLoading: (authLoading) => set({ authLoading }),
+  setAuthError: (authError) => set({ authError }),
+}));

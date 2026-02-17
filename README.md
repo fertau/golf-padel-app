@@ -58,7 +58,10 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=...
 VITE_FIREBASE_APP_ID=...
 VITE_FIREBASE_VAPID_KEY=...
 VITE_USE_FIREBASE_DB=true
+VITE_SHARE_BASE_URL=https://tu-dominio-corto.com
 ```
+
+`VITE_SHARE_BASE_URL` es opcional. Si lo definís, los links compartidos por WhatsApp usan ese dominio (por ejemplo uno más corto) en lugar del `origin` actual.
 
 Variables server-side para Vercel API (`/api/auth/*`):
 ```bash
