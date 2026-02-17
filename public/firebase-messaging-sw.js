@@ -18,7 +18,7 @@ if (isConfigured) {
   const messaging = firebase.messaging();
 
   messaging.onBackgroundMessage((payload) => {
-    const title = payload.notification?.title ?? "Golf Padel";
+    const title = payload.notification?.title ?? "Golf Padel App";
     const options = {
       body: payload.notification?.body ?? "Nueva novedad en tus reservas",
       icon: "/favicon.svg"
