@@ -53,12 +53,12 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
 
           <div className="card-badges">
             {mine && (
-              <span className={`badge badge-${mine.attendanceStatus}`}>
+              <span className={`badge badge-mine badge-${mine.attendanceStatus}`}>
                 {mine.attendanceStatus === "confirmed"
                   ? "Juego"
                   : mine.attendanceStatus === "maybe"
-                    ? "Duda"
-                    : "Fuera"}
+                    ? "Quizás"
+                    : "No juego"}
               </span>
             )}
           </div>

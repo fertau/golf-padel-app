@@ -445,23 +445,39 @@ export default function App() {
               {matchesFilter !== "all" && <button className="link-btn active" onClick={() => setMatchesFilter("all")}>Ver todas</button>}
             </section>
 
-            <section className="panel upcoming-widget" style={{ padding: '0.5rem 0' }}>
-              <h2 className="section-title" style={{ padding: '0 1rem' }}>Próximos partidos</h2>
+            <section className="panel upcoming-widget">
+              <h2 className="section-title">Próximos partidos</h2>
               {myUpcomingConfirmed.length === 0 ? (
-                <p className="private-hint" style={{ padding: '0 1rem' }}>Todavía no confirmaste próximos partidos.</p>
+                <p className="private-hint">Todavía no confirmaste próximos partidos.</p>
               ) : (
-                <div className="list" style={{ padding: '0 1rem' }}>
+                <>
+                  <ul className="upcoming-list">
                   {visibleUpcoming.map(r => (
-                    <article key={r.id} className="reservation-item">
-                      <ReservationCard reservation={r} currentUser={currentUser!} onOpen={setExpandedReservationId} isExpanded={expandedReservationId === r.id} />
-                    </article>
+                    <li key={r.id}>
+                      <div className="upcoming-date">
+                        <span>{new Date(r.startDateTime).toLocaleDateString("es-AR", { month: "short" })}</span>
+                        <strong>{new Date(r.startDateTime).toLocaleDateString("es-AR", { day: "2-digit" })}</strong>
+                      </div>
+                      <div className="upcoming-content">
+                        <span className="upcoming-time">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>
+                          <span>{new Date(r.startDateTime).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })}</span>
+                        </span>
+                        <p>{r.courtName}</p>
+                        <span className="upcoming-time">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+                          <span>{r.signups.filter((signup) => signup.attendanceStatus === "confirmed").length}/4 jugando</span>
+                        </span>
+                      </div>
+                    </li>
                   ))}
-                  {myUpcomingConfirmed.length > 3 && (
-                    <button className="link-btn active" onClick={() => setShowAllUpcoming(!showAllUpcoming)} style={{ marginTop: '0.5rem' }}>
+                  </ul>
+                  {myUpcomingConfirmed.length > 3 ? (
+                    <button className="link-btn active" onClick={() => setShowAllUpcoming(!showAllUpcoming)}>
                       {showAllUpcoming ? "Ver menos" : "Ver más"}
                     </button>
-                  )}
-                </div>
+                  ) : null}
+                </>
               )}
             </section>
 

@@ -53,7 +53,7 @@ export default function ProfileView({ user, onLogout, onRequestNotifications, on
                     <div className="avatar-status-badge" />
                 </div>
                 <h2>{user.name}</h2>
-                <div className="profile-level-badge">Padel Pro • Nivel Elite</div>
+                <div className="profile-level-badge">Perfil de jugador</div>
             </header>
 
             <div className="profile-content-elite">
@@ -106,7 +106,7 @@ export default function ProfileView({ user, onLogout, onRequestNotifications, on
                     <button className="btn-danger-elite" onClick={() => handleAction(onLogout)} disabled={busy} style={{ width: '100%', padding: '1rem', borderRadius: '15px' }}>
                         Cerrar Sesión
                     </button>
-                    <p className="version-tag">Golf Padel App v2.5 Elite Improved</p>
+                    <p className="version-tag">Golf Padel App v2.5</p>
                 </footer>
             </div>
         </div>
