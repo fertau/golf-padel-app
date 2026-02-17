@@ -122,10 +122,6 @@ export const setAttendanceStatusLocal = (
       };
     }
 
-    if (status === "cancelled") {
-      return reservation;
-    }
-
     const signup: Signup = {
       id: crypto.randomUUID(),
       reservationId,

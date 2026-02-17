@@ -23,7 +23,11 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
       <div className="meta">
         <span className="meta-pill">Confirmados {confirmed.length}</span>
         <span className="meta-pill">Quizás {maybe.length}</span>
-        {mine ? <span className="tag">Mi estado: {mine.attendanceStatus === "confirmed" ? "Confirmado" : "Quizás"}</span> : null}
+        {mine ? (
+          <span className={`tag ${mine.attendanceStatus === "cancelled" ? "danger" : ""}`}>
+            Mi estado: {mine.attendanceStatus === "confirmed" ? "Confirmado" : mine.attendanceStatus === "maybe" ? "Quizás" : "No juego"}
+          </span>
+        ) : null}
         {reservation.status === "cancelled" ? <span className="tag danger">Cancelada</span> : null}
         <span className="meta-pill">{isExpanded ? "Ocultar detalle" : "Ver detalle"}</span>
       </div>

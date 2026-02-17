@@ -51,8 +51,7 @@ export const getUserAttendance = (reservation: Reservation, userIdOrAuthUid: str
     .map((signup) => normalizeSignup(signup))
     .find(
       (signup) =>
-        (signup.userId === userIdOrAuthUid || signup.authUid === userIdOrAuthUid) &&
-        signup.attendanceStatus !== "cancelled"
+        signup.userId === userIdOrAuthUid || signup.authUid === userIdOrAuthUid
     );
 
 const normalizeSignup = (signup: Signup): Signup => {
@@ -94,7 +93,7 @@ export const canJoinReservation = (
   }
 
   const currentAttendance = getUserAttendance(reservation, user.id);
-  if (currentAttendance) {
+  if (currentAttendance && currentAttendance.attendanceStatus !== "cancelled") {
     return { ok: false, reason: "Ya tenés asistencia marcada" };
   }
 

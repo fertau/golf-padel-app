@@ -138,6 +138,8 @@ export default function ReservationDetail({
             ? "Juego"
             : myAttendance?.attendanceStatus === "maybe"
               ? "Quizás"
+              : myAttendance?.attendanceStatus === "cancelled"
+                ? "No juego"
               : "Sin definir"}
         </strong>
       </div>
@@ -160,7 +162,7 @@ export default function ReservationDetail({
         <button
           className="danger"
           onClick={() => onSetAttendanceStatus(reservation.id, "cancelled")}
-          disabled={!myAttendance}
+          disabled={myAttendance?.attendanceStatus === "cancelled"}
         >
           No juego
         </button>

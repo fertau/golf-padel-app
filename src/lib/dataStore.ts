@@ -202,7 +202,7 @@ export const setAttendanceStatus = async (
             }
           : signup
       );
-    } else if (status !== "cancelled") {
+    } else {
       nextSignups = [
         ...reservation.signups,
         {
