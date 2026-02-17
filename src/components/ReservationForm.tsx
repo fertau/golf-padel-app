@@ -37,14 +37,17 @@ const isHalfHourSlot = (time: string): boolean => {
 };
 
 export default function ReservationForm({ onCreate, onCancel, currentUser }: Props) {
-  const [courtName, setCourtName] = useState("Cancha 1");
+  const [courtName, setCourtName] = useState<"Cancha 1" | "Cancha 2">("Cancha 1");
   const [reservationDate, setReservationDate] = useState(getTodayLocalDate());
   const [selectedTime, setSelectedTime] = useState<(typeof SUGGESTED_TIMES)[number]>("17:00");
   const [useCustomTime, setUseCustomTime] = useState(false);
   const [customTime, setCustomTime] = useState("17:00");
   const [durationMinutes, setDurationMinutes] = useState(90);
 
-  const finalTime = useMemo(() => (useCustomTime ? customTime : selectedTime), [customTime, selectedTime, useCustomTime]);
+  const finalTime = useMemo(
+    () => (useCustomTime ? customTime : selectedTime),
+    [customTime, selectedTime, useCustomTime]
+  );
   const hasValidTime = useMemo(() => isHalfHourSlot(finalTime), [finalTime]);
 
   const handleSubmit = (event: FormEvent) => {
@@ -73,13 +76,25 @@ export default function ReservationForm({ onCreate, onCancel, currentUser }: Pro
       <h2>Registrar nueva reserva</h2>
       <p className="private-hint">{currentUser.name}, cargá la fecha, cancha y horario.</p>
 
-      <label>
-        Cancha
-        <select value={courtName} onChange={(event) => setCourtName(event.target.value)}>
-          <option value="Cancha 1">Cancha 1</option>
-          <option value="Cancha 2">Cancha 2</option>
-        </select>
-      </label>
+      <div className="field-group">
+        <p className="field-title">Cancha</p>
+        <div className="choice-row">
+          <button
+            type="button"
+            className={courtName === "Cancha 1" ? "choice-btn active" : "choice-btn"}
+            onClick={() => setCourtName("Cancha 1")}
+          >
+            Cancha 1
+          </button>
+          <button
+            type="button"
+            className={courtName === "Cancha 2" ? "choice-btn active" : "choice-btn"}
+            onClick={() => setCourtName("Cancha 2")}
+          >
+            Cancha 2
+          </button>
+        </div>
+      </div>
 
       <label>
         Fecha
@@ -87,7 +102,7 @@ export default function ReservationForm({ onCreate, onCancel, currentUser }: Pro
       </label>
 
       <div className="field-group">
-        <p className="field-title">Horario sugerido</p>
+        <p className="field-title">Horario</p>
         <div className="choice-row">
           {SUGGESTED_TIMES.map((time) => (
             <button
@@ -105,18 +120,13 @@ export default function ReservationForm({ onCreate, onCancel, currentUser }: Pro
         </div>
       </div>
 
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={useCustomTime}
-          onChange={(event) => setUseCustomTime(event.target.checked)}
-        />
-        Ingresar horario específico (bloques de 30 min)
-      </label>
+      <button type="button" className={useCustomTime ? "link-btn active" : "link-btn"} onClick={() => setUseCustomTime((prev) => !prev)}>
+        {useCustomTime ? "Usar horario sugerido" : "Otro horario"}
+      </button>
 
       {useCustomTime ? (
         <label>
-          Horario específico
+          Otro horario
           <input
             type="time"
             value={customTime}
@@ -138,15 +148,6 @@ export default function ReservationForm({ onCreate, onCancel, currentUser }: Pro
           <option value={90}>90 minutos</option>
           <option value={120}>120 minutos</option>
         </select>
-      </label>
-
-      <label>
-        Fecha y hora final
-        <input
-          type="text"
-          value={`${reservationDate} ${finalTime}`}
-          readOnly
-        />
       </label>
 
       <div className="actions">

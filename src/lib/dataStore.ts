@@ -65,8 +65,7 @@ export const createReservation = async (input: ReservationInput, currentUser: Us
     rules: {
       maxPlayersAccepted: input.rules?.maxPlayersAccepted ?? 9999,
       priorityUserIds: input.rules?.priorityUserIds ?? [],
-      allowWaitlist: true,
-      signupDeadline: undefined
+      allowWaitlist: true
     },
     signups: [],
     status: "active",

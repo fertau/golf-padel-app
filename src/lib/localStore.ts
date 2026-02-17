@@ -61,8 +61,7 @@ export const createReservationLocal = (input: ReservationInput, currentUser: Use
     rules: {
       maxPlayersAccepted: input.rules?.maxPlayersAccepted ?? 9999,
       priorityUserIds: input.rules?.priorityUserIds ?? [],
-      allowWaitlist: true,
-      signupDeadline: undefined
+      allowWaitlist: true
     },
     signups: [],
     status: "active",
