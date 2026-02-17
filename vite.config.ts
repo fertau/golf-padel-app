@@ -19,9 +19,10 @@ export default defineConfig({
         name: "Golf Padel App",
         short_name: "GolfPadel",
         description: "Reservas e inscripciones de padel para grupos de WhatsApp",
-        theme_color: "#005BB7",
-        background_color: "#005BB7",
+        theme_color: "#010614",
+        background_color: "#010614",
         display: "standalone",
+        orientation: "portrait",
         start_url: "/",
         icons: [
           {
@@ -32,6 +33,11 @@ export default defineConfig({
           },
           {
             src: "icon-512.png",
+            sizes: "512x512",
+            type: "image/png"
+          },
+          {
+            src: "apple-touch-icon.png",
             sizes: "512x512",
             type: "image/png"
           }

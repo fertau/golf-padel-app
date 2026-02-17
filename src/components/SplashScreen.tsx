@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Props = {
   visible: boolean;
@@ -6,179 +6,153 @@ type Props = {
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
-
-function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  const radius = Math.min(r, w * 0.5, h * 0.5);
-  ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.arcTo(x + w, y, x + w, y + h, radius);
-  ctx.arcTo(x + w, y + h, x, y + h, radius);
-  ctx.arcTo(x, y + h, x, y, radius);
-  ctx.arcTo(x, y, x + w, y, radius);
-  ctx.closePath();
-}
+const easeOutExpo = (t: number) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
 
 export default function SplashScreen({ visible }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [showContent, setShowContent] = useState(false);
 
   useEffect(() => {
-    if (!visible || !canvasRef.current) {
-      return;
-    }
+    if (!visible || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      return;
-    }
+    if (!ctx) return;
 
     let raf = 0;
     const start = performance.now();
-    const duration = 2850;
+    const duration = 2800; // Total duration of animation
 
     const render = (now: number) => {
-      const t = clamp((now - start) / duration, 0, 1);
+      const elapsed = now - start;
+      const t = clamp(elapsed / duration, 0, 1);
       const dpr = window.devicePixelRatio || 1;
-      const width = window.innerWidth;
-      const height = window.innerHeight;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
 
-      if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) {
-        canvas.width = Math.floor(width * dpr);
-        canvas.height = Math.floor(height * dpr);
-        canvas.style.width = `${width}px`;
-        canvas.style.height = `${height}px`;
+      if (canvas.width !== Math.floor(w * dpr)) {
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        canvas.style.width = `${w}px`;
+        canvas.style.height = `${h}px`;
       }
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, width, height);
+      ctx.clearRect(0, 0, w, h);
 
-      const sky = ctx.createRadialGradient(width * 0.5, height * 0.1, 20, width * 0.5, height * 0.4, width * 0.8);
-      sky.addColorStop(0, "#2f84ff");
-      sky.addColorStop(0.45, "#0e4fbf");
-      sky.addColorStop(1, "#021534");
-      ctx.fillStyle = sky;
-      ctx.fillRect(0, 0, width, height);
+      // Animation Stages
+      // 0.0 - 0.35: High-velocity shot (traveling)
+      // 0.35: IMPACT
+      // 0.35 - 0.7: Post-impact travel & spin & zoom start
+      // 0.7 - 0.9: Intense cinematic zoom & fade to logo
 
-      const zoom = 1.12 - easeOutCubic(t) * 0.12;
+      const impactT = 0.35;
+      const zoomStartT = 0.5;
+      const finishT = 0.85;
+
+      if (t > 0.75 && !showContent) setShowContent(true);
+
+      // Background
+      ctx.fillStyle = "#010614";
+      ctx.fillRect(0, 0, w, h);
+
+      // Court Piso Azul
       ctx.save();
-      ctx.translate(width * 0.5, height * 0.5);
+      ctx.translate(w / 2, h / 2);
+
+      let zoom = 1;
+      if (t > zoomStartT) {
+        const zoomProgress = clamp((t - zoomStartT) / (finishT - zoomStartT), 0, 1);
+        zoom = 1 + easeOutExpo(zoomProgress) * 18;
+      }
       ctx.scale(zoom, zoom);
-      ctx.translate(-width * 0.5, -height * 0.5);
+      ctx.translate(-w / 2, -h / 2);
 
-      const courtX = width * 0.08;
-      const courtY = height * 0.12;
-      const courtW = width * 0.84;
-      const courtH = height * 0.68;
+      // Floor (Synthetic Turf)
+      ctx.fillStyle = "#0070f3"; // Saturated WPT Blue
+      ctx.fillRect(0, 0, w, h);
 
-      const courtGradient = ctx.createLinearGradient(courtX, courtY, courtX + courtW, courtY + courtH);
-      courtGradient.addColorStop(0, "#0f6fe4");
-      courtGradient.addColorStop(1, "#0053ab");
+      // Lines
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+      ctx.lineWidth = 4 / zoom;
 
-      roundedRect(ctx, courtX, courtY, courtW, courtH, 26);
-      ctx.fillStyle = courtGradient;
-      ctx.fill();
-
-      ctx.save();
-      roundedRect(ctx, courtX, courtY, courtW, courtH, 26);
-      ctx.clip();
-
-      for (let i = 0; i < 220; i += 1) {
-        const px = courtX + (Math.sin(i * 83.17) * 0.5 + 0.5) * courtW;
-        const py = courtY + (Math.cos(i * 47.91) * 0.5 + 0.5) * courtH;
-        const a = 0.028 + ((i * 17) % 10) * 0.003;
-        ctx.fillStyle = `rgba(255,255,255,${a.toFixed(3)})`;
-        ctx.fillRect(px, py, 1.3, 1.3);
-      }
-
-      ctx.strokeStyle = "rgba(244,249,255,0.96)";
-      ctx.lineWidth = 6;
+      // Center Line
       ctx.beginPath();
-      ctx.moveTo(courtX + courtW * 0.5, courtY + courtH * 0.08);
-      ctx.lineTo(courtX + courtW * 0.5, courtY + courtH * 0.92);
+      ctx.moveTo(w / 2, 0);
+      ctx.lineTo(w / 2, h);
       ctx.stroke();
 
+      // Service lines
+      const serviceY = h * 0.7;
       ctx.beginPath();
-      ctx.moveTo(courtX + courtW * 0.08, courtY + courtH * 0.5);
-      ctx.lineTo(courtX + courtW * 0.92, courtY + courtH * 0.5);
+      ctx.moveTo(0, serviceY);
+      ctx.lineTo(w, serviceY);
       ctx.stroke();
 
+      // Net
+      const netY = h * 0.3;
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+      ctx.lineWidth = 12 / zoom;
       ctx.beginPath();
-      ctx.moveTo(courtX + courtW * 0.08, courtY + courtH * 0.25);
-      ctx.lineTo(courtX + courtW * 0.42, courtY + courtH * 0.25);
+      ctx.moveTo(0, netY);
+      ctx.lineTo(w, netY);
       ctx.stroke();
 
-      ctx.beginPath();
-      ctx.moveTo(courtX + courtW * 0.58, courtY + courtH * 0.25);
-      ctx.lineTo(courtX + courtW * 0.92, courtY + courtH * 0.25);
-      ctx.stroke();
+      // Ball Physics
+      const ballR = 22;
+      let ballX = w / 2;
+      let ballY = h * 0.5;
+      let ballRotation = t * 25; // Continuous spin
 
-      ctx.beginPath();
-      ctx.moveTo(courtX + courtW * 0.08, courtY + courtH * 0.75);
-      ctx.lineTo(courtX + courtW * 0.42, courtY + courtH * 0.75);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(courtX + courtW * 0.58, courtY + courtH * 0.75);
-      ctx.lineTo(courtX + courtW * 0.92, courtY + courtH * 0.75);
-      ctx.stroke();
-
-      const impactTime = 0.48;
-      const liftTime = 0.64;
-      const settleTime = 0.78;
-
-      let ballY = courtY + courtH * 0.2;
-      const ballX = courtX + courtW * 0.5;
-      const ballEndY = height * 0.79;
-
-      if (t <= impactTime) {
-        const p = t / impactTime;
-        ballY = courtY + courtH * (0.2 + p * 0.31);
-      } else if (t <= liftTime) {
-        const p = (t - impactTime) / (liftTime - impactTime);
-        ballY = courtY + courtH * (0.51 - p * 0.18);
-      } else if (t <= settleTime) {
-        const p = (t - liftTime) / (settleTime - liftTime);
-        ballY = courtY + courtH * (0.33 + p * 0.13);
+      if (t < impactT) {
+        // FAST TRAVEL: Coming from top-right
+        const p = t / impactT;
+        ballX = w * 1.2 - p * (w * 0.7);
+        ballY = -h * 0.2 + p * (h * 0.75);
       } else {
-        const p = (t - settleTime) / (1 - settleTime);
-        ballY = ballEndY - p * 8;
+        // POST IMPACT: Slower bounce & zoom
+        const p = clamp((t - impactT) / (1 - impactT), 0, 1);
+        ballX = w / 2 - (p * w * 0.1); // Small drift
+        ballY = h * 0.55 - Math.abs(Math.sin(p * Math.PI * 1.5)) * (h * 0.05);
       }
 
-      if (t >= impactTime) {
-        const rp = clamp((t - impactTime) / 0.22, 0, 1);
-        const radius = 10 + rp * Math.min(width, height) * 0.24;
+      // Ball Shadow
+      const shadowOpacity = 0.3 * (1 - clamp((t - finishT) / 0.1, 0, 1));
+      ctx.fillStyle = `rgba(0, 0, 0, ${shadowOpacity})`;
+      ctx.beginPath();
+      ctx.ellipse(ballX, ballY + ballR + 5 / zoom, ballR * zoom, ballR * 0.3 * zoom, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Ball Rendering
+      const ballAlpha = 1 - clamp((t - finishT) / 0.1, 0, 1);
+      if (ballAlpha > 0) {
+        ctx.save();
+        ctx.globalAlpha = ballAlpha;
+        ctx.translate(ballX, ballY);
+        ctx.rotate(ballRotation);
+
+        const grad = ctx.createRadialGradient(-5, -5, 2, 0, 0, ballR);
+        grad.addColorStop(0, "#f9ffb4");
+        grad.addColorStop(0.5, "#e8ff3d");
+        grad.addColorStop(1, "#a4b900");
+
+        ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.arc(ballX, courtY + courtH * 0.51, radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(231,255,72,${(0.45 - rp * 0.45).toFixed(3)})`;
-        ctx.lineWidth = 4;
+        ctx.arc(0, 0, ballR, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Seams for spin visualization
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.2)";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(-ballR * 0.8, 0, ballR, -0.5, 0.5);
         ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(ballR * 0.8, 0, ballR, Math.PI - 0.5, Math.PI + 0.5);
+        ctx.stroke();
+
+        ctx.restore();
       }
-
-      const shadowScale = 1.1 - clamp(Math.abs((ballY - (courtY + courtH * 0.51)) / 100), 0.2, 0.9);
-      ctx.beginPath();
-      ctx.ellipse(ballX, courtY + courtH * 0.55, 42 * shadowScale, 13 * shadowScale, 0, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(0,0,0,0.28)";
-      ctx.fill();
-
-      const ballFade = t > 0.84 ? 1 - (t - 0.84) / 0.16 : 1;
-      const ballR = 27;
-      ctx.globalAlpha = clamp(ballFade, 0, 1);
-      const ballGradient = ctx.createRadialGradient(ballX - 8, ballY - 10, 6, ballX, ballY, ballR);
-      ballGradient.addColorStop(0, "#fbffb4");
-      ballGradient.addColorStop(0.55, "#e8ff3d");
-      ballGradient.addColorStop(1, "#a9c300");
-      ctx.fillStyle = ballGradient;
-      ctx.beginPath();
-      ctx.arc(ballX, ballY, ballR, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = "rgba(145,168,0,0.8)";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(ballX - 2, ballY + 1, ballR * 0.58, -0.4, 1.1);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
 
       ctx.restore();
 
@@ -189,19 +163,17 @@ export default function SplashScreen({ visible }: Props) {
     return () => cancelAnimationFrame(raf);
   }, [visible]);
 
-  if (!visible) {
-    return null;
-  }
+  if (!visible) return null;
 
   return (
     <div className="splash" aria-hidden>
       <canvas ref={canvasRef} className="splash-canvas" />
-      <h1 className="splash-brand" aria-label="Golf Padel App">
-        <span className="brand-in">G</span>
-        <span className="brand-o-slot">O</span>
-        <span className="brand-in">lf Padel App</span>
-      </h1>
-      <p className="splash-subtitle">Reservas modernas para tu grupo</p>
+      <div className={`splash-content ${showContent ? "visible" : ""}`}>
+        <h1 className="splash-brand">
+          G<span className="brand-o">o</span>lf Padel App
+        </h1>
+        <p className="splash-subtitle">Elite Padel Booking</p>
+      </div>
     </div>
   );
 }
