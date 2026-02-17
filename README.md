@@ -66,7 +66,11 @@ VITE_FIREBASE_VAPID_KEY=...
 ```
 
 ### 4) Service Worker de Firebase Messaging
-Editar `public/firebase-messaging-sw.js` y completar el bloque `firebase.initializeApp({...})` con los mismos valores de tu app Firebase.
+Editar `public/firebase-messaging-sw.js` y completar `firebaseConfig` con los valores de tu app Firebase.
+
+Importante:
+- No subas esos valores a repos públicos.
+- Si necesitás mantener el repo público, usá una key rotada y restringida.
 
 ### 5) Vercel deploy
 1. En Vercel: `Add New Project`.
@@ -82,6 +86,18 @@ Editar `public/firebase-messaging-sw.js` y completar el bloque `firebase.initial
 ## Seguridad y privacidad
 En este MVP, las reglas internas se ocultan en UI para no-creadores.
 Para aislamiento fuerte de reglas privadas entre usuarios, el siguiente paso recomendado es mover reglas sensibles a documentos privados gestionados por Cloud Functions.
+
+### Respuesta a filtración de API key (Google abuse alert)
+1. Rotar la key comprometida en Google Cloud Console (`APIs & Services > Credentials > Regenerate key`).
+2. Aplicar restricciones:
+- `Application restrictions`: `HTTP referrers (web sites)`.
+- Permitir solo tus dominios:
+  - `https://golf-padel-app.vercel.app/*`
+  - `https://*.vercel.app/*` (si usás previews)
+  - `http://localhost:5173/*` (desarrollo local)
+3. Revisar actividad y costos en Cloud Logging/Billing para detectar abuso.
+4. Actualizar la key nueva en Vercel (`VITE_FIREBASE_API_KEY`) y redeploy.
+5. Nunca guardar keys reales en archivos versionados como `public/firebase-messaging-sw.js`.
 
 ## Build
 ```bash
