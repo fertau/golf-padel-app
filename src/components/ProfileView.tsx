@@ -42,69 +42,68 @@ export default function ProfileView({ user, onLogout, onRequestNotifications, on
     };
 
     return (
-        <div className="profile-view-elite">
-            <header className="profile-hero-elite">
-                <div className="profile-avatar-wrapper">
+        <div className="list">
+            <div className="profile-header">
+                <div className="profile-avatar-large">
                     {user.avatar ? (
                         <img src={user.avatar} alt={user.name} />
                     ) : (
-                        <div className="avatar-initials">{user.name.charAt(0)}</div>
+                        <div className="avatar-placeholder">{user.name.charAt(0)}</div>
                     )}
-                    <div className="avatar-status-badge" />
                 </div>
-                <h2>{user.name}</h2>
-                <div className="profile-level-badge">Padel Pro • Nivel Elite</div>
-            </header>
+                <div className="profile-info">
+                    <h2>{user.name}</h2>
+                    <p style={{ color: "var(--text-dim)", fontSize: "0.9rem" }}>Jugador de Padel</p>
+                </div>
+            </div>
 
-            <div className="profile-content-elite">
-                <section className="profile-section-elite glass-effect">
-                    <div className="section-icon">🪪</div>
-                    <div className="section-info">
-                        <h3>Nombre visible</h3>
-                        <p>Así te van a ver en reservas y asistencias.</p>
-                        <input
-                            type="text"
-                            value={nameDraft}
-                            onChange={(event) => setNameDraft(event.target.value)}
-                            placeholder="Tu nombre en la app"
-                            maxLength={32}
-                        />
-                    </div>
+            <div className="panel">
+                <h3 className="section-title">Nombre visible</h3>
+                <p style={{ color: "var(--text-dim)", fontSize: "0.85rem", margin: "-0.5rem 0 0.5rem" }}>
+                    Así aparecerás en las reservas y listas de partidos.
+                </p>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <input
+                        style={{ flex: 1 }}
+                        type="text"
+                        value={nameDraft}
+                        onChange={(event) => setNameDraft(event.target.value)}
+                        placeholder="Tu nombre"
+                        maxLength={32}
+                    />
                     <button
-                        className="btn-action-elite"
+                        className="neutral"
+                        style={{ padding: "0 1.2rem" }}
                         onClick={saveDisplayName}
                         disabled={busy || savingName || normalizeDisplayName(nameDraft) === user.name}
                     >
-                        Guardar
+                        Ok
                     </button>
-                </section>
+                </div>
+            </div>
 
-                <section className="profile-section-elite glass-effect">
-                    <div className="section-icon">🔔</div>
-                    <div className="section-info">
-                        <h3>Notificaciones</h3>
-                        <p>Recibí alertas de nuevos partidos y confirmaciones.</p>
-                    </div>
-                    <button className="btn-action-elite" onClick={() => handleAction(onRequestNotifications)} disabled={busy}>
-                        Configurar
-                    </button>
-                </section>
+            <div className="panel">
+                <h3 className="section-title">Notificaciones</h3>
+                <p style={{ color: "var(--text-dim)", fontSize: "0.85rem", margin: "-0.5rem 0 0.5rem" }}>
+                    Recibí alertas cuando alguien se suma a tu partido.
+                </p>
+                <button className="neutral" onClick={() => handleAction(onRequestNotifications)} disabled={busy}>
+                    Configurar notificaciones
+                </button>
+            </div>
 
-                <section className="profile-section-elite glass-effect">
-                    <div className="section-icon">🛡️</div>
-                    <div className="section-info">
-                        <h3>Privacidad</h3>
-                        <p>Tu ID de jugador es único y privado.</p>
-                        <small>{user.id}</small>
-                    </div>
-                </section>
+            <div className="panel">
+                <h3 className="section-title">Cuenta</h3>
+                <p style={{ color: "var(--text-dim)", fontSize: "0.85rem", margin: "-0.5rem 0 0.5rem" }}>
+                    Tu ID de jugador es único y privado.
+                </p>
+                <code style={{ fontSize: "0.75rem", opacity: 0.5, wordBreak: "break-all" }}>{user.id}</code>
+            </div>
 
-                <footer className="profile-footer-elite">
-                    <button className="btn-danger-elite" onClick={() => handleAction(onLogout)} disabled={busy}>
-                        Cerrar Sesión
-                    </button>
-                    <p className="version-tag">Golf Padel App v2.4 Elite Edition</p>
-                </footer>
+            <div className="actions" style={{ marginTop: "1rem" }}>
+                <button className="danger" onClick={() => handleAction(onLogout)} disabled={busy}>
+                    Cerrar Sesión
+                </button>
             </div>
         </div>
     );

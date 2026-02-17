@@ -9,26 +9,14 @@ export function Skeleton({ className, width, height, borderRadius = "4px" }: { c
 
 export function ReservationSkeleton() {
     return (
-        <div className="reservation-card skeleton-card-elite">
-            <div className="reservation-card-main">
-                <div className="card-header">
-                    <div className="card-title-group" style={{ width: '100px' }}>
-                        <Skeleton width="40px" height="8px" borderRadius="4px" />
-                        <Skeleton width="100px" height="20px" borderRadius="6px" />
-                    </div>
-                    <Skeleton width="80px" height="24px" borderRadius="10px" />
-                </div>
-                <div className="card-footer">
-                    <div className="player-stats">
-                        <div className="avatar-stack">
-                            {[1, 2, 3].map(i => (
-                                <Skeleton key={i} width="24px" height="24px" borderRadius="8px" className="mini-avatar-sk" />
-                            ))}
-                        </div>
-                        <Skeleton width="60px" height="12px" borderRadius="4px" />
-                    </div>
-                    <Skeleton width="40px" height="24px" borderRadius="8px" />
-                </div>
+        <div className="reservation-card skeleton-card">
+            <div className="reservation-header">
+                <Skeleton width="40%" height="1.2rem" />
+                <Skeleton width="70%" height="1.6rem" />
+            </div>
+            <div className="meta" style={{ display: 'flex', gap: '8px' }}>
+                <Skeleton width="80px" height="1.5rem" borderRadius="20px" />
+                <Skeleton width="60px" height="1.5rem" borderRadius="20px" />
             </div>
         </div>
     );
