@@ -451,27 +451,18 @@ export default function App() {
                 <p className="private-hint">Todavía no confirmaste próximos partidos.</p>
               ) : (
                 <>
-                  <ul className="upcoming-list">
-                  {visibleUpcoming.map(r => (
-                    <li key={r.id}>
-                      <div className="upcoming-date">
-                        <span>{new Date(r.startDateTime).toLocaleDateString("es-AR", { month: "short" })}</span>
-                        <strong>{new Date(r.startDateTime).toLocaleDateString("es-AR", { day: "2-digit" })}</strong>
-                      </div>
-                      <div className="upcoming-content">
-                        <span className="upcoming-time">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>
-                          <span>{new Date(r.startDateTime).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })}</span>
-                        </span>
-                        <p>{r.courtName}</p>
-                        <span className="upcoming-time">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
-                          <span>{r.signups.filter((signup) => signup.attendanceStatus === "confirmed").length}/4 jugando</span>
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                  </ul>
+                  <div className="list">
+                    {visibleUpcoming.map((reservation) => (
+                      <article key={`upcoming-${reservation.id}`} className="panel reservation-item">
+                        <ReservationCard
+                          reservation={reservation}
+                          currentUser={currentUser}
+                          onOpen={(id) => setExpandedReservationId(expandedReservationId === id ? null : id)}
+                          isExpanded={expandedReservationId === reservation.id}
+                        />
+                      </article>
+                    ))}
+                  </div>
                   {myUpcomingConfirmed.length > 3 ? (
                     <button className="link-btn active" onClick={() => setShowAllUpcoming(!showAllUpcoming)}>
                       {showAllUpcoming ? "Ver menos" : "Ver más"}
