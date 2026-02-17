@@ -16,6 +16,7 @@ export default defineConfig({
         "icon-512.png"
       ],
       manifest: {
+        id: "/",
         name: "Golf Padel App",
         short_name: "GolfPadel",
         description: "Reservas e inscripciones de padel para grupos de WhatsApp",
@@ -24,6 +25,7 @@ export default defineConfig({
         display: "standalone",
         orientation: "portrait",
         start_url: "/",
+        scope: "/",
         icons: [
           {
             src: "icon-192.png",

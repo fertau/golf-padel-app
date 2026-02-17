@@ -108,11 +108,13 @@ export const canJoinReservation = (
 };
 
 export const buildWhatsAppMessage = (reservation: Reservation, appUrl: string): string => {
-  const link = `${appUrl}/r/${reservation.id}`;
+  const normalizedAppUrl = appUrl.replace(/\/+$/, "");
+  const link = `${normalizedAppUrl}/r/${reservation.id}`;
   return [
     `🎾 Pádel - ${reservation.courtName}`,
     `📅 ${formatDateTimeForMessage(reservation.startDateTime)} (${reservation.durationMinutes}m)`,
     `👤 Reserva creada por: ${reservation.createdBy.name}`,
-    `👉 Registrate y anotate acá: ${link}`
+    "👉 Abrí este link para anotarte:",
+    link
   ].join("\n\n");
 };
