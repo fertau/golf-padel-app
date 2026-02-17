@@ -9,8 +9,7 @@ import {
   createReservation,
   isCloudDbEnabled,
   setAttendanceStatus,
-  subscribeReservations,
-  updateReservationScreenshot
+  subscribeReservations
 } from "./lib/dataStore";
 import { registerPushToken } from "./lib/push";
 import type { AttendanceStatus, Reservation, User } from "./lib/types";
@@ -160,20 +159,6 @@ export default function App() {
     }
   };
 
-  const onUpdateScreenshot: React.ComponentProps<typeof ReservationDetail>["onUpdateScreenshot"] = async (
-    reservationId,
-    screenshotUrl
-  ) => {
-    try {
-      setBusy(true);
-      await updateReservationScreenshot(reservationId, screenshotUrl, currentUser);
-    } catch (error) {
-      alert((error as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const requestNotifications = async () => {
     try {
       const token = await registerPushToken();
@@ -263,7 +248,6 @@ export default function App() {
             appUrl={window.location.origin + window.location.pathname}
             onSetAttendanceStatus={onSetAttendanceStatus}
             onCancel={onCancel}
-            onUpdateScreenshot={onUpdateScreenshot}
           />
         ) : null}
       </main>

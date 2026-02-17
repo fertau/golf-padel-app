@@ -24,7 +24,6 @@ service cloud.firestore {
             request.resource.data.startDateTime == resource.data.startDateTime &&
             request.resource.data.durationMinutes == resource.data.durationMinutes &&
             request.resource.data.createdBy == resource.data.createdBy &&
-            request.resource.data.screenshotUrl == resource.data.screenshotUrl &&
             request.resource.data.rules == resource.data.rules &&
             request.resource.data.status == resource.data.status &&
             request.resource.data.createdAt == resource.data.createdAt

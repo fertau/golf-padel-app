@@ -15,11 +15,12 @@ PWA para gestionar reservas de pádel y anotados (titulares/suplentes) para grup
 - Splash animation estilo cancha azul de pádel.
 - UI modernizada con estética padel.
 - Modo Firebase (si hay variables `VITE_FIREBASE_*`) o modo local automático.
+- La foto se usa para OCR en cliente y no se guarda en la base.
 
 ## Stack
 - React + TypeScript + Vite
 - PWA con `vite-plugin-pwa`
-- Firebase (Firestore + Storage + Auth/Messaging opcional)
+- Firebase (Firestore + Auth/Messaging opcional)
 
 ## Desarrollo local
 ```bash
@@ -48,10 +49,8 @@ git push -u origin main
 3. Activar Authentication:
 - Sign-in method: `Anonymous` (rápido) o `Google`.
 4. Crear Firestore (modo production).
-5. Crear Storage.
-6. En Firestore Rules pegar `firestore.rules`.
-7. En Storage Rules pegar `storage.rules`.
-8. En Cloud Messaging generar Web Push certificate (VAPID key).
+5. En Firestore Rules pegar `firestore.rules`.
+6. En Cloud Messaging generar Web Push certificate (VAPID key).
 
 ### 3) Variables de entorno
 Completar `.env` con los datos de Firebase:
@@ -59,7 +58,6 @@ Completar `.env` con los datos de Firebase:
 VITE_FIREBASE_API_KEY=...
 VITE_FIREBASE_AUTH_DOMAIN=...
 VITE_FIREBASE_PROJECT_ID=...
-VITE_FIREBASE_STORAGE_BUCKET=...
 VITE_FIREBASE_MESSAGING_SENDER_ID=...
 VITE_FIREBASE_APP_ID=...
 VITE_FIREBASE_VAPID_KEY=...

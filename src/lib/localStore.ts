@@ -45,7 +45,6 @@ export type ReservationInput = {
   courtName: string;
   startDateTime: string;
   durationMinutes: number;
-  screenshotUrl?: string;
   rules?: Partial<ReservationRules>;
 };
 
@@ -59,7 +58,6 @@ export const createReservationLocal = (input: ReservationInput, currentUser: Use
     durationMinutes: input.durationMinutes,
     createdBy: currentUser,
     createdByAuthUid: undefined,
-    screenshotUrl: input.screenshotUrl,
     rules: {
       maxPlayersAccepted: input.rules?.maxPlayersAccepted ?? 9999,
       priorityUserIds: input.rules?.priorityUserIds ?? [],

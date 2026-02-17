@@ -1,4 +1,3 @@
-import { type ChangeEvent } from "react";
 import type { AttendanceStatus, Reservation, User } from "../lib/types";
 import {
   buildWhatsAppMessage,
@@ -14,24 +13,14 @@ type Props = {
   appUrl: string;
   onSetAttendanceStatus: (reservationId: string, status: AttendanceStatus) => void;
   onCancel: (reservationId: string) => void;
-  onUpdateScreenshot: (reservationId: string, screenshotUrl: string) => void;
 };
-
-const toBase64 = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 
 export default function ReservationDetail({
   reservation,
   currentUser,
   appUrl,
   onSetAttendanceStatus,
-  onCancel,
-  onUpdateScreenshot
+  onCancel
 }: Props) {
   const isCreator = reservation.createdBy.id === currentUser.id;
   const confirmed = getSignupsByStatus(reservation, "confirmed");
@@ -56,26 +45,12 @@ export default function ReservationDetail({
     alert("Mensaje copiado");
   };
 
-  const handleScreenshot = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    const data = await toBase64(file);
-    onUpdateScreenshot(reservation.id, data);
-  };
-
   return (
     <section className="panel panel-detail">
       <h2>{reservation.courtName}</h2>
       <p>{formatDateTime(reservation.startDateTime)}</p>
       <p>Duración: {reservation.durationMinutes} minutos</p>
       <p>Creador: {reservation.createdBy.name}</p>
-
-      {reservation.screenshotUrl ? (
-        <img src={reservation.screenshotUrl} alt="Captura de reserva" className="preview" />
-      ) : null}
 
       <div className="actions">
         <button
@@ -129,10 +104,6 @@ export default function ReservationDetail({
 
       {isCreator ? (
         <div className="actions">
-          <label>
-            Cambiar captura
-            <input type="file" accept="image/*" onChange={handleScreenshot} />
-          </label>
           <button className="danger" onClick={() => onCancel(reservation.id)}>
             Cancelar reserva
           </button>

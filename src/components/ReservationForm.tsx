@@ -8,7 +8,6 @@ type Props = {
     courtName: string;
     startDateTime: string;
     durationMinutes: number;
-    screenshotUrl?: string;
   }) => void;
   onCancel: () => void;
 };
@@ -78,8 +77,7 @@ export default function ReservationForm({ onCreate, onCancel, currentUser }: Pro
     onCreate({
       courtName,
       startDateTime,
-      durationMinutes,
-      screenshotUrl
+      durationMinutes
     });
 
     setCourtName("");

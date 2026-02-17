@@ -7,8 +7,7 @@ import {
   runTransaction,
   setDoc
 } from "firebase/firestore";
-import { getDownloadURL, ref, uploadString } from "firebase/storage";
-import { auth, db, firebaseEnabled, storage } from "./firebase";
+import { auth, db, firebaseEnabled } from "./firebase";
 import {
   createReservationLocal,
   setAttendanceStatusLocal,
@@ -47,16 +46,6 @@ export const subscribeReservations = (onChange: (reservations: Reservation[]) =>
   });
 };
 
-const uploadScreenshotIfNeeded = async (reservationId: string, screenshotUrl?: string) => {
-  if (!screenshotUrl || !screenshotUrl.startsWith("data:") || !storage) {
-    return screenshotUrl;
-  }
-
-  const imageRef = ref(storage, `reservations/${reservationId}/screenshot`);
-  await uploadString(imageRef, screenshotUrl, "data_url");
-  return getDownloadURL(imageRef);
-};
-
 export const createReservation = async (input: ReservationInput, currentUser: User) => {
   const cloudDb = db;
   if (!isCloudDbEnabled() || !cloudDb) {
@@ -65,7 +54,6 @@ export const createReservation = async (input: ReservationInput, currentUser: Us
   }
 
   const id = crypto.randomUUID();
-  const screenshotUrl = await uploadScreenshotIfNeeded(id, input.screenshotUrl);
 
   const payload: Reservation = {
     id,
@@ -74,7 +62,6 @@ export const createReservation = async (input: ReservationInput, currentUser: Us
     durationMinutes: input.durationMinutes,
     createdBy: currentUser,
     createdByAuthUid: auth?.currentUser?.uid,
-    screenshotUrl,
     rules: {
       maxPlayersAccepted: input.rules?.maxPlayersAccepted ?? 9999,
       priorityUserIds: input.rules?.priorityUserIds ?? [],
@@ -258,57 +245,6 @@ export const cancelReservation = async (reservationId: string, currentUser: User
 
     transaction.update(reservationRef, {
       status: "cancelled",
-      updatedAt: nowIso()
-    });
-  });
-};
-
-export const updateReservationScreenshot = async (
-  reservationId: string,
-  screenshotUrl: string,
-  currentUser: User
-) => {
-  const cloudDb = db;
-  if (!isCloudDbEnabled() || !cloudDb) {
-    updateReservationLocal(reservationId, (reservation) => {
-      if (reservation.createdBy.id !== currentUser.id) {
-        return reservation;
-      }
-
-      return {
-        ...reservation,
-        screenshotUrl
-      };
-    });
-    return;
-  }
-
-  const nextUrl = await uploadScreenshotIfNeeded(reservationId, screenshotUrl);
-
-  await runTransaction(cloudDb, async (transaction) => {
-    const actorAuthUid = auth?.currentUser?.uid;
-    if (!actorAuthUid) {
-      throw new Error("Necesitás iniciar sesión para actualizar captura");
-    }
-
-    const reservationRef = doc(cloudDb, "reservations", reservationId);
-    const snapshot = await transaction.get(reservationRef);
-
-    if (!snapshot.exists()) {
-      throw new Error("Reserva no encontrada");
-    }
-
-    const reservation = normalizeReservation(reservationId, snapshot.data() as Omit<Reservation, "id">);
-    if (
-      reservation.createdByAuthUid
-        ? reservation.createdByAuthUid !== actorAuthUid
-        : reservation.createdBy.id !== currentUser.id
-    ) {
-      throw new Error("Solo el creador puede cambiar la captura");
-    }
-
-    transaction.update(reservationRef, {
-      screenshotUrl: nextUrl,
       updatedAt: nowIso()
     });
   });

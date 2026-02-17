@@ -51,7 +51,6 @@ export type Reservation = {
   durationMinutes: number;
   createdBy: User;
   createdByAuthUid?: string;
-  screenshotUrl?: string;
   rules: ReservationRules;
   signups: Signup[];
   status: "active" | "cancelled";
