@@ -45,6 +45,11 @@ export default function ReservationDetail({
     alert("Mensaje copiado");
   };
 
+  const openWhatsApp = () => {
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://wa.me/?text=${encodedMessage}`, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <section className="panel panel-detail">
       <h2>{reservation.courtName}</h2>
@@ -98,6 +103,7 @@ export default function ReservationDetail({
       </div>
 
       <div className="actions">
+        <button onClick={openWhatsApp}>Abrir WhatsApp</button>
         <button onClick={share}>Compartir</button>
         <button onClick={copyMessage}>Copiar mensaje</button>
       </div>
