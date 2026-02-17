@@ -85,7 +85,7 @@ body {
 
 .splash-brand {
   font-family: "Sora", sans-serif;
-  font-size: clamp(2.2rem, 10vw, 3.8rem);
+  font-size: clamp(2.4rem, 12vw, 4.5rem);
   font-weight: 300;
   margin: 0;
   letter-spacing: -0.04em;

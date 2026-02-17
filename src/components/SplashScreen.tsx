@@ -27,10 +27,9 @@ export default function SplashScreen({ visible }: Props) {
   const racketSrcRef = useRef(rackets[Math.floor(Math.random() * rackets.length)]);
 
   useEffect(() => {
-    // 1. Preload Assets
+    // Preload Assets
     const court = new Image();
     const racket = new Image();
-
     court.src = "/court_texture.avif";
     racket.src = racketSrcRef.current;
 
@@ -42,7 +41,6 @@ export default function SplashScreen({ visible }: Props) {
         setAssetsLoaded(true);
       }
     };
-
     court.onload = onLoaded;
     racket.onload = onLoaded;
   }, [visible]);
@@ -77,15 +75,10 @@ export default function SplashScreen({ visible }: Props) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
 
-      // Animation Stages (3200ms)
-      // 0.0 - 0.3: Racket Fade In
-      // 0.3 - 1.0: Persistence & Logo Trigger
+      // Logo Reveal Point
+      if (t > 0.25 && !showContent) setShowContent(true);
 
-      const logoRevealT = 0.35;
-
-      if (t > logoRevealT && !showContent) setShowContent(true);
-
-      // 1. Draw Court Background (PERSISTENT)
+      // 1. Draw Court Background (PERSISTENT & STATIC)
       const courtAspect = court.width / court.height;
       const screenAspect = w / h;
       let drawW, drawH, drawX, drawY;
@@ -103,26 +96,29 @@ export default function SplashScreen({ visible }: Props) {
       }
       ctx.drawImage(court, drawX, drawY, drawW, drawH);
 
-      // Darker overlay to help the logo pop
-      ctx.fillStyle = "rgba(1, 6, 20, 0.35)";
+      // Darker overlay for brand pop
+      ctx.fillStyle = "rgba(1, 6, 20, 0.4)";
       ctx.fillRect(0, 0, w, h);
 
-      // 2. Draw Real Racket (PERSISTENT after fade-in)
-      const rackW = 320;
+      // 2. Draw Real Racket (PERSISTENT & STATIC after fade)
+      const rackW = 340; // Slightly larger for premium feel
       const rackH = rackW * (racket.height / racket.width);
       const racketX = w / 2;
-      const racketY = h * 0.78; // Even lower to give the logo the main stage
+      const racketY = h * 0.76; // Positioned lower as a base
       const racketAngle = -Math.PI / 20;
 
-      const racketAlpha = easeInOutQuad(clamp(t / 0.3, 0, 1));
+      const racketAlpha = easeInOutQuad(clamp(t / 0.4, 0, 1));
 
       ctx.save();
       ctx.globalAlpha = racketAlpha;
-      ctx.translate(racketX, racketY + (1 - racketAlpha) * 40);
+      ctx.translate(racketX, racketY); // STATIC: NO MOVEMENT AFTER FADE
       ctx.rotate(racketAngle);
-      ctx.shadowColor = "rgba(0,0,0,0.7)";
-      ctx.shadowBlur = 60;
-      ctx.shadowOffsetY = 30;
+
+      // Shadow
+      ctx.shadowColor = "rgba(0,0,0,0.8)";
+      ctx.shadowBlur = 70;
+      ctx.shadowOffsetY = 40;
+
       ctx.drawImage(racket, -rackW / 2, -rackH / 2, rackW, rackH);
       ctx.restore();
 
@@ -138,8 +134,8 @@ export default function SplashScreen({ visible }: Props) {
   return (
     <div className="splash" aria-hidden>
       <canvas ref={canvasRef} className="splash-canvas" />
-      <div className={`splash-content ${showContent ? "visible" : ""}`}>
-        <h1 className="splash-brand" style={{ marginBottom: '10vh' }}>
+      <div className={`splash-content ${showContent ? "visible" : ""}`} style={{ pointerEvents: 'none' }}>
+        <h1 className="splash-brand">
           GOLF <span>PADEL</span> APP
         </h1>
       </div>
