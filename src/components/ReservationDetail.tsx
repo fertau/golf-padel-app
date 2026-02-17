@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { AttendanceStatus, Reservation, User } from "../lib/types";
 import {
+  buildWhatsAppMessage,
   canJoinReservation,
   getSignupsByStatus,
   getUserAttendance
@@ -34,6 +35,7 @@ export default function ReservationDetail({
   const startDate = new Date(reservation.startDateTime);
   const endDate = new Date(startDate.getTime() + reservation.durationMinutes * 60 * 1000);
   const reservationUrl = `${appUrl}/r/${reservation.id}`;
+  const message = buildWhatsAppMessage(reservation, appUrl);
 
   const openGoogleCalendar = () => {
     const params = new URLSearchParams({
@@ -43,6 +45,25 @@ export default function ReservationDetail({
       details: `Reserva creada por ${reservation.createdBy.name}. ${reservationUrl}`
     });
     window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, "_blank", "noopener,noreferrer");
+  };
+
+  const openWhatsApp = () => {
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://wa.me/?text=${encodedMessage}`, "_blank", "noopener,noreferrer");
+  };
+
+  const share = async () => {
+    if (navigator.share) {
+      await navigator.share({ title: "Reserva de padel", text: message });
+      return;
+    }
+    await navigator.clipboard.writeText(message);
+    alert("Mensaje copiado");
+  };
+
+  const copyMessage = async () => {
+    await navigator.clipboard.writeText(message);
+    alert("Mensaje copiado");
   };
   const isCreator = reservation.createdBy.id === currentUser.id;
   const [editing, setEditing] = useState(false);
@@ -179,6 +200,23 @@ export default function ReservationDetail({
           Agregar a Google Calendar
         </button>
       </div>
+
+      {isCreator ? (
+        <div className="actions actions-share">
+          <button className="action-ghost" onClick={openWhatsApp}>
+            <span className="button-icon" aria-hidden="true">W</span>
+            Whatsapp
+          </button>
+          <button className="action-ghost" onClick={share}>
+            <span className="button-icon" aria-hidden="true">↗</span>
+            Compartir
+          </button>
+          <button className="action-ghost" onClick={copyMessage}>
+            <span className="button-icon" aria-hidden="true">⧉</span>
+            Copiar mensaje
+          </button>
+        </div>
+      ) : null}
 
       {isCreator ? (
         <div className="danger-zone">
