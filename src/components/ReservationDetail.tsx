@@ -28,6 +28,62 @@ export default function ReservationDetail({
   onCancel,
   onUpdateReservation
 }: Props) {
+  const toIcsDate = (date: Date): string => {
+    const pad = (value: number) => `${value}`.padStart(2, "0");
+    return `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}T${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}Z`;
+  };
+
+  const startDate = new Date(reservation.startDateTime);
+  const endDate = new Date(startDate.getTime() + reservation.durationMinutes * 60 * 1000);
+  const reservationUrl = `${appUrl}/r/${reservation.id}`;
+
+  const exportIcs = () => {
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//GolfPadel//Reserva//ES",
+      "BEGIN:VEVENT",
+      `UID:${reservation.id}@golf-padel-app`,
+      `DTSTAMP:${toIcsDate(new Date())}`,
+      `DTSTART:${toIcsDate(startDate)}`,
+      `DTEND:${toIcsDate(endDate)}`,
+      `SUMMARY:Pádel - ${reservation.courtName}`,
+      `DESCRIPTION:Reserva creada por ${reservation.createdBy.name}.\\nLink: ${reservationUrl}`,
+      "END:VEVENT",
+      "END:VCALENDAR"
+    ].join("\r\n");
+
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `golf-padel-${reservation.courtName.toLowerCase().replace(/\s+/g, "-")}.ics`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const openGoogleCalendar = () => {
+    const params = new URLSearchParams({
+      action: "TEMPLATE",
+      text: `Pádel - ${reservation.courtName}`,
+      dates: `${toIcsDate(startDate)}/${toIcsDate(endDate)}`,
+      details: `Reserva creada por ${reservation.createdBy.name}. ${reservationUrl}`
+    });
+    window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, "_blank", "noopener,noreferrer");
+  };
+
+  const openOutlookCalendar = () => {
+    const params = new URLSearchParams({
+      path: "/calendar/action/compose",
+      rru: "addevent",
+      subject: `Pádel - ${reservation.courtName}`,
+      startdt: startDate.toISOString(),
+      enddt: endDate.toISOString(),
+      body: `Reserva creada por ${reservation.createdBy.name}. ${reservationUrl}`
+    });
+    window.open(`https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`, "_blank", "noopener,noreferrer");
+  };
+
   const IconWhatsApp = (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path
@@ -213,6 +269,21 @@ export default function ReservationDetail({
         <button className="action-ghost" onClick={copyMessage}>
           <span className="button-icon" aria-hidden="true">{IconCopy}</span>
           Copiar mensaje
+        </button>
+      </div>
+
+      <div className="actions actions-calendar">
+        <button className="action-ghost" onClick={exportIcs}>
+          <span className="button-icon" aria-hidden="true">📅</span>
+          Calendar (.ics)
+        </button>
+        <button className="action-ghost" onClick={openGoogleCalendar}>
+          <span className="button-icon" aria-hidden="true">G</span>
+          Google
+        </button>
+        <button className="action-ghost" onClick={openOutlookCalendar}>
+          <span className="button-icon" aria-hidden="true">O</span>
+          Outlook
         </button>
       </div>
 

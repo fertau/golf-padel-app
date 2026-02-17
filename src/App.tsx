@@ -31,11 +31,40 @@ import { getUserAttendance } from "./lib/utils";
 import { auth } from "./lib/firebase";
 
 type TabId = "mis-partidos" | "mis-reservas" | "perfil";
+type ReservationDateGroup = "hoy" | "manana" | "esta-semana" | "mas-adelante";
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
 const ONE_TIME_CLEANUP_KEY = "golf-padel-cleanup-v1";
 const LOGIN_PENDING_KEY = "golf-padel-google-login-pending";
+
+const getDayStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+const getReservationDateGroup = (iso: string): ReservationDateGroup => {
+  const now = new Date();
+  const today = getDayStart(now).getTime();
+  const tomorrow = today + 24 * 60 * 60 * 1000;
+  const weekLimit = today + 7 * 24 * 60 * 60 * 1000;
+  const target = getDayStart(new Date(iso)).getTime();
+
+  if (target === today) {
+    return "hoy";
+  }
+  if (target === tomorrow) {
+    return "manana";
+  }
+  if (target > tomorrow && target <= weekLimit) {
+    return "esta-semana";
+  }
+  return "mas-adelante";
+};
+
+const GROUP_LABELS: Record<ReservationDateGroup, string> = {
+  hoy: "Hoy",
+  manana: "Mañana",
+  "esta-semana": "Esta semana",
+  "mas-adelante": "Más adelante"
+};
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -44,6 +73,7 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [reservationsLoading, setReservationsLoading] = useState(true);
   const [expandedReservationId, setExpandedReservationId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("mis-partidos");
   const [matchesFilter, setMatchesFilter] = useState<"all" | "pending" | "confirmed">("all");
@@ -147,9 +177,14 @@ export default function App() {
   useEffect(() => {
     if (!firebaseUser) {
       setReservations([]);
+      setReservationsLoading(false);
       return;
     }
-    const unsubscribe = subscribeReservations(setReservations);
+    setReservationsLoading(true);
+    const unsubscribe = subscribeReservations((nextReservations) => {
+      setReservations(nextReservations);
+      setReservationsLoading(false);
+    });
     return unsubscribe;
   }, [firebaseUser]);
 
@@ -370,8 +405,52 @@ export default function App() {
     <section className="panel">
       <h2 className="section-title">{title}</h2>
       <div className="list">
-        {items.length === 0 ? <p>{emptyText}</p> : null}
-        {items.map((reservation) => (
+        {reservationsLoading ? (
+          <>
+            <article className="panel reservation-item skeleton-card" aria-hidden />
+            <article className="panel reservation-item skeleton-card" aria-hidden />
+            <article className="panel reservation-item skeleton-card" aria-hidden />
+          </>
+        ) : null}
+        {!reservationsLoading && items.length === 0 ? <p>{emptyText}</p> : null}
+        {!reservationsLoading && title === "Reservas activas"
+          ? (["hoy", "manana", "esta-semana", "mas-adelante"] as ReservationDateGroup[]).map((groupKey) => {
+            const groupedItems = items.filter(
+              (reservation) => getReservationDateGroup(reservation.startDateTime) === groupKey
+            );
+            if (groupedItems.length === 0) {
+              return null;
+            }
+            return (
+              <section key={`group-${groupKey}`} className="group-block">
+                <h3 className="group-title">{GROUP_LABELS[groupKey]}</h3>
+                <div className="group-list">
+                  {groupedItems.map((reservation) => (
+                    <article key={reservation.id} className="panel reservation-item">
+                      <ReservationCard
+                        reservation={reservation}
+                        currentUser={currentUser as User}
+                        onOpen={(id) => setExpandedReservationId((current) => (current === id ? null : id))}
+                        isExpanded={expandedReservationId === reservation.id}
+                      />
+                      {expandedReservationId === reservation.id ? (
+                        <ReservationDetail
+                          reservation={reservation}
+                          currentUser={currentUser as User}
+                          appUrl={window.location.origin}
+                          onSetAttendanceStatus={onSetAttendanceStatus}
+                          onCancel={onCancel}
+                          onUpdateReservation={onUpdateReservation}
+                        />
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+              </section>
+            );
+          })
+          : null}
+        {!reservationsLoading && title !== "Reservas activas" ? items.map((reservation) => (
           <article key={reservation.id} className="panel reservation-item">
             <ReservationCard
               reservation={reservation}
@@ -390,7 +469,7 @@ export default function App() {
               />
             ) : null}
           </article>
-        ))}
+        )) : null}
       </div>
     </section>
   );
@@ -401,7 +480,8 @@ export default function App() {
         <SplashScreen visible={showSplash} />
         <main className="app mobile-shell">
           <section className="panel" style={{ textAlign: "center", padding: "4rem 2rem" }}>
-            <p>Cargando...</p>
+            <article className="skeleton-card" aria-hidden />
+            <article className="skeleton-card" aria-hidden />
           </section>
         </main>
       </>
