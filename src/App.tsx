@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  browserLocalPersistence,
+  getRedirectResult,
   GoogleAuthProvider,
   onAuthStateChanged,
+  setPersistence,
   signInWithRedirect,
   signOut,
   type User as FirebaseUser
@@ -36,6 +39,7 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [busy, setBusy] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [expandedReservationId, setExpandedReservationId] = useState<string | null>(null);
@@ -64,17 +68,41 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!auth) {
+    const firebaseAuth = auth;
+    if (!firebaseAuth) {
       setAuthLoading(false);
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
+    let cancelled = false;
+    const setupRedirectFlow = async () => {
+      try {
+        await setPersistence(firebaseAuth, browserLocalPersistence);
+        await getRedirectResult(firebaseAuth);
+      } catch (error) {
+        if (!cancelled) {
+          setAuthError((error as Error).message);
+        }
+      }
+    };
+
+    void setupRedirectFlow();
+
+    const unsubscribe = onAuthStateChanged(firebaseAuth, (nextUser) => {
+      if (cancelled) {
+        return;
+      }
       setFirebaseUser(nextUser);
       setAuthLoading(false);
+      if (nextUser) {
+        setAuthError(null);
+      }
     });
 
-    return unsubscribe;
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -135,9 +163,10 @@ export default function App() {
 
     try {
       setBusy(true);
+      setAuthError(null);
       await signInWithRedirect(auth, googleProvider);
     } catch (error) {
-      alert((error as Error).message);
+      setAuthError((error as Error).message);
     } finally {
       setBusy(false);
     }
@@ -280,7 +309,7 @@ export default function App() {
     return (
       <>
         <SplashScreen visible={showSplash} />
-        <AuthView onLoginWithGoogle={loginGoogle} busy={busy} />
+        <AuthView onLoginWithGoogle={loginGoogle} busy={busy} error={authError} />
       </>
     );
   }
