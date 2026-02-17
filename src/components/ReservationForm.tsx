@@ -1,6 +1,5 @@
-import { ChangeEvent, FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import type { User } from "../lib/types";
-import { recognizeReservationFromImage } from "../lib/reservationOcr";
 
 type Props = {
   currentUser: User;
@@ -12,128 +11,146 @@ type Props = {
   onCancel: () => void;
 };
 
-const toBase64 = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+const SUGGESTED_TIMES = ["17:00", "18:30", "20:00"] as const;
+
+const getTodayLocalDate = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = `${now.getMonth() + 1}`.padStart(2, "0");
+  const day = `${now.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const isHalfHourSlot = (time: string): boolean => {
+  const parts = time.split(":");
+  if (parts.length !== 2) {
+    return false;
+  }
+
+  const hour = Number(parts[0]);
+  const minute = Number(parts[1]);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) {
+    return false;
+  }
+
+  return minute === 0 || minute === 30;
+};
 
 export default function ReservationForm({ onCreate, onCancel, currentUser }: Props) {
-  const [courtName, setCourtName] = useState("");
-  const [startDateTime, setStartDateTime] = useState("");
+  const [courtName, setCourtName] = useState("Cancha 1");
+  const [reservationDate, setReservationDate] = useState(getTodayLocalDate());
+  const [selectedTime, setSelectedTime] = useState<(typeof SUGGESTED_TIMES)[number]>("17:00");
+  const [useCustomTime, setUseCustomTime] = useState(false);
+  const [customTime, setCustomTime] = useState("17:00");
   const [durationMinutes, setDurationMinutes] = useState(90);
-  const [screenshotUrl, setScreenshotUrl] = useState<string | undefined>(undefined);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [analysisMessage, setAnalysisMessage] = useState<string | null>(null);
 
-  const handleImage = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    setAnalyzing(true);
-    setAnalysisMessage("Analizando imagen...");
-
-    try {
-      const data = await toBase64(file);
-      setScreenshotUrl(data);
-
-      const recognized = await recognizeReservationFromImage(file);
-
-      if (recognized.courtName) {
-        setCourtName(recognized.courtName);
-      }
-
-      if (recognized.startDateTime) {
-        setStartDateTime(recognized.startDateTime);
-      }
-
-      if (recognized.durationMinutes) {
-        setDurationMinutes(recognized.durationMinutes);
-      }
-
-      if (recognized.courtName || recognized.startDateTime || recognized.durationMinutes) {
-        setAnalysisMessage(
-          recognized.provider === "server"
-            ? "Datos detectados automáticamente (OCR servidor). Revisalos antes de guardar."
-            : "Datos detectados automáticamente (OCR local). Revisalos antes de guardar."
-        );
-      } else {
-        setAnalysisMessage("No se detectaron todos los datos. Completalos manualmente.");
-      }
-    } catch (error) {
-      setAnalysisMessage((error as Error).message);
-    } finally {
-      setAnalyzing(false);
-    }
-  };
+  const finalTime = useMemo(() => (useCustomTime ? customTime : selectedTime), [customTime, selectedTime, useCustomTime]);
+  const hasValidTime = useMemo(() => isHalfHourSlot(finalTime), [finalTime]);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
 
-    if (!courtName || !startDateTime || durationMinutes <= 0) {
+    if (!courtName || !reservationDate || !finalTime || !hasValidTime || durationMinutes <= 0) {
       return;
     }
 
     onCreate({
       courtName,
-      startDateTime,
+      startDateTime: `${reservationDate}T${finalTime}`,
       durationMinutes
     });
 
-    setCourtName("");
-    setStartDateTime("");
+    setCourtName("Cancha 1");
+    setReservationDate(getTodayLocalDate());
+    setSelectedTime("17:00");
+    setUseCustomTime(false);
+    setCustomTime("17:00");
     setDurationMinutes(90);
-    setScreenshotUrl(undefined);
-    setAnalysisMessage(null);
   };
 
   return (
     <form className="panel" onSubmit={handleSubmit}>
       <h2>Registrar nueva reserva</h2>
-      <p className="private-hint">{currentUser.name}, subí la foto y completá lo que falte.</p>
-
-      <label>
-        Foto de la reserva
-        <input type="file" accept="image/*" onChange={handleImage} required />
-      </label>
-
-      {analysisMessage ? <p className={analysisMessage.includes("No se") ? "warning" : "private-hint"}>{analysisMessage}</p> : null}
-
-      {screenshotUrl ? <img src={screenshotUrl} alt="Captura" className="preview" /> : null}
+      <p className="private-hint">{currentUser.name}, cargá la fecha, cancha y horario.</p>
 
       <label>
         Cancha
-        <input value={courtName} onChange={(e) => setCourtName(e.target.value)} required />
+        <select value={courtName} onChange={(event) => setCourtName(event.target.value)}>
+          <option value="Cancha 1">Cancha 1</option>
+          <option value="Cancha 2">Cancha 2</option>
+        </select>
       </label>
 
       <label>
-        Fecha y hora
+        Fecha
+        <input type="date" value={reservationDate} onChange={(event) => setReservationDate(event.target.value)} required />
+      </label>
+
+      <div className="field-group">
+        <p className="field-title">Horario sugerido</p>
+        <div className="choice-row">
+          {SUGGESTED_TIMES.map((time) => (
+            <button
+              key={time}
+              type="button"
+              className={selectedTime === time && !useCustomTime ? "choice-btn active" : "choice-btn"}
+              onClick={() => {
+                setUseCustomTime(false);
+                setSelectedTime(time);
+              }}
+            >
+              {time}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <label className="check">
         <input
-          type="datetime-local"
-          value={startDateTime}
-          onChange={(e) => setStartDateTime(e.target.value)}
-          required
+          type="checkbox"
+          checked={useCustomTime}
+          onChange={(event) => setUseCustomTime(event.target.checked)}
         />
+        Ingresar horario específico (bloques de 30 min)
+      </label>
+
+      {useCustomTime ? (
+        <label>
+          Horario específico
+          <input
+            type="time"
+            value={customTime}
+            onChange={(event) => setCustomTime(event.target.value)}
+            step={1800}
+            required
+          />
+        </label>
+      ) : null}
+
+      {!hasValidTime ? (
+        <p className="warning">El horario específico debe ser en bloques de 30 minutos (ej: 17:00 o 18:30).</p>
+      ) : null}
+
+      <label>
+        Duración
+        <select value={durationMinutes} onChange={(event) => setDurationMinutes(Number(event.target.value))}>
+          <option value={60}>60 minutos</option>
+          <option value={90}>90 minutos</option>
+          <option value={120}>120 minutos</option>
+        </select>
       </label>
 
       <label>
-        Duración (min)
+        Fecha y hora final
         <input
-          type="number"
-          min={30}
-          step={15}
-          value={durationMinutes}
-          onChange={(e) => setDurationMinutes(Number(e.target.value))}
-          required
+          type="text"
+          value={`${reservationDate} ${finalTime}`}
+          readOnly
         />
       </label>
 
       <div className="actions">
-        <button type="submit" disabled={analyzing}>
+        <button type="submit" disabled={!hasValidTime}>
           Guardar reserva
         </button>
         <button type="button" onClick={onCancel}>

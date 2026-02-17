@@ -15,8 +15,7 @@ PWA para gestionar reservas de pádel y anotados (titulares/suplentes) para grup
 - Splash animation estilo cancha azul de pádel.
 - UI modernizada con estética padel.
 - Modo Firebase (si hay variables `VITE_FIREBASE_*`) o modo local automático.
-- La foto se usa para OCR y no se guarda en la base.
-- OCR con contingencia: primero `/api/ocr` (servidor), luego OCR local si falla.
+- Registro manual optimizado para móvil: fecha, cancha y horario sugerido/custom.
 
 ## Stack
 - React + TypeScript + Vite
@@ -82,20 +81,9 @@ Importante:
 4. Build command: `npm run build`.
 5. Output directory: `dist`.
 6. Cargar las mismas variables `VITE_FIREBASE_*` en Project Settings > Environment Variables.
-7. Agregar variable de servidor para OCR:
-   - `GOOGLE_VISION_API_KEY=...`
-8. Deploy.
+7. Deploy.
 
 `vercel.json` ya incluye rewrite SPA para soportar rutas internas.
-
-### 6) OCR servidor (contingencia)
-- Endpoint: `POST /api/ocr`
-- Body JSON:
-```json
-{ "imageBase64": "data:image/jpeg;base64,..." }
-```
-- Requiere `GOOGLE_VISION_API_KEY` en Vercel.
-- Si OCR servidor falla, la app intenta OCR local automáticamente.
 
 ## Seguridad y privacidad
 En este MVP, las reglas internas se ocultan en UI para no-creadores.

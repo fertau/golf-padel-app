@@ -269,11 +269,13 @@ label {
 }
 
 input,
+select,
 button {
   font: inherit;
 }
 
-input {
+input,
+select {
   border-radius: 12px;
   border: 1px solid rgba(166, 196, 255, 0.34);
   background: rgba(3, 19, 61, 0.92);
@@ -282,7 +284,8 @@ input {
   transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 
-input:focus {
+input:focus,
+select:focus {
   outline: none;
   border-color: rgba(198, 224, 255, 0.64);
   box-shadow: 0 0 0 3px rgba(99, 157, 255, 0.25);
@@ -394,6 +397,33 @@ button.danger,
   display: flex;
   flex-wrap: wrap;
   gap: 0.52rem;
+}
+
+.field-group {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.field-title {
+  color: #d9e8ff;
+  font-size: 0.93rem;
+  font-weight: 700;
+}
+
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.choice-btn {
+  background: rgba(5, 29, 84, 0.9);
+  border: 1px solid rgba(166, 197, 255, 0.34);
+}
+
+.choice-btn.active {
+  background: linear-gradient(145deg, #2b81ff, #0f4ec9);
+  border-color: rgba(211, 229, 255, 0.6);
 }
 
 .warning {
