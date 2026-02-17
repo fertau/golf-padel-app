@@ -618,6 +618,8 @@ body::before {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .badge {
@@ -641,6 +643,10 @@ body::before {
 .badge-cancelled {
   background: var(--danger);
   color: white;
+}
+
+.badge-mine {
+  white-space: nowrap;
 }
 
 .disclosure-chevron {
@@ -692,8 +698,10 @@ body::before {
   padding: 0.75rem;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  text-align: left;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: 0.32rem;
 }
 
 .kpi-card strong {
@@ -721,6 +729,7 @@ body::before {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-dim);
+  text-align: center;
 }
 
 .upcoming-widget {
@@ -737,8 +746,8 @@ body::before {
 
 .upcoming-list li {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.34rem;
+  grid-template-columns: auto 1fr;
+  gap: 0.62rem;
   align-items: center;
   border: 1px solid rgba(179, 207, 255, 0.22);
   background: rgba(255, 255, 255, 0.04);
@@ -749,6 +758,23 @@ body::before {
 .upcoming-date {
   display: grid;
   gap: 0.28rem;
+}
+
+.upcoming-date-calendar {
+  justify-items: center;
+  min-width: 64px;
+}
+
+.upcoming-date-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(179, 207, 255, 0.35);
+  background: rgba(255, 255, 255, 0.1);
+  color: #f0f7ff;
 }
 
 .upcoming-date span,
@@ -791,6 +817,14 @@ body::before {
 .upcoming-content span {
   color: var(--text-dim);
   font-size: 0.82rem;
+}
+
+.upcoming-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  color: var(--text-dim);
+  font-size: 0.84rem;
 }
 
 .upcoming-meta-chips {

@@ -10,8 +10,6 @@ type Props = {
 
 export default function ReservationCard({ reservation, currentUser, onOpen, isExpanded }: Props) {
   const confirmed = getSignupsByStatus(reservation, "confirmed");
-  const maybe = getSignupsByStatus(reservation, "maybe");
-  const cancelled = getSignupsByStatus(reservation, "cancelled");
   const mine = getUserAttendance(reservation, currentUser.id);
   const start = new Date(reservation.startDateTime);
   const dayLabel = start.toLocaleDateString("es-AR", { weekday: "short" }).replace(".", "");
@@ -54,7 +52,7 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
               {confirmed.length === 0 && <span className="empty-hint">Faltan jugadores...</span>}
             </div>
             <span className="player-count">
-              <strong>Juego {confirmed.length}</strong> · Quizás {maybe.length} · No juego {cancelled.length}
+              <strong>{confirmed.length}</strong>/4
             </span>
           </div>
 
