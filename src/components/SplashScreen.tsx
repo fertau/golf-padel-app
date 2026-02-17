@@ -134,7 +134,7 @@ export default function SplashScreen({ visible }: Props) {
   return (
     <div className="splash" aria-hidden>
       <canvas ref={canvasRef} className="splash-canvas" />
-      <div className={`splash-content ${showContent ? "visible" : ""}`} style={{ pointerEvents: 'none' }}>
+      <div className={`splash-content ${showContent ? "visible" : ""}`} style={{ pointerEvents: 'none', position: 'absolute', top: '25vh', width: '100%' }}>
         <h1 className="splash-brand">
           GOLF <span>PADEL</span> APP
         </h1>
