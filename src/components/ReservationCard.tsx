@@ -28,8 +28,8 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
 
       <div className="reservation-card-main">
         <div className="card-content-top">
-          <strong className="card-title-main">{reservation.courtName}</strong>
-          <span className="card-time-pill">{time}</span>
+          <strong className="card-title-main">{time}</strong>
+          <span className="card-court-pill">{reservation.courtName}</span>
         </div>
 
         <div className="card-content-bottom">

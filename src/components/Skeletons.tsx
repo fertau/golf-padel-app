@@ -16,8 +16,8 @@ export function ReservationSkeleton() {
             </div>
             <div className="reservation-card-main">
                 <div className="card-content-top">
-                    <Skeleton width="120px" height="20px" borderRadius="6px" />
-                    <Skeleton width="60px" height="24px" borderRadius="10px" />
+                    <Skeleton width="80px" height="24px" borderRadius="6px" />
+                    <Skeleton width="70px" height="20px" borderRadius="8px" />
                 </div>
                 <div className="card-content-bottom">
                     <div className="player-stats">
