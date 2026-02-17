@@ -48,7 +48,7 @@ export default function ProfileView({ user, onLogout, onRequestNotifications, on
                     {user.avatar ? (
                         <img src={user.avatar} alt={user.name} />
                     ) : (
-                        <div className="avatar-initials">{user.name.charAt(0)}</div>
+                        <div className="avatar-initials">{user.name.charAt(0).toUpperCase()}</div>
                     )}
                     <div className="avatar-status-badge" />
                 </div>
@@ -63,6 +63,8 @@ export default function ProfileView({ user, onLogout, onRequestNotifications, on
                         <h3>Nombre visible</h3>
                         <p>Así te van a ver en reservas y asistencias.</p>
                         <input
+                            className="elite-input"
+                            style={{ marginTop: '0.5rem' }}
                             type="text"
                             value={nameDraft}
                             onChange={(event) => setNameDraft(event.target.value)}
@@ -71,11 +73,12 @@ export default function ProfileView({ user, onLogout, onRequestNotifications, on
                         />
                     </div>
                     <button
-                        className="btn-action-elite"
+                        className="btn-action-elite btn-primary-elite"
+                        style={{ padding: '0.5rem 1rem', width: 'auto' }}
                         onClick={saveDisplayName}
                         disabled={busy || savingName || normalizeDisplayName(nameDraft) === user.name}
                     >
-                        Guardar
+                        OK
                     </button>
                 </section>
 
@@ -83,7 +86,7 @@ export default function ProfileView({ user, onLogout, onRequestNotifications, on
                     <div className="section-icon">🔔</div>
                     <div className="section-info">
                         <h3>Notificaciones</h3>
-                        <p>Recibí alertas de nuevos partidos y confirmaciones.</p>
+                        <p>Recibí alertas de nuevos partidos.</p>
                     </div>
                     <button className="btn-action-elite" onClick={() => handleAction(onRequestNotifications)} disabled={busy}>
                         Configurar
@@ -94,16 +97,16 @@ export default function ProfileView({ user, onLogout, onRequestNotifications, on
                     <div className="section-icon">🛡️</div>
                     <div className="section-info">
                         <h3>Privacidad</h3>
-                        <p>Tu ID de jugador es único y privado.</p>
+                        <p>ID único de jugador.</p>
                         <small>{user.id}</small>
                     </div>
                 </section>
 
                 <footer className="profile-footer-elite">
-                    <button className="btn-danger-elite" onClick={() => handleAction(onLogout)} disabled={busy}>
+                    <button className="btn-danger-elite" onClick={() => handleAction(onLogout)} disabled={busy} style={{ width: '100%', padding: '1rem', borderRadius: '15px' }}>
                         Cerrar Sesión
                     </button>
-                    <p className="version-tag">Golf Padel App v2.4 Elite Edition</p>
+                    <p className="version-tag">Golf Padel App v2.5 Elite Improved</p>
                 </footer>
             </div>
         </div>

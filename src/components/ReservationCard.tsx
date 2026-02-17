@@ -14,7 +14,7 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
 
   return (
     <button
-      className={`reservation-card elite-card ${isExpanded ? "expanded" : ""}`}
+      className={`reservation-card ${isExpanded ? "expanded" : ""}`}
       onClick={() => onOpen(reservation.id)}
     >
       <div className="reservation-card-glow" />
@@ -22,10 +22,10 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
         <div className="card-header">
           <div className="card-title-group">
             <span className="card-label">Cancha</span>
-            <strong className="text-dynamic">{reservation.courtName}</strong>
+            <strong className="text-dynamic" style={{ fontSize: '1.2rem', color: '#fff' }}>{reservation.courtName}</strong>
           </div>
           <div className="card-time-group">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
             <span>{formatDateTime(reservation.startDateTime)}</span>
           </div>
         </div>
