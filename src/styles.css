@@ -59,7 +59,7 @@ body {
   justify-content: center;
   overflow: hidden;
   animation: splash-fade 0.8s ease forwards;
-  animation-delay: 2.8s;
+  animation-delay: 3.2s;
 }
 
 .splash-canvas {

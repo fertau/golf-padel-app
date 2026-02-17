@@ -58,7 +58,7 @@ export default function SplashScreen({ visible }: Props) {
 
     let raf = 0;
     const start = performance.now();
-    const duration = 2800;
+    const duration = 4000;
 
     const render = (now: number) => {
       const elapsed = now - start;
@@ -78,10 +78,17 @@ export default function SplashScreen({ visible }: Props) {
       ctx.clearRect(0, 0, w, h);
 
       // Animation Stages
-      const revealT = 0.4; // Slightly later for better impact
-      const cutT = 0.85;
+      // 0.0 - 0.15: Racket Fade In
+      // 0.15 - 0.6: Racket Stay
+      // 0.6 - 0.75: Racket Fade Out
+      // 0.75 - 0.85: Logo Appear HERO
+      // 0.9+: Final transition to App
 
-      if (t > revealT && !showContent) setShowContent(true);
+      const racketFadeOutStart = 0.6;
+      const racketFadeOutEnd = 0.75;
+      const logoRevealStart = 0.75;
+
+      if (t > logoRevealStart && !showContent) setShowContent(true);
 
       // 1. Draw Court Background
       const courtAspect = court.width / court.height;
@@ -101,38 +108,44 @@ export default function SplashScreen({ visible }: Props) {
       }
       ctx.drawImage(court, drawX, drawY, drawW, drawH);
 
-      // Sutil dark gradient overlay for depth
       const overlayGrad = ctx.createLinearGradient(0, 0, 0, h);
       overlayGrad.addColorStop(0, "rgba(0,0,0,0.1)");
       overlayGrad.addColorStop(1, "rgba(0,0,0,0.4)");
       ctx.fillStyle = overlayGrad;
       ctx.fillRect(0, 0, w, h);
 
-      // 2. Draw Real Racket (Repositioned Lower)
+      // 2. Draw Real Racket (With independent fade out)
       const rackW = 320;
       const rackH = rackW * (racket.height / racket.width);
       const racketX = w / 2;
-      const racketY = h * 0.72; // Lower for logo room
+      const racketY = h * 0.72;
       const racketAngle = -Math.PI / 18;
-      const racketAlpha = easeInOutQuad(clamp(t / 0.5, 0, 1));
 
-      ctx.save();
-      ctx.globalAlpha = racketAlpha;
-      ctx.translate(racketX, racketY + (1 - racketAlpha) * 40); // Soft slide
-      ctx.rotate(racketAngle);
+      let racketAlpha = 0;
+      if (t < 0.15) {
+        racketAlpha = easeInOutQuad(t / 0.15);
+      } else if (t < racketFadeOutStart) {
+        racketAlpha = 1;
+      } else if (t < racketFadeOutEnd) {
+        racketAlpha = 1 - easeInOutQuad((t - racketFadeOutStart) / (racketFadeOutEnd - racketFadeOutStart));
+      }
 
-      // Shadow
-      ctx.shadowColor = "rgba(0,0,0,0.5)";
-      ctx.shadowBlur = 50;
-      ctx.shadowOffsetY = 25;
+      if (racketAlpha > 0) {
+        ctx.save();
+        ctx.globalAlpha = racketAlpha;
+        ctx.translate(racketX, racketY + (1 - racketAlpha) * 30);
+        ctx.rotate(racketAngle);
+        ctx.shadowColor = "rgba(0,0,0,0.5)";
+        ctx.shadowBlur = 50;
+        ctx.shadowOffsetY = 25;
+        ctx.drawImage(racket, -rackW / 2, -rackH / 2, rackW, rackH);
+        ctx.restore();
+      }
 
-      ctx.drawImage(racket, -rackW / 2, -rackH / 2, rackW, rackH);
-      ctx.restore();
-
-      // 3. Final Cut to Logo
-      if (t > cutT) {
-        const logoAlpha = clamp((t - cutT) / 0.1, 0, 1);
-        ctx.fillStyle = `rgba(1, 6, 20, ${logoAlpha})`;
+      // 3. Sequential Transition to Dark Hero Background
+      if (t > 0.65) {
+        const bgAlpha = clamp((t - 0.65) / 0.15, 0, 1);
+        ctx.fillStyle = `rgba(1, 6, 20, ${bgAlpha})`;
         ctx.fillRect(0, 0, w, h);
       }
 
@@ -152,7 +165,6 @@ export default function SplashScreen({ visible }: Props) {
         <h1 className="splash-brand">
           GOLF <span>PADEL</span> APP
         </h1>
-        <p className="splash-subtitle">Premium Experience</p>
       </div>
     </div>
   );

@@ -115,7 +115,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const splashTimer = window.setTimeout(() => setShowSplash(false), 3000);
+    const splashTimer = window.setTimeout(() => setShowSplash(false), 4000);
     return () => window.clearTimeout(splashTimer);
   }, []);
 
