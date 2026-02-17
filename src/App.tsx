@@ -477,15 +477,16 @@ export default function App() {
                               <strong>{day}</strong>
                             </div>
                             <div className="upcoming-content">
-                              <span className="upcoming-time">
+                              <div className="upcoming-details-line">
+                                <span className="upcoming-time">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>
                                 <span>{time}</span>
                               </span>
-                              <p>{reservation.courtName}</p>
-                              <span className="upcoming-time">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
-                                <span>{confirmedCount}/4 jugando</span>
-                              </span>
+                                <span className="upcoming-dot" aria-hidden="true">•</span>
+                                <span className="upcoming-court">{reservation.courtName}</span>
+                                <span className="upcoming-dot" aria-hidden="true">•</span>
+                                <span className="upcoming-players">{confirmedCount}/4 jugando</span>
+                              </div>
                             </div>
                           </button>
                         </li>
