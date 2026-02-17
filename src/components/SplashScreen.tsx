@@ -45,7 +45,7 @@ export default function SplashScreen({ visible }: Props) {
 
     court.onload = onLoaded;
     racket.onload = onLoaded;
-  }, []);
+  }, [visible]);
 
   useEffect(() => {
     if (!visible || !canvasRef.current || !assetsLoaded) return;
@@ -58,7 +58,7 @@ export default function SplashScreen({ visible }: Props) {
 
     let raf = 0;
     const start = performance.now();
-    const duration = 4000;
+    const duration = 3200;
 
     const render = (now: number) => {
       const elapsed = now - start;
@@ -77,16 +77,16 @@ export default function SplashScreen({ visible }: Props) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
 
-      // Animation Stages
-      // 0.0 - 0.15: Racket Fade In
-      // 0.15 - 0.6: Racket Stay
-      // 0.6 - 0.75: Racket Fade Out
-      // 0.75 - 0.85: Logo Appear HERO
-      // 0.9+: Final transition to App
+      // Animation Stages (3200ms total)
+      // 0.0 - 0.2: Racket Fade In (0 - 640ms)
+      // 0.2 - 0.5: Racket Stay (640ms - 1600ms)
+      // 0.5 - 0.65: Racket Fade Out (1600ms - 2080ms)
+      // 0.6 - 1.0: Logo Hero Stage (1920ms - 3200ms)
 
-      const racketFadeOutStart = 0.6;
-      const racketFadeOutEnd = 0.75;
-      const logoRevealStart = 0.75;
+      const racketFadeOutStart = 0.5;
+      const racketFadeOutEnd = 0.65;
+      const logoRevealStart = 0.6;
+      const bgFadeToHeroStart = 0.55;
 
       if (t > logoRevealStart && !showContent) setShowContent(true);
 
@@ -122,8 +122,8 @@ export default function SplashScreen({ visible }: Props) {
       const racketAngle = -Math.PI / 18;
 
       let racketAlpha = 0;
-      if (t < 0.15) {
-        racketAlpha = easeInOutQuad(t / 0.15);
+      if (t < 0.2) {
+        racketAlpha = easeInOutQuad(t / 0.2);
       } else if (t < racketFadeOutStart) {
         racketAlpha = 1;
       } else if (t < racketFadeOutEnd) {
@@ -143,8 +143,8 @@ export default function SplashScreen({ visible }: Props) {
       }
 
       // 3. Sequential Transition to Dark Hero Background
-      if (t > 0.65) {
-        const bgAlpha = clamp((t - 0.65) / 0.15, 0, 1);
+      if (t > bgFadeToHeroStart) {
+        const bgAlpha = clamp((t - bgFadeToHeroStart) / 0.15, 0, 1);
         ctx.fillStyle = `rgba(1, 6, 20, ${bgAlpha})`;
         ctx.fillRect(0, 0, w, h);
       }
