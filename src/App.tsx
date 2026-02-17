@@ -5,6 +5,7 @@ import {
   GoogleAuthProvider,
   onAuthStateChanged,
   setPersistence,
+  signInWithPopup,
   signInWithRedirect,
   signOut,
   type User as FirebaseUser
@@ -188,8 +189,26 @@ export default function App() {
     try {
       setBusy(true);
       setAuthError(null);
+      await setPersistence(auth, browserLocalPersistence);
       sessionStorage.setItem(LOGIN_PENDING_KEY, "1");
-      await signInWithRedirect(auth, googleProvider);
+      try {
+        await signInWithPopup(auth, googleProvider);
+        sessionStorage.removeItem(LOGIN_PENDING_KEY);
+      } catch (popupError) {
+        const code = (popupError as { code?: string }).code ?? "";
+        const shouldFallbackToRedirect =
+          code === "auth/popup-blocked" ||
+          code === "auth/cancelled-popup-request" ||
+          code === "auth/popup-closed-by-user" ||
+          code === "auth/operation-not-supported-in-this-environment";
+
+        if (shouldFallbackToRedirect) {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        }
+
+        throw popupError;
+      }
     } catch (error) {
       setAuthError((error as Error).message);
       sessionStorage.removeItem(LOGIN_PENDING_KEY);
