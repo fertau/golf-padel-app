@@ -824,6 +824,27 @@ body::before {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.history-level {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.history-grid-filters {
+  grid-template-columns: 1fr;
+  gap: 0.62rem;
+}
+
+.history-select {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(179, 207, 255, 0.35);
+  background: rgba(255, 255, 255, 0.07);
+  color: #e8f1ff;
+  padding: 0.5rem 0.62rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
 .history-search {
   width: 100%;
 }

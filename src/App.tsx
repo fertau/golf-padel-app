@@ -98,7 +98,8 @@ const getShareBaseUrl = (): string => {
   return (configured && configured.length > 0 ? configured : fallback).replace(/\/+$/, "");
 };
 
-type HistoryFilter = "all" | "played" | "confirmed" | "maybe" | "cancelled" | "court-1" | "court-2";
+type HistoryStatus = "confirmed" | "maybe" | "cancelled";
+type HistoryRange = "1m" | "3m" | "6m" | "1y" | "month";
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -116,8 +117,14 @@ export default function App() {
   const [quickDateFilter, setQuickDateFilter] = useState<"all" | "hoy" | "manana" | "semana">("all");
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
   const [historyExpanded, setHistoryExpanded] = useState(false);
-  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
-  const [historySearch, setHistorySearch] = useState("");
+  const [historyStatuses, setHistoryStatuses] = useState<HistoryStatus[]>(["confirmed", "maybe", "cancelled"]);
+  const [historyRange, setHistoryRange] = useState<HistoryRange>("3m");
+  const [historyMonth, setHistoryMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${`${now.getMonth() + 1}`.padStart(2, "0")}`;
+  });
+  const [historyPlayerFilter, setHistoryPlayerFilter] = useState("all");
+  const [historyCourtFilter, setHistoryCourtFilter] = useState<"all" | "Cancha 1" | "Cancha 2">("all");
   const [nameDraft, setNameDraft] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [savingName, setSavingName] = useState(false);
@@ -248,65 +255,108 @@ export default function App() {
 
   const historyStats = useMemo(() => {
     if (!currentUser) {
-      return { total: 0, confirmed: 0, cancelled: 0, latest: "-" };
+      return { playedCount: 0, latest: "-" };
     }
-    const total = historyBase.length;
-    const confirmed = historyBase.filter(
+    const playedCount = historyBase.filter(
       (reservation) => getUserAttendance(reservation, currentUser.id)?.attendanceStatus === "confirmed"
     ).length;
-    const cancelled = historyBase.filter(
-      (reservation) => getUserAttendance(reservation, currentUser.id)?.attendanceStatus === "cancelled"
-    ).length;
     const latest = historyBase[0]?.startDateTime
-      ? new Date(historyBase[0].startDateTime).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })
+      ? `${new Date(historyBase[0].startDateTime).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" })} · ${new Date(historyBase[0].startDateTime).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })}`
       : "-";
-    return { total, confirmed, cancelled, latest };
+    return { playedCount, latest };
   }, [historyBase, currentUser]);
+
+  const historyMonthOptions = useMemo(() => {
+    const unique = new Set<string>();
+    for (const reservation of historyBase) {
+      const date = new Date(reservation.startDateTime);
+      const key = `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, "0")}`;
+      unique.add(key);
+    }
+    return Array.from(unique).sort((a, b) => b.localeCompare(a));
+  }, [historyBase]);
+
+  const historyPlayers = useMemo(() => {
+    const unique = new Map<string, string>();
+    for (const reservation of historyBase) {
+      for (const signup of reservation.signups) {
+        const key = signup.authUid || signup.userId || signup.id;
+        if (!unique.has(key)) {
+          unique.set(key, signup.userName);
+        }
+      }
+    }
+    return Array.from(unique.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+  }, [historyBase]);
 
   const filteredHistory = useMemo(() => {
     if (!currentUser) {
       return [];
     }
 
-    const query = historySearch.trim().toLowerCase();
-
     return historyBase.filter((reservation) => {
       const attendanceStatus = getUserAttendance(reservation, currentUser.id)?.attendanceStatus;
-
-      if (historyFilter === "played" && attendanceStatus !== "confirmed") {
-        return false;
-      }
-      if (historyFilter === "confirmed" && attendanceStatus !== "confirmed") {
-        return false;
-      }
-      if (historyFilter === "maybe" && attendanceStatus !== "maybe") {
-        return false;
-      }
-      if (historyFilter === "cancelled" && attendanceStatus !== "cancelled") {
-        return false;
-      }
-      if (historyFilter === "court-1" && reservation.courtName !== "Cancha 1") {
-        return false;
-      }
-      if (historyFilter === "court-2" && reservation.courtName !== "Cancha 2") {
+      if (!attendanceStatus || !historyStatuses.includes(attendanceStatus)) {
         return false;
       }
 
-      if (!query) {
+      if (historyCourtFilter !== "all" && reservation.courtName !== historyCourtFilter) {
+        return false;
+      }
+
+      const start = new Date(reservation.startDateTime);
+      const now = new Date();
+      if (historyRange === "1m") {
+        const cutoff = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        if (start < cutoff) {
+          return false;
+        }
+      }
+      if (historyRange === "3m") {
+        const cutoff = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+        if (start < cutoff) {
+          return false;
+        }
+      }
+      if (historyRange === "6m") {
+        const cutoff = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+        if (start < cutoff) {
+          return false;
+        }
+      }
+      if (historyRange === "1y") {
+        const cutoff = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        if (start < cutoff) {
+          return false;
+        }
+      }
+      if (historyRange === "month") {
+        const key = `${start.getFullYear()}-${`${start.getMonth() + 1}`.padStart(2, "0")}`;
+        if (key !== historyMonth) {
+          return false;
+        }
+      }
+
+      if (historyPlayerFilter === "all") {
         return true;
       }
 
-      const candidates = [
-        reservation.courtName,
-        reservation.createdBy.name,
-        ...reservation.signups.map((signup) => signup.userName)
-      ]
-        .filter(Boolean)
-        .map((value) => value.toLowerCase());
-
-      return candidates.some((value) => value.includes(query));
+      return reservation.signups.some((signup) => {
+        const key = signup.authUid || signup.userId || signup.id;
+        return key === historyPlayerFilter;
+      });
     });
-  }, [currentUser, historyBase, historyFilter, historySearch]);
+  }, [
+    currentUser,
+    historyBase,
+    historyStatuses,
+    historyCourtFilter,
+    historyRange,
+    historyMonth,
+    historyPlayerFilter
+  ]);
 
   const selectedReservation = expandedReservationId ? reservations.find(r => r.id === expandedReservationId) || null : null;
   const isSynchronized = Boolean(currentUser && isCloudDbEnabled() && isOnline);
@@ -600,50 +650,136 @@ export default function App() {
                 <>
                   <div className="detail-kpis history-kpis">
                     <article className="kpi-card">
-                      <span className="kpi-label">Partidos</span>
-                      <strong>{historyStats.total}</strong>
+                      <span className="kpi-label">Partidos jugados</span>
+                      <strong>{historyStats.playedCount}</strong>
                     </article>
                     <article className="kpi-card">
-                      <span className="kpi-label">Juego</span>
-                      <strong>{historyStats.confirmed}</strong>
-                    </article>
-                    <article className="kpi-card">
-                      <span className="kpi-label">No juego</span>
-                      <strong>{historyStats.cancelled}</strong>
-                    </article>
-                    <article className="kpi-card">
-                      <span className="kpi-label">Último</span>
+                      <span className="kpi-label">Último partido</span>
                       <strong>{historyStats.latest}</strong>
                     </article>
                   </div>
 
-                  <div className="quick-chip-row">
-                    {[
-                      { id: "all", label: "Todos" },
-                      { id: "played", label: "Jugados" },
-                      { id: "maybe", label: "Quizás" },
-                      { id: "cancelled", label: "No juego" },
-                      { id: "court-1", label: "Cancha 1" },
-                      { id: "court-2", label: "Cancha 2" }
-                    ].map((chip) => (
+                  <div className="history-level">
+                    <small className="private-hint">Todos / Ninguno</small>
+                    <div className="quick-chip-row">
                       <button
-                        key={`history-${chip.id}`}
                         type="button"
-                        className={`quick-chip ${historyFilter === chip.id ? "active" : ""}`}
-                        onClick={() => setHistoryFilter(chip.id as HistoryFilter)}
+                        className={`quick-chip ${historyStatuses.length === 3 ? "active" : ""}`}
+                        onClick={() => setHistoryStatuses(["confirmed", "maybe", "cancelled"])}
                       >
-                        {chip.label}
+                        Todos
                       </button>
-                    ))}
+                      <button
+                        type="button"
+                        className={`quick-chip ${historyStatuses.length === 0 ? "active" : ""}`}
+                        onClick={() => setHistoryStatuses([])}
+                      >
+                        Ninguno
+                      </button>
+                    </div>
                   </div>
 
-                  <input
-                    type="search"
-                    placeholder="Buscar por jugador o cancha"
-                    value={historySearch}
-                    onChange={(event) => setHistorySearch(event.target.value)}
-                    className="history-search"
-                  />
+                  <div className="history-level">
+                    <small className="private-hint">Jugados / Quizás / No jugados</small>
+                    <div className="quick-chip-row">
+                      {[
+                        { id: "confirmed", label: "Jugados" },
+                        { id: "maybe", label: "Quizás" },
+                        { id: "cancelled", label: "No jugados" }
+                      ].map((chip) => {
+                        const active = historyStatuses.includes(chip.id as HistoryStatus);
+                        return (
+                          <button
+                            key={`history-status-${chip.id}`}
+                            type="button"
+                            className={`quick-chip ${active ? "active" : ""}`}
+                            onClick={() =>
+                              setHistoryStatuses((prev) =>
+                                prev.includes(chip.id as HistoryStatus)
+                                  ? prev.filter((item) => item !== chip.id)
+                                  : [...prev, chip.id as HistoryStatus]
+                              )
+                            }
+                          >
+                            {chip.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="history-level">
+                    <small className="private-hint">Periodo</small>
+                    <div className="quick-chip-row">
+                      {[
+                        { id: "1m", label: "Último mes" },
+                        { id: "3m", label: "Últimos 3 meses" },
+                        { id: "6m", label: "Últimos 6 meses" },
+                        { id: "1y", label: "Último año" },
+                        { id: "month", label: "Selector de mes" }
+                      ].map((chip) => (
+                        <button
+                          key={`history-range-${chip.id}`}
+                          type="button"
+                          className={`quick-chip ${historyRange === chip.id ? "active" : ""}`}
+                          onClick={() => setHistoryRange(chip.id as HistoryRange)}
+                        >
+                          {chip.label}
+                        </button>
+                      ))}
+                    </div>
+                    {historyRange === "month" ? (
+                      <select
+                        className="history-select"
+                        value={historyMonth}
+                        onChange={(event) => setHistoryMonth(event.target.value)}
+                      >
+                        {historyMonthOptions.length === 0 ? (
+                          <option value={historyMonth}>Sin meses en historial</option>
+                        ) : historyMonthOptions.map((option) => (
+                          <option key={`history-month-${option}`} value={option}>
+                            {new Date(`${option}-01T00:00:00`).toLocaleDateString("es-AR", {
+                              month: "long",
+                              year: "numeric"
+                            })}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
+                  </div>
+
+                  <div className="history-level history-grid-filters">
+                    <div>
+                      <small className="private-hint">Jugador/es</small>
+                      <select
+                        className="history-select"
+                        value={historyPlayerFilter}
+                        onChange={(event) => setHistoryPlayerFilter(event.target.value)}
+                      >
+                        <option value="all">Todos los jugadores</option>
+                        {historyPlayers.map((player) => (
+                          <option key={`history-player-${player.id}`} value={player.id}>
+                            {player.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <small className="private-hint">Cancha</small>
+                      <div className="quick-chip-row">
+                        {["all", "Cancha 1", "Cancha 2"].map((court) => (
+                          <button
+                            key={`history-court-${court}`}
+                            type="button"
+                            className={`quick-chip ${historyCourtFilter === court ? "active" : ""}`}
+                            onClick={() => setHistoryCourtFilter(court as "all" | "Cancha 1" | "Cancha 2")}
+                          >
+                            {court === "all" ? "Todas" : court}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
 
                   {filteredHistory.length === 0 ? (
                     <p className="private-hint">Sin resultados para los filtros elegidos.</p>
