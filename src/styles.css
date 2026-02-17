@@ -441,129 +441,102 @@ body::before {
   box-shadow: 0 0 8px rgba(255, 92, 111, 0.6);
 }
 
-/* Elite Card Design */
+/* Side-Date List Layout (Phase 20) */
 .reservation-card {
   position: relative;
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  border-radius: 22px;
+  border-radius: 20px;
   padding: 0;
   text-align: left;
   overflow: hidden;
   display: flex !important;
-  flex-direction: column;
+  flex-direction: row;
   color: var(--text);
   box-shadow: var(--shadow-elite);
   transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
   cursor: pointer;
   width: 100%;
-  /* Aprovechar todo el ancho disponible */
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  margin-bottom: 0.8rem;
 }
 
 .reservation-card:hover {
-  transform: translateY(-4px) scale(1.01);
+  transform: scale(1.01);
   border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6);
 }
 
-.reservation-card-glow {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: radial-gradient(circle at 50% 0%, var(--accent-soft), transparent 60%);
-  opacity: 0.5;
-  pointer-events: none;
+.card-date-column {
+  width: 75px;
+  min-width: 75px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.03);
+  border-right: 1px solid var(--glass-border);
+  padding: 1rem 0;
+}
+
+.card-date-month {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-dim);
+  font-weight: 800;
+}
+
+.card-date-day {
+  font-size: 1.8rem;
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+  margin-top: 2px;
 }
 
 .reservation-card-main {
   position: relative;
   z-index: 1;
-  padding: 1.15rem;
+  padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  justify-content: center;
+  flex: 1;
+  gap: 0.8rem;
 }
 
-.card-header {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-}
-
-.card-title-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.card-title {
-  font-size: 1.1rem;
-  color: #fff;
-  margin: 0;
-}
-
-.card-label {
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-dim);
-  font-weight: 700;
-  margin-bottom: 2px;
-}
-
-.card-time-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.07);
-  padding: 6px 12px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #fff;
-}
-
-.card-time-group svg {
-  opacity: 0.6;
-}
-
-.card-datetime-chips {
-  display: flex;
-  gap: 0.45rem;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-}
-
-.date-chip {
-  border-radius: 999px;
-  padding: 0.2rem 0.5rem;
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  background: rgba(255, 255, 255, 0.09);
-  border: 1px solid rgba(179, 207, 255, 0.35);
-  color: #e7f1ff;
-}
-
-.date-chip-icon {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.32rem;
-}
-
-.card-footer {
+.card-content-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid var(--glass-stroke);
-  padding-top: 0.82rem;
 }
 
-.player-stats {
+.card-title-main {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.card-time-pill {
+  background: var(--accent-light);
+  color: #fff;
+  padding: 5px 12px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.card-content-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.player-info-row {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -576,20 +549,71 @@ body::before {
 
 .mini-avatar {
   width: 32px;
-  /* Aumentado de 24px para mejor legibilidad de iniciales */
   height: 32px;
-  border-radius: 10px;
+  border-radius: 11px;
   background: var(--blue-700);
   border: 2px solid var(--blue-950);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.8rem;
-  /* Aumentado */
+  font-size: 0.85rem;
   font-weight: 800;
   margin-left: -10px;
   color: white;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.mini-avatar:first-child {
+  margin-left: 0;
+}
+
+.mini-avatar.more {
+  background: var(--accent);
+  color: var(--blue-950);
+  width: auto;
+  min-width: 32px;
+  padding: 0 6px;
+}
+
+.player-count {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.player-count strong {
+  color: #fff;
+  font-weight: 800;
+}
+
+.card-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 5px 12px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.badge-confirmed {
+  background: var(--success);
+  color: white;
+}
+
+.badge-maybe {
+  background: var(--accent);
+  color: var(--blue-950);
+}
+
+.badge-cancelled {
+  background: var(--danger);
+  color: white;
 }
 
 .mini-avatar:first-child {

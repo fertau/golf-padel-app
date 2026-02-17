@@ -10,24 +10,25 @@ export function Skeleton({ className, width, height, borderRadius = "4px" }: { c
 export function ReservationSkeleton() {
     return (
         <div className="reservation-card skeleton-card-elite">
+            <div className="card-date-column">
+                <Skeleton width="30px" height="8px" borderRadius="4px" />
+                <Skeleton width="40px" height="24px" borderRadius="6px" />
+            </div>
             <div className="reservation-card-main">
-                <div className="card-header">
-                    <div className="card-title-group" style={{ width: '100px' }}>
-                        <Skeleton width="40px" height="8px" borderRadius="4px" />
-                        <Skeleton width="100px" height="20px" borderRadius="6px" />
-                    </div>
-                    <Skeleton width="80px" height="24px" borderRadius="10px" />
+                <div className="card-content-top">
+                    <Skeleton width="120px" height="20px" borderRadius="6px" />
+                    <Skeleton width="60px" height="24px" borderRadius="10px" />
                 </div>
-                <div className="card-footer">
+                <div className="card-content-bottom">
                     <div className="player-stats">
                         <div className="avatar-stack">
                             {[1, 2, 3].map(i => (
-                                <Skeleton key={i} width="24px" height="24px" borderRadius="8px" className="mini-avatar-sk" />
+                                <Skeleton key={i} width="32px" height="32px" borderRadius="11px" className="mini-avatar-sk" />
                             ))}
                         </div>
-                        <Skeleton width="60px" height="12px" borderRadius="4px" />
+                        <Skeleton width="40px" height="12px" borderRadius="4px" />
                     </div>
-                    <Skeleton width="40px" height="24px" borderRadius="8px" />
+                    <Skeleton width="50px" height="24px" borderRadius="10px" />
                 </div>
             </div>
         </div>
