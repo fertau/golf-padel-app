@@ -1,5 +1,5 @@
 import type { Reservation, User } from "../lib/types";
-import { formatDateTime, getSignupsByStatus, getUserAttendance } from "../lib/utils";
+import { getSignupsByStatus, getUserAttendance } from "../lib/utils";
 
 type Props = {
   reservation: Reservation;
@@ -10,7 +10,13 @@ type Props = {
 
 export default function ReservationCard({ reservation, currentUser, onOpen, isExpanded }: Props) {
   const confirmed = getSignupsByStatus(reservation, "confirmed");
+  const maybe = getSignupsByStatus(reservation, "maybe");
+  const cancelled = getSignupsByStatus(reservation, "cancelled");
   const mine = getUserAttendance(reservation, currentUser.id);
+  const start = new Date(reservation.startDateTime);
+  const dayLabel = start.toLocaleDateString("es-AR", { weekday: "short" }).replace(".", "");
+  const dateLabel = start.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
+  const timeLabel = start.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false });
 
   return (
     <button
@@ -22,11 +28,12 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
         <div className="card-header">
           <div className="card-title-group">
             <span className="card-label">Cancha</span>
-            <strong className="text-dynamic" style={{ fontSize: '1.2rem', color: '#fff' }}>{reservation.courtName}</strong>
+            <strong className="text-dynamic card-title">{reservation.courtName}</strong>
           </div>
-          <div className="card-time-group">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-            <span>{formatDateTime(reservation.startDateTime)}</span>
+          <div className="card-datetime-chips" aria-label="Fecha y hora del partido">
+            <span className="date-chip">{dayLabel}</span>
+            <span className="date-chip">{dateLabel}</span>
+            <span className="date-chip">{timeLabel}</span>
           </div>
         </div>
 
@@ -39,15 +46,21 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
                 </div>
               ))}
               {confirmed.length > 3 && <div className="mini-avatar more">+{confirmed.length - 3}</div>}
-              {confirmed.length === 0 && <span className="empty-hint">Buscando jugadores...</span>}
+              {confirmed.length === 0 && <span className="empty-hint">Faltan jugadores...</span>}
             </div>
-            <span className="player-count"><strong>{confirmed.length}</strong>/4 Confirmed</span>
+            <span className="player-count">
+              <strong>Juego {confirmed.length}</strong> · Quizás {maybe.length} · No juego {cancelled.length}
+            </span>
           </div>
 
           <div className="card-badges">
             {mine && (
               <span className={`badge badge-mine badge-${mine.attendanceStatus}`}>
-                {mine.attendanceStatus === "confirmed" ? "Juego" : mine.attendanceStatus === "maybe" ? "Duda" : "Fuera"}
+                {mine.attendanceStatus === "confirmed"
+                  ? "Juego"
+                  : mine.attendanceStatus === "maybe"
+                    ? "Quizás"
+                    : "No juego"}
               </span>
             )}
             <div className="disclosure-chevron">

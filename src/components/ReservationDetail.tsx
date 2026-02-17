@@ -124,7 +124,7 @@ export default function ReservationDetail({
           <div key={signup.id} className="player-row-elite">
             <div className="player-avatar-mini">{formatSignupName(signup).charAt(0).toUpperCase()}</div>
             <span className="player-name">{formatSignupName(signup)}</span>
-            {index === 0 && label === "Confirmados" && <span className="host-label">Organizador</span>}
+            {index === 0 && label === "Juego" && <span className="host-label">Organizador</span>}
           </div>
         ))}
       </div>
@@ -153,7 +153,7 @@ export default function ReservationDetail({
       <div className="hero-stats-grid">
         <div className="hero-stat-card">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-          <div className="stat-info"><strong>{confirmed.length}/4</strong><span>Jugadores</span></div>
+          <div className="stat-info"><strong>{confirmed.length}</strong><span>Juego</span></div>
         </div>
         <div className="hero-stat-card">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
@@ -168,29 +168,29 @@ export default function ReservationDetail({
             className={`elite-choice confirmed ${myAttendance?.attendanceStatus === "confirmed" ? "active" : ""}`}
             onClick={() => handleSetAttendance("confirmed")}
           >
-            Confirmado
+            Juego
           </button>
           <button
             className={`elite-choice maybe ${myAttendance?.attendanceStatus === "maybe" ? "active" : ""}`}
             onClick={() => handleSetAttendance("maybe")}
             disabled={!myAttendance && !eligibility.ok}
           >
-            En duda
+            Quizás
           </button>
           <button
             className={`elite-choice cancelled ${myAttendance?.attendanceStatus === "cancelled" ? "active" : ""}`}
             onClick={() => handleSetAttendance("cancelled")}
           >
-            Fuera
+            No juego
           </button>
         </div>
         {!eligibility.ok && !myAttendance && <p className="eligibility-warning" style={{ marginTop: '0.8rem', fontSize: '0.8rem', color: 'var(--danger)' }}>{eligibility.reason}</p>}
       </section>
 
       <div className="players-section-elite" style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '20px', padding: '0.5rem' }}>
-        {renderPlayerList(confirmed, "Confirmados", true)}
+        {renderPlayerList(confirmed, "Juego", true)}
         {renderPlayerList(maybe, "Quizás")}
-        {renderPlayerList(cancelled, "No juegan")}
+        {renderPlayerList(cancelled, "No juego")}
       </div>
 
       <div className="actions-section-elite">

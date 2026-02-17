@@ -438,7 +438,7 @@ export default function App() {
                   <strong>{myPendingResponseCount}</strong>
                 </button>
                 <button className={`kpi-card kpi-action ${matchesFilter === "confirmed" ? "kpi-active" : ""}`} onClick={() => setMatchesFilter("confirmed")}>
-                  <span className="kpi-label">Confirmados</span>
+                  <span className="kpi-label">Juego</span>
                   <strong>{myConfirmedCount}</strong>
                 </button>
               </div>
