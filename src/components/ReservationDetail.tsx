@@ -1,9 +1,7 @@
 import { useState } from "react";
 import type { AttendanceStatus, Reservation, User } from "../lib/types";
 import {
-  buildWhatsAppMessage,
   canJoinReservation,
-  formatDateTime,
   getSignupsByStatus,
   getUserAttendance
 } from "../lib/utils";
@@ -37,31 +35,6 @@ export default function ReservationDetail({
   const endDate = new Date(startDate.getTime() + reservation.durationMinutes * 60 * 1000);
   const reservationUrl = `${appUrl}/r/${reservation.id}`;
 
-  const exportIcs = () => {
-    const ics = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "PRODID:-//GolfPadel//Reserva//ES",
-      "BEGIN:VEVENT",
-      `UID:${reservation.id}@golf-padel-app`,
-      `DTSTAMP:${toIcsDate(new Date())}`,
-      `DTSTART:${toIcsDate(startDate)}`,
-      `DTEND:${toIcsDate(endDate)}`,
-      `SUMMARY:Pádel - ${reservation.courtName}`,
-      `DESCRIPTION:Reserva creada por ${reservation.createdBy.name}.\\nLink: ${reservationUrl}`,
-      "END:VEVENT",
-      "END:VCALENDAR"
-    ].join("\r\n");
-
-    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `golf-padel-${reservation.courtName.toLowerCase().replace(/\s+/g, "-")}.ics`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  };
-
   const openGoogleCalendar = () => {
     const params = new URLSearchParams({
       action: "TEMPLATE",
@@ -71,56 +44,6 @@ export default function ReservationDetail({
     });
     window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, "_blank", "noopener,noreferrer");
   };
-
-  const openOutlookCalendar = () => {
-    const params = new URLSearchParams({
-      path: "/calendar/action/compose",
-      rru: "addevent",
-      subject: `Pádel - ${reservation.courtName}`,
-      startdt: startDate.toISOString(),
-      enddt: endDate.toISOString(),
-      body: `Reserva creada por ${reservation.createdBy.name}. ${reservationUrl}`
-    });
-    window.open(`https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`, "_blank", "noopener,noreferrer");
-  };
-
-  const IconWhatsApp = (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M12 3.3A8.7 8.7 0 0 0 4.5 16l-1.2 4.7L8 19.4A8.7 8.7 0 1 0 12 3.3Zm0 15.9a7.2 7.2 0 0 1-3.7-1L8 18l-2.6.7.7-2.5-.2-.4a7.2 7.2 0 1 1 6.1 3.4Zm4-5.4c-.2-.1-1.1-.6-1.3-.6s-.3-.1-.4.1c-.1.2-.5.6-.6.7-.1.1-.2.2-.4.1a5.9 5.9 0 0 1-1.7-1.1 6.4 6.4 0 0 1-1.2-1.5c-.1-.2 0-.3.1-.4l.3-.3.2-.3v-.3c0-.1-.4-1-.6-1.4-.2-.4-.3-.3-.4-.3h-.4c-.1 0-.3 0-.4.2-.1.2-.6.6-.6 1.4s.6 1.5.7 1.6c.1.1 1.2 2 2.9 2.8 1.7.7 1.7.5 2 .5.3 0 1.1-.4 1.3-.8.2-.4.2-.7.1-.8Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-  const IconShare = (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M12 3.5v10.2m0-10.2 3.2 3.1M12 3.5 8.8 6.6M5.2 11v6.6c0 .9.7 1.6 1.6 1.6h10.4c.9 0 1.6-.7 1.6-1.6V11"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-  const IconCopy = (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M9.2 7.2h8.1c.8 0 1.5.7 1.5 1.5v8.1c0 .8-.7 1.5-1.5 1.5H9.2c-.8 0-1.5-.7-1.5-1.5V8.7c0-.8.7-1.5 1.5-1.5Z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <path
-        d="M5.2 14.8V6.7c0-.8.7-1.5 1.5-1.5h8.1"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
   const isCreator = reservation.createdBy.id === currentUser.id;
   const [editing, setEditing] = useState(false);
   const [editCourtName, setEditCourtName] = useState(reservation.courtName);
@@ -130,30 +53,19 @@ export default function ReservationDetail({
   const [editDuration, setEditDuration] = useState(reservation.durationMinutes);
   const confirmed = getSignupsByStatus(reservation, "confirmed");
   const maybe = getSignupsByStatus(reservation, "maybe");
+  const cancelled = getSignupsByStatus(reservation, "cancelled");
   const myAttendance = getUserAttendance(reservation, currentUser.id);
 
+  const formatCompactDate = (iso: string): string => {
+    const date = new Date(iso);
+    const dd = `${date.getDate()}`.padStart(2, "0");
+    const mm = `${date.getMonth() + 1}`.padStart(2, "0");
+    const hh = `${date.getHours()}`.padStart(2, "0");
+    const min = `${date.getMinutes()}`.padStart(2, "0");
+    return `${dd}/${mm} ${hh}:${min}`;
+  };
+
   const eligibility = canJoinReservation(reservation, currentUser);
-
-  const message = buildWhatsAppMessage(reservation, appUrl);
-
-  const share = async () => {
-    if (navigator.share) {
-      await navigator.share({ title: "Reserva de padel", text: message });
-      return;
-    }
-    await navigator.clipboard.writeText(message);
-    alert("Mensaje copiado");
-  };
-
-  const copyMessage = async () => {
-    await navigator.clipboard.writeText(message);
-    alert("Mensaje copiado");
-  };
-
-  const openWhatsApp = () => {
-    const encodedMessage = encodeURIComponent(message);
-    window.open(`https://wa.me/?text=${encodedMessage}`, "_blank", "noopener,noreferrer");
-  };
 
   const submitEdit = () => {
     onUpdateReservation(reservation.id, {
@@ -177,43 +89,31 @@ export default function ReservationDetail({
         </div>
         <div className="detail-meta-item">
           <span>Fecha y hora</span>
-          <strong>{formatDateTime(reservation.startDateTime)}</strong>
+          <strong>{formatCompactDate(reservation.startDateTime)}</strong>
         </div>
         <div className="detail-meta-item">
           <span>Reservó</span>
-          <strong>{reservation.createdBy.name}</strong>
+          <small>{reservation.createdBy.name}</small>
         </div>
-      </div>
-      <div className="my-status-row">
-        <span className="kpi-label">Mi respuesta</span>
-        <strong>
-          {myAttendance?.attendanceStatus === "confirmed"
-            ? "Juego"
-            : myAttendance?.attendanceStatus === "maybe"
-              ? "Quizás"
-              : myAttendance?.attendanceStatus === "cancelled"
-                ? "No juego"
-                : "Sin responder"}
-        </strong>
       </div>
 
       <div className="actions">
         <button
-          className="success"
+          className={`success attendance-btn ${myAttendance?.attendanceStatus === "confirmed" ? "active" : ""}`}
           onClick={() => onSetAttendanceStatus(reservation.id, "confirmed")}
           disabled={myAttendance?.attendanceStatus === "confirmed"}
         >
-          Confirmá
+          Juego
         </button>
         <button
-          className="neutral"
+          className={`neutral attendance-btn ${myAttendance?.attendanceStatus === "maybe" ? "active" : ""}`}
           onClick={() => onSetAttendanceStatus(reservation.id, "maybe")}
           disabled={myAttendance?.attendanceStatus === "maybe" || (!myAttendance && !eligibility.ok)}
         >
           Quizás
         </button>
         <button
-          className="danger"
+          className={`danger attendance-btn ${myAttendance?.attendanceStatus === "cancelled" ? "active" : ""}`}
           onClick={() => onSetAttendanceStatus(reservation.id, "cancelled")}
           disabled={myAttendance?.attendanceStatus === "cancelled"}
         >
@@ -223,67 +123,60 @@ export default function ReservationDetail({
 
       {!eligibility.ok && !myAttendance ? <p className="warning">{eligibility.reason}</p> : null}
 
-      <div className="players-board">
-        <div className="player-list-card">
-          <div className="player-list-head">
-            <h3>Confirmados</h3>
-            <span className="meta-pill">{confirmed.length}</span>
-          </div>
-          {confirmed.length === 0 ? <p className="private-hint">Sin confirmados por ahora.</p> : null}
-          <div className="player-list">
+      <div className="players-accordion">
+        <details className="player-collapse" open>
+          <summary>
+            <span>Juego</span>
+            <strong>{confirmed.length}</strong>
+          </summary>
+          <div className="player-list compact">
+            {confirmed.length === 0 ? <p className="private-hint">Sin jugadores.</p> : null}
             {confirmed.map((signup, index) => (
-              <div key={signup.id} className="player-row">
+              <div key={signup.id} className="player-row compact">
                 <span className="player-index">{index + 1}</span>
                 <span className="player-name text-dynamic">{signup.userName}</span>
               </div>
             ))}
           </div>
-        </div>
+        </details>
 
-        <div className="player-list-card">
-          <div className="player-list-head">
-            <h3>Quizás</h3>
-            <span className="meta-pill">{maybe.length}</span>
-          </div>
-          {maybe.length === 0 ? <p className="private-hint">Sin jugadores en quizás.</p> : null}
-          <div className="player-list">
+        <details className="player-collapse">
+          <summary>
+            <span>Quizás</span>
+            <strong>{maybe.length}</strong>
+          </summary>
+          <div className="player-list compact">
+            {maybe.length === 0 ? <p className="private-hint">Sin jugadores.</p> : null}
             {maybe.map((signup, index) => (
-              <div key={signup.id} className="player-row">
+              <div key={signup.id} className="player-row compact">
                 <span className="player-index">{index + 1}</span>
                 <span className="player-name text-dynamic">{signup.userName}</span>
               </div>
             ))}
           </div>
-        </div>
-      </div>
+        </details>
 
-      <div className="actions actions-share">
-        <button className="action-ghost" onClick={openWhatsApp}>
-          <span className="button-icon" aria-hidden="true">{IconWhatsApp}</span>
-          Whatsapp
-        </button>
-        <button className="action-ghost" onClick={share}>
-          <span className="button-icon" aria-hidden="true">{IconShare}</span>
-          Compartir
-        </button>
-        <button className="action-ghost" onClick={copyMessage}>
-          <span className="button-icon" aria-hidden="true">{IconCopy}</span>
-          Copiar mensaje
-        </button>
+        <details className="player-collapse">
+          <summary>
+            <span>No juego</span>
+            <strong>{cancelled.length}</strong>
+          </summary>
+          <div className="player-list compact">
+            {cancelled.length === 0 ? <p className="private-hint">Sin jugadores.</p> : null}
+            {cancelled.map((signup, index) => (
+              <div key={signup.id} className="player-row compact">
+                <span className="player-index">{index + 1}</span>
+                <span className="player-name text-dynamic">{signup.userName}</span>
+              </div>
+            ))}
+          </div>
+        </details>
       </div>
 
       <div className="actions actions-calendar">
-        <button className="action-ghost" onClick={exportIcs}>
-          <span className="button-icon" aria-hidden="true">📅</span>
-          Calendar (.ics)
-        </button>
         <button className="action-ghost" onClick={openGoogleCalendar}>
           <span className="button-icon" aria-hidden="true">G</span>
-          Google
-        </button>
-        <button className="action-ghost" onClick={openOutlookCalendar}>
-          <span className="button-icon" aria-hidden="true">O</span>
-          Outlook
+          Agregar a Google Calendar
         </button>
       </div>
 

@@ -40,21 +40,41 @@ const ONE_TIME_CLEANUP_KEY = "golf-padel-cleanup-v1";
 const LOGIN_PENDING_KEY = "golf-padel-google-login-pending";
 
 const getDayStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+const toLocalDayKey = (date: Date): string =>
+  `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, "0")}-${`${date.getDate()}`.padStart(2, "0")}`;
+
+const parseReservationDate = (iso: string): Date => {
+  // Keep local interpretation for datetime-local strings and legacy ISO formats.
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(iso)) {
+    const [datePart, timePart] = iso.split("T");
+    const [year, month, day] = datePart.split("-").map(Number);
+    const [hour, minute] = timePart.split(":").map(Number);
+    return new Date(year, month - 1, day, hour, minute, 0, 0);
+  }
+  return new Date(iso);
+};
+
+const getEndOfWeek = (date: Date): Date => {
+  const local = getDayStart(date);
+  const day = local.getDay(); // 0 Sunday - 6 Saturday
+  const daysToSunday = day === 0 ? 0 : 7 - day;
+  return new Date(local.getFullYear(), local.getMonth(), local.getDate() + daysToSunday);
+};
 
 const getReservationDateGroup = (iso: string): ReservationDateGroup => {
   const now = new Date();
-  const today = getDayStart(now).getTime();
-  const tomorrow = today + 24 * 60 * 60 * 1000;
-  const weekLimit = today + 7 * 24 * 60 * 60 * 1000;
-  const target = getDayStart(new Date(iso)).getTime();
+  const today = getDayStart(now);
+  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  const endOfWeek = getEndOfWeek(now);
+  const target = getDayStart(parseReservationDate(iso));
 
-  if (target === today) {
+  if (toLocalDayKey(target) === toLocalDayKey(today)) {
     return "hoy";
   }
-  if (target === tomorrow) {
+  if (toLocalDayKey(target) === toLocalDayKey(tomorrow)) {
     return "manana";
   }
-  if (target > tomorrow && target <= weekLimit) {
+  if (target > tomorrow && target <= endOfWeek) {
     return "esta-semana";
   }
   return "mas-adelante";
