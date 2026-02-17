@@ -12,9 +12,24 @@ service cloud.firestore {
     match /reservations/{reservationId} {
       allow read: if true;
 
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() &&
+        request.resource.data.createdByAuthUid == request.auth.uid;
 
-      allow update: if isSignedIn();
+      allow update: if isSignedIn() &&
+        request.resource.data.createdByAuthUid == resource.data.createdByAuthUid &&
+        (
+          resource.data.createdByAuthUid == request.auth.uid ||
+          (
+            request.resource.data.courtName == resource.data.courtName &&
+            request.resource.data.startDateTime == resource.data.startDateTime &&
+            request.resource.data.durationMinutes == resource.data.durationMinutes &&
+            request.resource.data.createdBy == resource.data.createdBy &&
+            request.resource.data.screenshotUrl == resource.data.screenshotUrl &&
+            request.resource.data.rules == resource.data.rules &&
+            request.resource.data.status == resource.data.status &&
+            request.resource.data.createdAt == resource.data.createdAt
+          )
+        );
 
       allow delete: if false;
     }

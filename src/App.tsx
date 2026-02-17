@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import ReservationCard from "./components/ReservationCard";
 import ReservationDetail from "./components/ReservationDetail";
 import ReservationForm from "./components/ReservationForm";
@@ -14,6 +15,7 @@ import {
 import { registerPushToken } from "./lib/push";
 import type { AttendanceStatus, Reservation, User } from "./lib/types";
 import { getSignupsByStatus, slugifyId } from "./lib/utils";
+import { auth } from "./lib/firebase";
 
 const USER_KEY = "golf-padel-local-user";
 
@@ -61,6 +63,25 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribe = subscribeReservations(setReservations);
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    const firebaseAuth = auth;
+    if (!isCloudDbEnabled() || !firebaseAuth) {
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(firebaseAuth, (firebaseUser) => {
+      if (!firebaseUser) {
+        void signInAnonymously(firebaseAuth);
+      }
+    });
+
+    if (!firebaseAuth.currentUser) {
+      void signInAnonymously(firebaseAuth);
+    }
+
     return unsubscribe;
   }, []);
 

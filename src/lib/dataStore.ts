@@ -8,7 +8,7 @@ import {
   setDoc
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadString } from "firebase/storage";
-import { db, firebaseEnabled, storage } from "./firebase";
+import { auth, db, firebaseEnabled, storage } from "./firebase";
 import {
   createReservationLocal,
   setAttendanceStatusLocal,
@@ -73,6 +73,7 @@ export const createReservation = async (input: ReservationInput, currentUser: Us
     startDateTime: input.startDateTime,
     durationMinutes: input.durationMinutes,
     createdBy: currentUser,
+    createdByAuthUid: auth?.currentUser?.uid,
     screenshotUrl,
     rules: {
       maxPlayersAccepted: input.rules?.maxPlayersAccepted ?? 9999,
@@ -110,6 +111,11 @@ export const updateReservationRules = async (
   }
 
   await runTransaction(cloudDb, async (transaction) => {
+    const actorAuthUid = auth?.currentUser?.uid;
+    if (!actorAuthUid) {
+      throw new Error("Necesitás iniciar sesión para editar reglas");
+    }
+
     const reservationRef = doc(cloudDb, "reservations", reservationId);
     const snapshot = await transaction.get(reservationRef);
 
@@ -119,7 +125,11 @@ export const updateReservationRules = async (
 
     const reservation = normalizeReservation(reservationId, snapshot.data() as Omit<Reservation, "id">);
 
-    if (reservation.createdBy.id !== currentUser.id) {
+    if (
+      reservation.createdByAuthUid
+        ? reservation.createdByAuthUid !== actorAuthUid
+        : reservation.createdBy.id !== currentUser.id
+    ) {
       throw new Error("Solo el creador puede editar reglas");
     }
 
@@ -145,6 +155,11 @@ export const setAttendanceStatus = async (
   }
 
   await runTransaction(cloudDb, async (transaction) => {
+    const actorAuthUid = auth?.currentUser?.uid;
+    if (!actorAuthUid) {
+      throw new Error("Necesitás iniciar sesión para actualizar asistencia");
+    }
+
     const reservationRef = doc(cloudDb, "reservations", reservationId);
     const snapshot = await transaction.get(reservationRef);
 
@@ -154,7 +169,9 @@ export const setAttendanceStatus = async (
 
     const reservation = normalizeReservation(reservationId, snapshot.data() as Omit<Reservation, "id">);
 
-    const existing = reservation.signups.find((signup) => signup.userId === user.id);
+    const existing = reservation.signups.find(
+      (signup) => signup.authUid === actorAuthUid || signup.userId === user.id
+    );
 
     if (!existing && status !== "cancelled") {
       const eligibility = canJoinReservation(reservation, user);
@@ -171,6 +188,7 @@ export const setAttendanceStatus = async (
           ? {
               ...signup,
               userName: user.name,
+              authUid: actorAuthUid,
               attendanceStatus: status,
               updatedAt: nowIso()
             }
@@ -183,6 +201,7 @@ export const setAttendanceStatus = async (
           id: crypto.randomUUID(),
           reservationId,
           userId: user.id,
+          authUid: actorAuthUid,
           userName: user.name,
           createdAt: nowIso(),
           updatedAt: nowIso(),
@@ -215,6 +234,11 @@ export const cancelReservation = async (reservationId: string, currentUser: User
   }
 
   await runTransaction(cloudDb, async (transaction) => {
+    const actorAuthUid = auth?.currentUser?.uid;
+    if (!actorAuthUid) {
+      throw new Error("Necesitás iniciar sesión para cancelar");
+    }
+
     const reservationRef = doc(cloudDb, "reservations", reservationId);
     const snapshot = await transaction.get(reservationRef);
 
@@ -224,7 +248,11 @@ export const cancelReservation = async (reservationId: string, currentUser: User
 
     const reservation = normalizeReservation(reservationId, snapshot.data() as Omit<Reservation, "id">);
 
-    if (reservation.createdBy.id !== currentUser.id) {
+    if (
+      reservation.createdByAuthUid
+        ? reservation.createdByAuthUid !== actorAuthUid
+        : reservation.createdBy.id !== currentUser.id
+    ) {
       throw new Error("Solo el creador puede cancelar");
     }
 
@@ -258,6 +286,11 @@ export const updateReservationScreenshot = async (
   const nextUrl = await uploadScreenshotIfNeeded(reservationId, screenshotUrl);
 
   await runTransaction(cloudDb, async (transaction) => {
+    const actorAuthUid = auth?.currentUser?.uid;
+    if (!actorAuthUid) {
+      throw new Error("Necesitás iniciar sesión para actualizar captura");
+    }
+
     const reservationRef = doc(cloudDb, "reservations", reservationId);
     const snapshot = await transaction.get(reservationRef);
 
@@ -266,7 +299,11 @@ export const updateReservationScreenshot = async (
     }
 
     const reservation = normalizeReservation(reservationId, snapshot.data() as Omit<Reservation, "id">);
-    if (reservation.createdBy.id !== currentUser.id) {
+    if (
+      reservation.createdByAuthUid
+        ? reservation.createdByAuthUid !== actorAuthUid
+        : reservation.createdBy.id !== currentUser.id
+    ) {
       throw new Error("Solo el creador puede cambiar la captura");
     }
 

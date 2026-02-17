@@ -37,6 +37,7 @@ export type Signup = {
   id: string;
   reservationId: string;
   userId: string;
+  authUid?: string;
   userName: string;
   createdAt: string;
   updatedAt: string;
@@ -49,6 +50,7 @@ export type Reservation = {
   startDateTime: string;
   durationMinutes: number;
   createdBy: User;
+  createdByAuthUid?: string;
   screenshotUrl?: string;
   rules: ReservationRules;
   signups: Signup[];

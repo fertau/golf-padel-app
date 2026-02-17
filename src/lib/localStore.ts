@@ -58,6 +58,7 @@ export const createReservationLocal = (input: ReservationInput, currentUser: Use
     startDateTime: input.startDateTime,
     durationMinutes: input.durationMinutes,
     createdBy: currentUser,
+    createdByAuthUid: undefined,
     screenshotUrl: input.screenshotUrl,
     rules: {
       maxPlayersAccepted: input.rules?.maxPlayersAccepted ?? 9999,
@@ -132,6 +133,7 @@ export const setAttendanceStatusLocal = (
       id: crypto.randomUUID(),
       reservationId,
       userId: user.id,
+      authUid: undefined,
       userName: user.name,
       createdAt: nowIso(),
       updatedAt: nowIso(),
