@@ -536,6 +536,43 @@ button.neutral {
   gap: 0.55rem;
 }
 
+.my-summary {
+  gap: 0.7rem;
+}
+
+.upcoming-wrap {
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.65rem 0.75rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.upcoming-wrap h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.upcoming-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.34rem;
+}
+
+.upcoming-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.upcoming-list li span {
+  color: var(--text-dim);
+}
+
 .kpi-card {
   border: 1px solid var(--stroke);
   border-radius: 12px;

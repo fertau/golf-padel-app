@@ -27,7 +27,7 @@ import {
 } from "./lib/dataStore";
 import { registerPushToken } from "./lib/push";
 import type { AttendanceStatus, Reservation, User } from "./lib/types";
-import { getSignupsByStatus } from "./lib/utils";
+import { getSignupsByStatus, getUserAttendance } from "./lib/utils";
 import { auth } from "./lib/firebase";
 
 type TabId = "mis-partidos" | "mis-reservas" | "perfil";
@@ -192,6 +192,56 @@ export default function App() {
     [activeReservations]
   );
 
+  const myConfirmedCount = useMemo(
+    () =>
+      activeReservations.filter(
+        (reservation) =>
+          getUserAttendance(reservation, currentUser?.id ?? "")?.attendanceStatus === "confirmed"
+      ).length,
+    [activeReservations, currentUser]
+  );
+
+  const myMaybeCount = useMemo(
+    () =>
+      activeReservations.filter(
+        (reservation) =>
+          getUserAttendance(reservation, currentUser?.id ?? "")?.attendanceStatus === "maybe"
+      ).length,
+    [activeReservations, currentUser]
+  );
+
+  const myPendingResponseCount = useMemo(
+    () =>
+      activeReservations.filter(
+        (reservation) => !getUserAttendance(reservation, currentUser?.id ?? "")
+      ).length,
+    [activeReservations, currentUser]
+  );
+
+  const myCreatedCount = useMemo(
+    () =>
+      activeReservations.filter((reservation) =>
+        Boolean(currentUser && reservation.createdByAuthUid === currentUser.id)
+      ).length,
+    [activeReservations, currentUser]
+  );
+
+  const myUpcomingConfirmed = useMemo(
+    () =>
+      activeReservations
+        .filter(
+          (reservation) =>
+            getUserAttendance(reservation, currentUser?.id ?? "")?.attendanceStatus === "confirmed" &&
+            new Date(reservation.startDateTime).getTime() >= Date.now()
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime()
+        )
+        .slice(0, 3),
+    [activeReservations, currentUser]
+  );
+
   const isSynchronized = Boolean(
     currentUser && isCloudDbEnabled() && isOnline
   );
@@ -322,11 +372,13 @@ export default function App() {
     }
   };
 
-  const renderReservationList = (items: Reservation[], emptyText: string) => (
+  const renderReservationList = (
+    items: Reservation[],
+    emptyText: string,
+    subtitle: string
+  ) => (
     <section className="panel">
-      <p className="private-hint">
-        {items.length} reservas · {totalConfirmedAttendances} asistencias confirmadas
-      </p>
+      <p className="private-hint">{subtitle}</p>
       <div className="list">
         {items.length === 0 ? <p>{emptyText}</p> : null}
         {items.map((reservation) => (
@@ -391,8 +443,49 @@ export default function App() {
           </div>
         </header>
 
+        {activeTab === "mis-partidos" ? (
+          <section className="panel my-summary">
+            <div className="detail-kpis">
+              <div className="kpi-card">
+                <span className="kpi-label">Por responder</span>
+                <strong>{myPendingResponseCount}</strong>
+              </div>
+              <div className="kpi-card">
+                <span className="kpi-label">Confirmados por mí</span>
+                <strong>{myConfirmedCount}</strong>
+              </div>
+              <div className="kpi-card">
+                <span className="kpi-label">Quizás por mí</span>
+                <strong>{myMaybeCount}</strong>
+              </div>
+            </div>
+            <p className="private-hint">
+              Creados por mí: {myCreatedCount} · Confirmados totales del grupo: {totalConfirmedAttendances}
+            </p>
+            <div className="upcoming-wrap">
+              <h3>Próximos partidos (confirmados por mí)</h3>
+              {myUpcomingConfirmed.length === 0 ? (
+                <p className="private-hint">Todavía no confirmaste próximos partidos.</p>
+              ) : (
+                <ul className="upcoming-list">
+                  {myUpcomingConfirmed.map((reservation) => (
+                    <li key={`upcoming-${reservation.id}`}>
+                      <strong>{reservation.courtName}</strong>
+                      <span>{new Date(reservation.startDateTime).toLocaleString("es-AR", { hour12: false })}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+        ) : null}
+
         {activeTab === "mis-partidos"
-          ? renderReservationList(myMatches, "No hay reservas activas por ahora.")
+          ? renderReservationList(
+            myMatches,
+            "No hay reservas activas por ahora.",
+            "Reservas activas del grupo. Definí tu estado en cada partido."
+          )
           : null}
 
         {activeTab === "mis-reservas" ? (
@@ -410,7 +503,11 @@ export default function App() {
                 onCancel={() => setShowCreateForm(false)}
               />
             )}
-            {renderReservationList(myReservations, "Todavía no creaste reservas.")}
+            {renderReservationList(
+              myReservations,
+              "Todavía no creaste reservas.",
+              "Reservas creadas por vos."
+            )}
           </>
         ) : null}
 
