@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
-  signInWithPopup,
   signInWithRedirect,
   signOut,
   type User as FirebaseUser
@@ -31,6 +30,7 @@ type TabId = "mis-partidos" | "mis-reservas" | "perfil";
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
+const ONE_TIME_CLEANUP_KEY = "golf-padel-cleanup-v1";
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -45,6 +45,22 @@ export default function App() {
   useEffect(() => {
     const splashTimer = window.setTimeout(() => setShowSplash(false), 3000);
     return () => window.clearTimeout(splashTimer);
+  }, []);
+
+  useEffect(() => {
+    if (localStorage.getItem(ONE_TIME_CLEANUP_KEY) === "done") {
+      return;
+    }
+
+    const legacyKeys = [
+      "golf-padel-auth",
+      "golf-padel-accounts",
+      "current_player_id",
+      "remembered_accounts",
+      "golf-padel-local-user"
+    ];
+    legacyKeys.forEach((key) => localStorage.removeItem(key));
+    localStorage.setItem(ONE_TIME_CLEANUP_KEY, "done");
   }, []);
 
   useEffect(() => {
@@ -119,9 +135,9 @@ export default function App() {
 
     try {
       setBusy(true);
-      await signInWithPopup(auth, googleProvider);
-    } catch {
       await signInWithRedirect(auth, googleProvider);
+    } catch (error) {
+      alert((error as Error).message);
     } finally {
       setBusy(false);
     }
@@ -131,8 +147,15 @@ export default function App() {
     if (!auth) {
       return;
     }
-    await signOut(auth);
-    setExpandedReservationId(null);
+    try {
+      setBusy(true);
+      await signOut(auth);
+      setExpandedReservationId(null);
+    } catch (error) {
+      alert((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const onCreateReservation: React.ComponentProps<typeof ReservationForm>["onCreate"] = async (payload) => {

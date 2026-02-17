@@ -14,7 +14,7 @@ export default function AuthView({ onLoginWithGoogle, busy }: Props) {
                         <img src="/apple-touch-icon.png" alt="Golf Padel" className="auth-logo" />
                     </div>
                     <h1>Golf Padel App</h1>
-                    <p className="auth-tagline">Reserva tu cancha, viví el pádel.</p>
+                    <p className="auth-tagline">Anotate!!</p>
                 </header>
 
                 <section className="auth-actions">
