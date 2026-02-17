@@ -132,7 +132,7 @@ export default function ReservationDetail({
         </div>
       </div>
       <div className="my-status-row">
-        <span className="kpi-label">Mi estado</span>
+        <span className="kpi-label">Mi respuesta</span>
         <strong>
           {myAttendance?.attendanceStatus === "confirmed"
             ? "Juego"
@@ -140,7 +140,7 @@ export default function ReservationDetail({
               ? "Quizás"
               : myAttendance?.attendanceStatus === "cancelled"
                 ? "No juego"
-              : "Sin definir"}
+                : "Sin responder"}
         </strong>
       </div>
 
@@ -150,7 +150,7 @@ export default function ReservationDetail({
           onClick={() => onSetAttendanceStatus(reservation.id, "confirmed")}
           disabled={myAttendance?.attendanceStatus === "confirmed"}
         >
-          Juego
+          Confirmá
         </button>
         <button
           className="neutral"

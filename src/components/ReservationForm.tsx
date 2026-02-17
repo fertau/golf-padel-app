@@ -73,8 +73,8 @@ export default function ReservationForm({ onCreate, onCancel, currentUser }: Pro
 
   return (
     <form className="panel" onSubmit={handleSubmit}>
-      <h2>Registrar nueva reserva</h2>
-      <p className="private-hint">{currentUser.name}, cargá la fecha, cancha y horario.</p>
+      <h2 className="section-title">Reservá un partido</h2>
+      <p className="private-hint">{currentUser.name}, cargá cancha, fecha y horario.</p>
 
       <div className="field-group">
         <p className="field-title">Cancha</p>
@@ -152,10 +152,10 @@ export default function ReservationForm({ onCreate, onCancel, currentUser }: Pro
 
       <div className="actions">
         <button type="submit" disabled={!hasValidTime}>
-          Guardar reserva
+          Reservá
         </button>
         <button type="button" onClick={onCancel}>
-          Volver
+          Cancelar
         </button>
       </div>
     </form>

@@ -435,6 +435,14 @@ body {
   box-shadow: var(--shadow-soft);
 }
 
+.section-title {
+  margin: 0;
+  font-family: "Sora", sans-serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
 input,
 select {
   border-radius: 14px;
@@ -563,14 +571,45 @@ button.neutral {
 }
 
 .upcoming-list li {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 0.6rem;
+  align-items: center;
   font-size: 0.9rem;
+  padding: 0.2rem 0;
 }
 
 .upcoming-list li span {
   color: var(--text-dim);
+}
+
+.upcoming-date {
+  border-radius: 12px;
+  border: 1px solid rgba(183, 208, 255, 0.35);
+  background: rgba(6, 35, 98, 0.45);
+  display: grid;
+  justify-items: center;
+  padding: 0.3rem 0.2rem;
+}
+
+.upcoming-date span {
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+}
+
+.upcoming-date strong {
+  font-size: 1.05rem;
+}
+
+.upcoming-content {
+  display: grid;
+  gap: 0.08rem;
+}
+
+.upcoming-content p {
+  margin: 0;
+  font-weight: 700;
 }
 
 .kpi-card {
@@ -580,6 +619,22 @@ button.neutral {
   background: rgba(255, 255, 255, 0.04);
   display: grid;
   gap: 0.16rem;
+}
+
+.kpi-action {
+  text-align: left;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.kpi-action:hover {
+  transform: none;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.kpi-active {
+  border-color: rgba(211, 229, 255, 0.7);
+  background: linear-gradient(160deg, rgba(25, 96, 230, 0.45), rgba(255, 255, 255, 0.08));
 }
 
 .kpi-label {
@@ -866,6 +921,10 @@ ul {
 @media (max-width: 420px) {
   .list-grid {
     grid-template-columns: 1fr;
+  }
+
+  .detail-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .actions-share {
