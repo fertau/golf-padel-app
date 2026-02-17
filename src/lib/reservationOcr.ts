@@ -1,8 +1,8 @@
-export type RecognizedReservation = {
-  courtName?: string;
-  startDateTime?: string;
-  durationMinutes?: number;
+import { parseReservationFromText, type RecognizedReservation } from "./ocrParser";
+
+type OcrResponse = {
   rawText: string;
+  provider: "server" | "local";
 };
 
 type DetectedTextBlock = {
@@ -17,97 +17,94 @@ type WindowWithTextDetector = Window & {
   TextDetector?: new () => TextDetectorLike;
 };
 
-const toDateTimeLocal = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-  const hour = `${date.getHours()}`.padStart(2, "0");
-  const minute = `${date.getMinutes()}`.padStart(2, "0");
-  return `${year}-${month}-${day}T${hour}:${minute}`;
+const toBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+const extractTextWithServer = async (file: File): Promise<OcrResponse> => {
+  const imageBase64 = await toBase64(file);
+  const response = await fetch("/api/ocr", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      imageBase64
+    })
+  });
+
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(errorPayload?.error ?? "No se pudo ejecutar OCR en servidor.");
+  }
+
+  const payload = (await response.json()) as { rawText?: string };
+  if (!payload.rawText?.trim()) {
+    throw new Error("El OCR servidor no detectó texto.");
+  }
+
+  return {
+    rawText: payload.rawText,
+    provider: "server"
+  };
 };
 
-const parseDateTime = (raw: string): string | undefined => {
-  const normalized = raw.replace(/\s+/g, " ");
-
-  const isoDate = normalized.match(/(20\d{2})[-/](\d{1,2})[-/](\d{1,2}).*?(\d{1,2}):(\d{2})/);
-  if (isoDate) {
-    const [, year, month, day, hour, minute] = isoDate;
-    const parsed = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
-    if (!Number.isNaN(parsed.getTime())) {
-      return toDateTimeLocal(parsed);
-    }
-  }
-
-  const latamDate = normalized.match(/(\d{1,2})[/-](\d{1,2})[/-](20\d{2}).*?(\d{1,2}):(\d{2})/);
-  if (latamDate) {
-    const [, day, month, year, hour, minute] = latamDate;
-    const parsed = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
-    if (!Number.isNaN(parsed.getTime())) {
-      return toDateTimeLocal(parsed);
-    }
-  }
-
-  return undefined;
-};
-
-const parseDuration = (raw: string): number | undefined => {
-  const durationMatch = raw.match(/(\d{2,3})\s*(min|mins|m|minutes?)/i);
-  if (!durationMatch) {
-    return undefined;
-  }
-
-  const value = Number(durationMatch[1]);
-  if (Number.isNaN(value) || value < 30 || value > 240) {
-    return undefined;
-  }
-
-  return value;
-};
-
-const parseCourt = (raw: string): string | undefined => {
-  const lines = raw
-    .split(/\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  const labeled = lines.find((line) => /cancha|court|padel/i.test(line));
-  if (labeled) {
-    const cleaned = labeled.replace(/(cancha|court|padel)\s*[:\-]?\s*/i, "").trim();
-    return cleaned || labeled;
-  }
-
-  const firstHumanLine = lines.find((line) => line.length >= 3 && line.length <= 38 && !/\d{1,2}[/:]\d{2}/.test(line));
-  return firstHumanLine;
-};
-
-const extractTextFromImage = async (file: File): Promise<string> => {
+const extractTextWithLocalDetector = async (file: File): Promise<OcrResponse> => {
   const windowWithDetector = window as WindowWithTextDetector;
   const Detector = windowWithDetector.TextDetector;
 
   if (!Detector) {
-    throw new Error("Este navegador no soporta OCR automático. Completá datos manualmente.");
+    throw new Error("Este navegador no soporta OCR local.");
   }
 
   const bitmap = await createImageBitmap(file);
   try {
     const detector = new Detector();
     const blocks = await detector.detect(bitmap);
-    return blocks
+    const rawText = blocks
       .map((block) => block.rawValue?.trim())
       .filter((value): value is string => Boolean(value))
       .join("\n");
+
+    if (!rawText.trim()) {
+      throw new Error("El OCR local no detectó texto.");
+    }
+
+    return {
+      rawText,
+      provider: "local"
+    };
   } finally {
     bitmap.close();
   }
 };
 
-export const recognizeReservationFromImage = async (file: File): Promise<RecognizedReservation> => {
-  const rawText = await extractTextFromImage(file);
-
-  return {
-    courtName: parseCourt(rawText),
-    startDateTime: parseDateTime(rawText),
-    durationMinutes: parseDuration(rawText),
-    rawText
-  };
+export const recognizeReservationFromImage = async (
+  file: File
+): Promise<RecognizedReservation & { provider: "server" | "local" }> => {
+  try {
+    const serverResult = await extractTextWithServer(file);
+    return {
+      ...parseReservationFromText(serverResult.rawText),
+      provider: serverResult.provider
+    };
+  } catch (serverError) {
+    try {
+      const localResult = await extractTextWithLocalDetector(file);
+      return {
+        ...parseReservationFromText(localResult.rawText),
+        provider: localResult.provider
+      };
+    } catch {
+      throw new Error(
+        `No se pudo analizar la imagen en servidor ni en este dispositivo. ${
+          serverError instanceof Error ? serverError.message : ""
+        }`.trim()
+      );
+    }
+  }
 };

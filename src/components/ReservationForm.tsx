@@ -56,7 +56,11 @@ export default function ReservationForm({ onCreate, onCancel, currentUser }: Pro
       }
 
       if (recognized.courtName || recognized.startDateTime || recognized.durationMinutes) {
-        setAnalysisMessage("Datos detectados automáticamente. Revisalos antes de guardar.");
+        setAnalysisMessage(
+          recognized.provider === "server"
+            ? "Datos detectados automáticamente (OCR servidor). Revisalos antes de guardar."
+            : "Datos detectados automáticamente (OCR local). Revisalos antes de guardar."
+        );
       } else {
         setAnalysisMessage("No se detectaron todos los datos. Completalos manualmente.");
       }
