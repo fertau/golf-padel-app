@@ -193,6 +193,14 @@ button.danger,
   background: linear-gradient(145deg, #ff7d84, #be3c46);
 }
 
+button.success {
+  background: linear-gradient(145deg, #38d78e, #1f9663);
+}
+
+button.neutral {
+  background: linear-gradient(145deg, #5f6b82, #424c60);
+}
+
 .check {
   display: flex;
   align-items: center;

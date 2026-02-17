@@ -80,22 +80,25 @@ export default function ReservationDetail({
 
       <div className="actions">
         <button
+          className="success"
           onClick={() => onSetAttendanceStatus(reservation.id, "confirmed")}
           disabled={myAttendance?.attendanceStatus === "confirmed"}
         >
-          Confirmar
+          Juego
         </button>
         <button
+          className="neutral"
           onClick={() => onSetAttendanceStatus(reservation.id, "maybe")}
           disabled={myAttendance?.attendanceStatus === "maybe" || (!myAttendance && !eligibility.ok)}
         >
           Quizás
         </button>
         <button
+          className="danger"
           onClick={() => onSetAttendanceStatus(reservation.id, "cancelled")}
           disabled={!myAttendance}
         >
-          Cancelar confirmación
+          No juego
         </button>
       </div>
 

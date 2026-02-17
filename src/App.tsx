@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { onAuthStateChanged, signInWithCustomToken, signOut } from "firebase/auth";
-import AccountSelector from "./components/AccountSelector";
+import {
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithPopup,
+  signInWithRedirect,
+  signOut,
+  type User as FirebaseUser
+} from "firebase/auth";
 import ReservationCard from "./components/ReservationCard";
 import ReservationDetail from "./components/ReservationDetail";
 import ReservationForm from "./components/ReservationForm";
@@ -17,47 +23,21 @@ import { registerPushToken } from "./lib/push";
 import type { AttendanceStatus, Reservation, User } from "./lib/types";
 import { getSignupsByStatus } from "./lib/utils";
 import { auth } from "./lib/firebase";
-import { loginWithPin, registerAccount, type AccountProfile } from "./lib/authApi";
-import { useAuthStore } from "./stores/useAuthStore";
-import { useUserStore } from "./stores/useUserStore";
 
 type TabId = "mis-partidos" | "mis-reservas" | "perfil";
+
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: "select_account" });
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [expandedReservationId, setExpandedReservationId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("mis-partidos");
   const [showCreateForm, setShowCreateForm] = useState(false);
-
-  const currentUserId = useAuthStore((state) => state.currentUserId);
-  const rememberedIds = useAuthStore((state) => state.rememberedIds);
-  const setCurrentUserId = useAuthStore((state) => state.setCurrentUserId);
-  const remember = useAuthStore((state) => state.remember);
-  const forget = useAuthStore((state) => state.forget);
-  const logoutStore = useAuthStore((state) => state.logout);
-
-  const profilesById = useUserStore((state) => state.profilesById);
-  const upsertProfiles = useUserStore((state) => state.upsertProfiles);
-  const loadRememberedProfiles = useUserStore((state) => state.loadRememberedProfiles);
-  const searchExactByName = useUserStore((state) => state.searchExactByName);
-
-  const currentProfile = currentUserId ? profilesById[currentUserId] : undefined;
-  const currentUser: User | null = currentProfile
-    ? {
-        id: currentProfile.id,
-        name: currentProfile.name
-      }
-    : null;
-
-  const rememberedAccounts = useMemo(
-    () =>
-      rememberedIds
-        .map((id) => profilesById[id])
-        .filter((profile): profile is AccountProfile => Boolean(profile)),
-    [profilesById, rememberedIds]
-  );
 
   useEffect(() => {
     const splashTimer = window.setTimeout(() => setShowSplash(false), 3000);
@@ -65,55 +45,43 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!currentUserId) {
+    if (!auth) {
+      setAuthLoading(false);
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
+      setFirebaseUser(nextUser);
+      setAuthLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (!firebaseUser) {
       setReservations([]);
       return;
     }
     const unsubscribe = subscribeReservations(setReservations);
     return unsubscribe;
-  }, [currentUserId]);
-
-  useEffect(() => {
-    const firebaseAuth = auth;
-    if (!isCloudDbEnabled() || !firebaseAuth) {
-      return;
-    }
-
-    const unsubscribe = onAuthStateChanged(firebaseAuth, (firebaseUser) => {
-      if (!firebaseUser) {
-        logoutStore();
-      }
-    });
-
-    return unsubscribe;
-  }, [logoutStore]);
+  }, [firebaseUser]);
 
   useEffect(() => {
     const pathMatch = window.location.pathname.match(/^\/r\/([a-zA-Z0-9-]+)$/);
     if (!pathMatch) {
       return;
     }
-
     setExpandedReservationId(pathMatch[1]);
     setActiveTab("mis-partidos");
   }, []);
 
-  useEffect(() => {
-    const idsToLoad = Array.from(new Set([...(currentUserId ? [currentUserId] : []), ...rememberedIds]));
-    if (idsToLoad.length === 0) {
-      return;
-    }
-
-    void loadRememberedProfiles(idsToLoad).then((profiles) => {
-      if (!currentUserId) {
-        return;
+  const currentUser: User | null = firebaseUser
+    ? {
+        id: firebaseUser.uid,
+        name: firebaseUser.displayName || firebaseUser.email || "Jugador"
       }
-      const exists = profiles.some((profile) => profile.id === currentUserId);
-      if (!exists) {
-        logoutStore();
-      }
-    });
-  }, [currentUserId, loadRememberedProfiles, logoutStore, rememberedIds]);
+    : null;
 
   const activeReservations = useMemo(
     () => reservations.filter((reservation) => reservation.status === "active"),
@@ -125,7 +93,7 @@ export default function App() {
   const myReservations = useMemo(
     () =>
       activeReservations.filter((reservation) =>
-        Boolean(currentUser && reservation.createdBy.id === currentUser.id)
+        Boolean(currentUser && reservation.createdByAuthUid === currentUser.id)
       ),
     [activeReservations, currentUser]
   );
@@ -139,43 +107,24 @@ export default function App() {
     [activeReservations]
   );
 
-  const onLogin = async (playerId: string, pin: string) => {
-    const result = await loginWithPin(playerId, pin);
-    if (auth) {
-      await signInWithCustomToken(auth, result.customToken);
-    }
-    upsertProfiles([result.profile]);
-    setCurrentUserId(result.profile.id);
-    remember(result.profile.id);
-  };
-
-  const onCreate = async (name: string, pin: string) => {
-    const result = await registerAccount(name, pin);
-    if (result.status === "exists") {
-      upsertProfiles([result.profile]);
-      return {
-        redirectedToLogin: true,
-        player: result.profile
-      };
+  const loginGoogle = async () => {
+    if (!auth) {
+      alert("Firebase Auth no está configurado.");
+      return;
     }
 
-    if (auth) {
-      await signInWithCustomToken(auth, result.customToken);
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch {
+      await signInWithRedirect(auth, googleProvider);
     }
-    upsertProfiles([result.profile]);
-    setCurrentUserId(result.profile.id);
-    remember(result.profile.id);
-    return {
-      redirectedToLogin: false,
-      player: result.profile
-    };
   };
 
   const logout = async () => {
-    if (auth) {
-      await signOut(auth);
+    if (!auth) {
+      return;
     }
-    logoutStore();
+    await signOut(auth);
     setExpandedReservationId(null);
   };
 
@@ -183,7 +132,6 @@ export default function App() {
     if (!currentUser) {
       return;
     }
-
     try {
       setBusy(true);
       await createReservation(payload, currentUser);
@@ -200,7 +148,6 @@ export default function App() {
     if (!currentUser) {
       return;
     }
-
     try {
       setBusy(true);
       await setAttendanceStatus(reservationId, currentUser, status);
@@ -215,7 +162,6 @@ export default function App() {
     if (!currentUser) {
       return;
     }
-
     try {
       setBusy(true);
       await cancelReservation(reservationId, currentUser);
@@ -233,7 +179,6 @@ export default function App() {
     if (!currentUser) {
       return;
     }
-
     try {
       setBusy(true);
       await updateReservationDetails(reservationId, updates, currentUser);
@@ -257,21 +202,6 @@ export default function App() {
     }
   };
 
-  if (!currentUser) {
-    return (
-      <>
-        <SplashScreen visible={showSplash} />
-        <AccountSelector
-          rememberedAccounts={rememberedAccounts}
-          onForgetRemembered={forget}
-          onSearchExact={searchExactByName}
-          onLogin={onLogin}
-          onCreate={onCreate}
-        />
-      </>
-    );
-  }
-
   const renderReservationList = (items: Reservation[], emptyText: string) => (
     <section className="panel">
       <p className="private-hint">
@@ -283,14 +213,14 @@ export default function App() {
           <article key={reservation.id} className="panel reservation-item">
             <ReservationCard
               reservation={reservation}
-              currentUser={currentUser}
+              currentUser={currentUser as User}
               onOpen={(id) => setExpandedReservationId((current) => (current === id ? null : id))}
               isExpanded={expandedReservationId === reservation.id}
             />
             {expandedReservationId === reservation.id ? (
               <ReservationDetail
                 reservation={reservation}
-                currentUser={currentUser}
+                currentUser={currentUser as User}
                 appUrl={window.location.origin}
                 onSetAttendanceStatus={onSetAttendanceStatus}
                 onCancel={onCancel}
@@ -302,6 +232,34 @@ export default function App() {
       </div>
     </section>
   );
+
+  if (authLoading) {
+    return (
+      <>
+        <SplashScreen visible={showSplash} />
+        <main className="app mobile-shell">
+          <section className="panel">
+            <p>Cargando sesión...</p>
+          </section>
+        </main>
+      </>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <>
+        <SplashScreen visible={showSplash} />
+        <main className="app mobile-shell">
+          <section className="panel account-selector">
+            <h2>Ingresar</h2>
+            <p className="private-hint">Usá tu cuenta de Google para entrar.</p>
+            <button onClick={loginGoogle}>Ingresar con Google</button>
+          </section>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
