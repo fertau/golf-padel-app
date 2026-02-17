@@ -9,30 +9,45 @@ const clamp = (value: number, min: number, max: number) => Math.min(max, Math.ma
 export default function SplashScreen({ visible }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [showContent, setShowContent] = useState(false);
+  const [assetsLoaded, setAssetsLoaded] = useState(false);
+  const imagesRef = useRef<{ court: HTMLImageElement; racket: HTMLImageElement; ball: HTMLImageElement } | null>(null);
 
   useEffect(() => {
-    if (!visible || !canvasRef.current) return;
+    // 1. Preload Assets
+    const court = new Image();
+    const racket = new Image();
+    const ball = new Image();
+
+    court.src = "/court_texture.avif";
+    racket.src = "/racket_pro.webp";
+    ball.src = "/padel_ball.webp";
+
+    let loadedCount = 0;
+    const onLoaded = () => {
+      loadedCount++;
+      if (loadedCount === 3) {
+        imagesRef.current = { court, racket, ball };
+        setAssetsLoaded(true);
+      }
+    };
+
+    court.onload = onLoaded;
+    racket.onload = onLoaded;
+    ball.onload = onLoaded;
+  }, []);
+
+  useEffect(() => {
+    if (!visible || !canvasRef.current || !assetsLoaded) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!ctx || !imagesRef.current) return;
 
-    // 0. Pre-generate noise texture for the turf
-    const noiseCanvas = document.createElement("canvas");
-    noiseCanvas.width = 128;
-    noiseCanvas.height = 128;
-    const nctx = noiseCanvas.getContext("2d")!;
-    for (let i = 0; i < 128; i++) {
-      for (let j = 0; j < 128; j++) {
-        nctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.1})`;
-        nctx.fillRect(i, j, 1, 1);
-      }
-    }
-    const noisePattern = ctx.createPattern(noiseCanvas, "repeat")!;
+    const { court, racket, ball } = imagesRef.current;
 
     let raf = 0;
     const start = performance.now();
-    const duration = 3000;
+    const duration = 3200;
 
     const render = (now: number) => {
       const elapsed = now - start;
@@ -53,130 +68,100 @@ export default function SplashScreen({ visible }: Props) {
 
       // Animation Stages
       const impactT = 0.45;
-      const cutT = 0.75;
+      const cutT = 0.8;
 
       if (t > cutT && !showContent) setShowContent(true);
 
-      // 1. Background (Turf Macro)
-      ctx.fillStyle = "#0056b3";
+      // 1. Draw Court Background (Real Texture)
+      // Cover logic for court image
+      const courtAspect = court.width / court.height;
+      const screenAspect = w / h;
+      let drawW, drawH, drawX, drawY;
+
+      if (screenAspect > courtAspect) {
+        drawW = w;
+        drawH = w / courtAspect;
+        drawX = 0;
+        drawY = (h - drawH) / 2;
+      } else {
+        drawH = h;
+        drawW = h * courtAspect;
+        drawY = 0;
+        drawX = (w - drawW) / 2;
+      }
+      ctx.drawImage(court, drawX, drawY, drawW, drawH);
+
+      // Sutil dark overlay to help legibility later
+      ctx.fillStyle = "rgba(0,0,0,0.1)";
       ctx.fillRect(0, 0, w, h);
 
-      ctx.save();
-      ctx.globalAlpha = 0.25;
-      ctx.fillStyle = noisePattern;
-      ctx.fillRect(0, 0, w, h);
-      ctx.restore();
-
-      // 2. Court Line (Macro Diagonal)
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
-      ctx.lineWidth = 18;
-      ctx.beginPath();
-      ctx.moveTo(-100, h * 0.85);
-      ctx.lineTo(w + 100, h * 0.15);
-      ctx.stroke();
-
-      // 3. Padel Racket Drawing (Carbon Fiber Professional)
+      // 2. Draw Real Racket
+      // Positioned slightly off-center for dynamic look
+      const rackW = 280;
+      const rackH = rackW * (racket.height / racket.width);
       const racketX = w / 2;
-      const racketY = h / 2 + 60;
-      const racketAngle = -Math.PI / 12; // 15 degrees
+      const racketY = h / 2 + 80;
+      const racketAngle = -Math.PI / 12;
 
       ctx.save();
       ctx.translate(racketX, racketY);
       ctx.rotate(racketAngle);
 
-      // Shadow
-      ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
-      ctx.beginPath();
-      ctx.ellipse(12, 18, 110, 134, 0, 0, Math.PI * 2);
-      ctx.fill();
+      // Shadow for racket
+      ctx.shadowColor = "rgba(0,0,0,0.4)";
+      ctx.shadowBlur = 40;
+      ctx.shadowOffsetY = 20;
 
-      // Body
-      const racketGrad = ctx.createLinearGradient(-100, -120, 100, 120);
-      racketGrad.addColorStop(0, "#1c1c1c");
-      racketGrad.addColorStop(0.5, "#2a2a2a");
-      racketGrad.addColorStop(1, "#0d0d0d");
-
-      ctx.fillStyle = racketGrad;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 110, 134, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Edge Accent (Cian/Blue)
-      ctx.strokeStyle = "rgba(0, 112, 243, 0.3)";
-      ctx.lineWidth = 4;
-      ctx.stroke();
-
-      // Handle
-      ctx.fillStyle = "#0a0a0a";
-      ctx.fillRect(-22, 134, 44, 90);
-      ctx.fillStyle = "#1a1a1a";
-      ctx.fillRect(-22, 210, 44, 14); // Handle cap
-
-      // Sweet Spot Pulse
-      if (t > impactT) {
-        const pulseRatio = clamp((t - impactT) / 0.35, 0, 1);
-        ctx.strokeStyle = `rgba(232, 255, 61, ${0.75 * (1 - pulseRatio)})`;
-        ctx.lineWidth = 2 + pulseRatio * 8;
-        ctx.beginPath();
-        ctx.arc(0, 0, 15 + pulseRatio * 220, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      // Racket Holes
-      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-      for (let ix = -3; ix <= 3; ix++) {
-        for (let iy = -3; iy <= 3; iy++) {
-          if (ix * ix + iy * iy < 10 && ix * ix + iy * iy > 1) {
-            ctx.beginPath();
-            ctx.arc(ix * 26, iy * 26, 4.5, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
-      }
+      ctx.drawImage(racket, -rackW / 2, -rackH / 2, rackW, rackH);
       ctx.restore();
 
-      // 4. Ball Falling Sequence
-      const ballR = 25;
-      const targetX = racketX + 8; // Offset for the angle
-      const targetY = racketY - 35;
+      // 3. Pulse effect on sweet spot
+      if (t > impactT) {
+        const pulseRatio = clamp((t - impactT) / 0.3, 0, 1);
+        ctx.save();
+        ctx.translate(racketX, racketY - 40); // Aligned with sweet spot
+        ctx.strokeStyle = `rgba(232, 255, 61, ${0.8 * (1 - pulseRatio)})`;
+        ctx.lineWidth = 4 + pulseRatio * 15;
+        ctx.beginPath();
+        ctx.arc(0, 0, 10 + pulseRatio * 300, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 4. Ball Falling (Real Ball Asset)
+      const ballSize = 65;
+      const targetX = racketX + 10;
+      const targetY = racketY - 60;
 
       if (t < impactT) {
         const p = t / impactT;
-        // Natural ease-in for gravity
-        const pIn = p * p;
-        const ballY = -120 + pIn * (targetY + 120);
+        const pIn = p * p; // Gravity effect
+        const curBallY = -150 + pIn * (targetY + 150);
 
         ctx.save();
-        ctx.translate(targetX, ballY);
+        ctx.translate(targetX, curBallY);
 
-        const ballGrad = ctx.createRadialGradient(-7, -7, 2, 0, 0, ballR);
-        ballGrad.addColorStop(0, "#f9ffb4");
-        ballGrad.addColorStop(0.5, "#e8ff3d");
-        ballGrad.addColorStop(1, "#a2b500");
-        ctx.fillStyle = ballGrad;
+        // Dynamic ball shadow on racket
+        const dist = 1 - pIn;
+        ctx.fillStyle = `rgba(0,0,0,${0.3 * (1 - dist)})`;
         ctx.beginPath();
-        ctx.arc(0, 0, ballR, 0, Math.PI * 2);
+        ctx.ellipse(0, ballSize / 2 + 5, ballSize * 0.4, ballSize * 0.1, 0, 0, Math.PI * 2);
         ctx.fill();
+
+        ctx.drawImage(ball, -ballSize / 2, -ballSize / 2, ballSize, ballSize);
         ctx.restore();
       } else if (t < cutT) {
-        // Post-impact bounce sit
+        // Post impact ball stay
         ctx.save();
         ctx.translate(targetX, targetY);
-        const ballGrad = ctx.createRadialGradient(-7, -7, 2, 0, 0, ballR);
-        ballGrad.addColorStop(0, "#fafa9d");
-        ballGrad.addColorStop(0.5, "#e8ff3d");
-        ballGrad.addColorStop(1, "#a2b500");
-        ctx.fillStyle = ballGrad;
-        ctx.beginPath();
-        ctx.arc(0, 0, ballR, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.drawImage(ball, -ballSize / 2, -ballSize / 2, ballSize, ballSize);
         ctx.restore();
       }
 
-      // 5. Fade to Logo Reveal
+      // 5. Final Cut to Logo
       if (t > cutT) {
-        const alpha = clamp((t - cutT) / 0.1, 0, 1);
-        ctx.fillStyle = `rgba(1, 6, 20, ${alpha})`;
+        const logoAlpha = clamp((t - cutT) / 0.1, 0, 1);
+        ctx.fillStyle = `rgba(1, 6, 20, ${logoAlpha})`;
         ctx.fillRect(0, 0, w, h);
       }
 
@@ -185,7 +170,7 @@ export default function SplashScreen({ visible }: Props) {
 
     raf = requestAnimationFrame(render);
     return () => cancelAnimationFrame(raf);
-  }, [visible, showContent]);
+  }, [visible, assetsLoaded, showContent]);
 
   if (!visible) return null;
 
@@ -193,8 +178,8 @@ export default function SplashScreen({ visible }: Props) {
     <div className="splash" aria-hidden>
       <canvas ref={canvasRef} className="splash-canvas" />
       <div className={`splash-content ${showContent ? "visible" : ""}`}>
-        <h1 className="splash-brand">
-          Golf <span>Padel</span> App
+        <h1 className="name-logo">
+          GOLF <span>PADEL</span> APP
         </h1>
         <p className="splash-subtitle">Premium Experience</p>
       </div>
