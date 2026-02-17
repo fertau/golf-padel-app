@@ -234,7 +234,7 @@ export default function ReservationDetail({
             {confirmed.map((signup, index) => (
               <div key={signup.id} className="player-row">
                 <span className="player-index">{index + 1}</span>
-                <span className="player-name">{signup.userName}</span>
+                <span className="player-name text-dynamic">{signup.userName}</span>
               </div>
             ))}
           </div>
@@ -250,7 +250,7 @@ export default function ReservationDetail({
             {maybe.map((signup, index) => (
               <div key={signup.id} className="player-row">
                 <span className="player-index">{index + 1}</span>
-                <span className="player-name">{signup.userName}</span>
+                <span className="player-name text-dynamic">{signup.userName}</span>
               </div>
             ))}
           </div>

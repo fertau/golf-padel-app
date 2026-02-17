@@ -14,7 +14,9 @@ export default function AuthView({ onLoginWithGoogle, busy, error }: Props) {
                     <div className="auth-logo-shell">
                         <img src="/apple-touch-icon.png" alt="Golf Padel" className="auth-logo" />
                     </div>
-                    <h1>Golf Padel App</h1>
+                    <h1 className="name-logo">
+                        GOLF <span>PADEL</span> APP
+                    </h1>
                     <p className="auth-tagline">Anotate!!</p>
                 </header>
 

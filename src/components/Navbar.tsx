@@ -7,21 +7,28 @@ type Props = {
 };
 
 export default function Navbar({ activeTab, onTabChange }: Props) {
-    const IconCourts = (
+    const IconCalendar = (
         <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 6.5h16M4 17.5h16M12 4v16M7.5 9.5v5M16.5 9.5v5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <rect x="3" y="4" width="18" height="17" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M3 9h18M8 2v4M16 2v4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <circle cx="15" cy="15" r="1.5" fill="currentColor" />
         </svg>
     );
-    const IconBall = (
+    const IconRacket = (
         <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="1.8" />
-            <path d="M6 10.3c3.3-1.6 8.7-1.6 12 0M6 13.7c3.3 1.6 8.7 1.6 12 0" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+            <path d="M12 2a6 6 0 0 0-6 6c0 3.3 2.7 6 6 6s6-2.7 6-6a6 6 0 0 0-6-6Z" fill="none" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M12 14v8M10 22h4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <circle cx="12" cy="8" r="1" fill="currentColor" />
+            <circle cx="10" cy="7" r="1" fill="currentColor" />
+            <circle cx="14" cy="7" r="1" fill="currentColor" />
+            <circle cx="10" cy="9" r="1" fill="currentColor" />
+            <circle cx="14" cy="9" r="1" fill="currentColor" />
         </svg>
     );
-    const IconUser = (
+    const IconProfile = (
         <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="8.5" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
-            <path d="M5.5 18c1.4-2.6 3.7-3.9 6.5-3.9s5.1 1.3 6.5 3.9" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <circle cx="12" cy="7" r="4" fill="none" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M4 21v-2c0-3.3 2.7-6 6-6h4c3.3 0 6 2.7 6 6v2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
     );
 
@@ -31,21 +38,21 @@ export default function Navbar({ activeTab, onTabChange }: Props) {
                 className={`nav-item ${activeTab === "mis-reservas" ? "active" : ""}`}
                 onClick={() => onTabChange("mis-reservas")}
             >
-                <div className="nav-icon">{IconCourts}</div>
+                <div className="nav-icon">{IconCalendar}</div>
                 <span>Reservas</span>
             </button>
             <button
                 className={`nav-item nav-item-center ${activeTab === "mis-partidos" ? "active" : ""}`}
                 onClick={() => onTabChange("mis-partidos")}
             >
-                <div className="nav-icon">{IconBall}</div>
+                <div className="nav-icon">{IconRacket}</div>
                 <span>Partidos</span>
             </button>
             <button
                 className={`nav-item ${activeTab === "perfil" ? "active" : ""}`}
                 onClick={() => onTabChange("perfil")}
             >
-                <div className="nav-icon">{IconUser}</div>
+                <div className="nav-icon">{IconProfile}</div>
                 <span>Perfil</span>
             </button>
         </nav>

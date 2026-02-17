@@ -32,6 +32,7 @@ import { auth } from "./lib/firebase";
 
 type TabId = "mis-partidos" | "mis-reservas" | "perfil";
 type ReservationDateGroup = "hoy" | "manana" | "esta-semana" | "mas-adelante";
+type QuickDateFilter = "all" | "hoy" | "manana" | "semana";
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
@@ -77,6 +78,7 @@ export default function App() {
   const [expandedReservationId, setExpandedReservationId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("mis-partidos");
   const [matchesFilter, setMatchesFilter] = useState<"all" | "pending" | "confirmed">("all");
+  const [quickDateFilter, setQuickDateFilter] = useState<QuickDateFilter>("all");
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
@@ -271,6 +273,34 @@ export default function App() {
     return myMatches;
   }, [matchesFilter, myMatches, currentUser]);
 
+  const myMatchesDateFiltered = useMemo(() => {
+    if (quickDateFilter === "all") {
+      return myMatchesFiltered;
+    }
+    if (quickDateFilter === "hoy") {
+      return myMatchesFiltered.filter(
+        (reservation) => getReservationDateGroup(reservation.startDateTime) === "hoy"
+      );
+    }
+    if (quickDateFilter === "manana") {
+      return myMatchesFiltered.filter(
+        (reservation) => getReservationDateGroup(reservation.startDateTime) === "manana"
+      );
+    }
+    return myMatchesFiltered.filter((reservation) => {
+      const group = getReservationDateGroup(reservation.startDateTime);
+      return group === "hoy" || group === "manana" || group === "esta-semana";
+    });
+  }, [myMatchesFiltered, quickDateFilter]);
+
+  const selectedReservation = useMemo(
+    () =>
+      expandedReservationId
+        ? reservations.find((reservation) => reservation.id === expandedReservationId) ?? null
+        : null,
+    [expandedReservationId, reservations]
+  );
+
   const isSynchronized = Boolean(
     currentUser && isCloudDbEnabled() && isOnline
   );
@@ -401,9 +431,42 @@ export default function App() {
     }
   };
 
-  const renderReservationList = (title: string, items: Reservation[], emptyText: string) => (
+  const renderEmptyState = (text: string) => (
+    <div className="empty-state">
+      <div className="empty-illustration" aria-hidden="true">
+        🎾
+      </div>
+      <p>{text}</p>
+    </div>
+  );
+
+  const renderReservationList = (
+    title: string,
+    items: Reservation[],
+    emptyText: string,
+    groupByDate = false
+  ) => (
     <section className="panel">
       <h2 className="section-title">{title}</h2>
+      {groupByDate ? (
+        <div className="quick-chip-row">
+          {[
+            { id: "all", label: "Todos" },
+            { id: "hoy", label: "Hoy" },
+            { id: "manana", label: "Mañana" },
+            { id: "semana", label: "Semana" }
+          ].map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              className={`quick-chip ${quickDateFilter === chip.id ? "active" : ""}`}
+              onClick={() => setQuickDateFilter(chip.id as QuickDateFilter)}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div className="list">
         {reservationsLoading ? (
           <>
@@ -412,8 +475,8 @@ export default function App() {
             <article className="panel reservation-item skeleton-card" aria-hidden />
           </>
         ) : null}
-        {!reservationsLoading && items.length === 0 ? <p>{emptyText}</p> : null}
-        {!reservationsLoading && title === "Reservas activas"
+        {!reservationsLoading && items.length === 0 ? renderEmptyState(emptyText) : null}
+        {!reservationsLoading && groupByDate
           ? (["hoy", "manana", "esta-semana", "mas-adelante"] as ReservationDateGroup[]).map((groupKey) => {
             const groupedItems = items.filter(
               (reservation) => getReservationDateGroup(reservation.startDateTime) === groupKey
@@ -433,16 +496,6 @@ export default function App() {
                         onOpen={(id) => setExpandedReservationId((current) => (current === id ? null : id))}
                         isExpanded={expandedReservationId === reservation.id}
                       />
-                      {expandedReservationId === reservation.id ? (
-                        <ReservationDetail
-                          reservation={reservation}
-                          currentUser={currentUser as User}
-                          appUrl={window.location.origin}
-                          onSetAttendanceStatus={onSetAttendanceStatus}
-                          onCancel={onCancel}
-                          onUpdateReservation={onUpdateReservation}
-                        />
-                      ) : null}
                     </article>
                   ))}
                 </div>
@@ -450,7 +503,7 @@ export default function App() {
             );
           })
           : null}
-        {!reservationsLoading && title !== "Reservas activas" ? items.map((reservation) => (
+        {!reservationsLoading && !groupByDate ? items.map((reservation) => (
           <article key={reservation.id} className="panel reservation-item">
             <ReservationCard
               reservation={reservation}
@@ -458,16 +511,6 @@ export default function App() {
               onOpen={(id) => setExpandedReservationId((current) => (current === id ? null : id))}
               isExpanded={expandedReservationId === reservation.id}
             />
-            {expandedReservationId === reservation.id ? (
-              <ReservationDetail
-                reservation={reservation}
-                currentUser={currentUser as User}
-                appUrl={window.location.origin}
-                onSetAttendanceStatus={onSetAttendanceStatus}
-                onCancel={onCancel}
-                onUpdateReservation={onUpdateReservation}
-              />
-            ) : null}
           </article>
         )) : null}
       </div>
@@ -596,12 +639,13 @@ export default function App() {
         {activeTab === "mis-partidos"
           ? renderReservationList(
             "Reservas activas",
-            myMatchesFiltered,
+            myMatchesDateFiltered,
             matchesFilter === "pending"
               ? "No tenés partidos pendientes de respuesta."
               : matchesFilter === "confirmed"
                 ? "No tenés partidos confirmados por vos."
-                : "No hay reservas activas por ahora."
+                : "Tu próxima victoria te espera. Todavía no hay reservas activas.",
+            true
           )
           : null}
 
@@ -613,13 +657,7 @@ export default function App() {
                   Reservá un partido
                 </button>
               </section>
-            ) : (
-              <ReservationForm
-                currentUser={currentUser}
-                onCreate={onCreateReservation}
-                onCancel={() => setShowCreateForm(false)}
-              />
-            )}
+            ) : null}
             {renderReservationList(
               "Mis reservas activas",
               myReservations,
@@ -639,6 +677,47 @@ export default function App() {
 
         <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
       </main>
+
+      {showCreateForm ? (
+        <div className="sheet-backdrop" onClick={() => setShowCreateForm(false)}>
+          <section className="sheet" onClick={(event) => event.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="sheet-head">
+              <h3>Nueva reserva</h3>
+              <button type="button" className="sheet-close" onClick={() => setShowCreateForm(false)}>
+                Cerrar
+              </button>
+            </div>
+            <ReservationForm
+              currentUser={currentUser}
+              onCreate={onCreateReservation}
+              onCancel={() => setShowCreateForm(false)}
+            />
+          </section>
+        </div>
+      ) : null}
+
+      {selectedReservation ? (
+        <div className="sheet-backdrop" onClick={() => setExpandedReservationId(null)}>
+          <section className="sheet" onClick={(event) => event.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="sheet-head">
+              <h3>Partido</h3>
+              <button type="button" className="sheet-close" onClick={() => setExpandedReservationId(null)}>
+                Cerrar
+              </button>
+            </div>
+            <ReservationDetail
+              reservation={selectedReservation}
+              currentUser={currentUser}
+              appUrl={window.location.origin}
+              onSetAttendanceStatus={onSetAttendanceStatus}
+              onCancel={onCancel}
+              onUpdateReservation={onUpdateReservation}
+            />
+          </section>
+        </div>
+      ) : null}
     </>
   );
 }

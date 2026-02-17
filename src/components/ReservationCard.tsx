@@ -19,19 +19,31 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
       onClick={() => onOpen(reservation.id)}
     >
       <div className="reservation-card-top">
-        <strong>{reservation.courtName}</strong>
+        <strong className="text-dynamic">{reservation.courtName}</strong>
         <span className="reservation-date">{formatDateTime(reservation.startDateTime)}</span>
       </div>
 
       <div className="meta">
-        <span className="meta-pill">Confirmados {confirmed.length}</span>
-        <span className="meta-pill">Quizás {maybe.length}</span>
+        <span className="status-chip chip-confirmed">Confirmados {confirmed.length}</span>
+        <span className="status-chip chip-waiting">Buscando cuarto {maybe.length}</span>
         {mine ? (
-          <span className={`tag ${mine.attendanceStatus === "cancelled" ? "danger" : ""}`}>
-            Mi estado: {mine.attendanceStatus === "confirmed" ? "Confirmado" : mine.attendanceStatus === "maybe" ? "Quizás" : "No juego"}
+          <span
+            className={`status-chip ${
+              mine.attendanceStatus === "confirmed"
+                ? "chip-confirmed"
+                : mine.attendanceStatus === "maybe"
+                  ? "chip-waiting"
+                  : "chip-cancelled"
+            }`}
+          >
+            {mine.attendanceStatus === "confirmed"
+              ? "Ya confirmé"
+              : mine.attendanceStatus === "maybe"
+                ? "En duda"
+                : "No juego"}
           </span>
         ) : null}
-        {reservation.status === "cancelled" ? <span className="tag danger">Cancelada</span> : null}
+        {reservation.status === "cancelled" ? <span className="status-chip chip-cancelled">Cancelada</span> : null}
         <span className="meta-pill">{isExpanded ? "Cerrar detalle" : "Ver detalle"}</span>
       </div>
     </button>
