@@ -85,11 +85,13 @@ body {
 
 .splash-brand {
   font-family: "Sora", sans-serif;
-  font-size: clamp(2.5rem, 8vw, 4rem);
+  font-size: clamp(2.2rem, 10vw, 3.8rem);
   font-weight: 300;
   margin: 0;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.04em;
   color: #fff;
+  text-transform: uppercase;
+  line-height: 1;
 }
 
 .splash-brand span {
@@ -985,6 +987,7 @@ button.neutral {
     transform: translateY(12%);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -995,6 +998,7 @@ button.neutral {
   0% {
     background-position: 120% 0;
   }
+
   100% {
     background-position: -120% 0;
   }
@@ -1004,9 +1008,11 @@ button.neutral {
   0% {
     transform: scale(1);
   }
+
   45% {
     transform: scale(0.94);
   }
+
   100% {
     transform: scale(1.02);
   }
