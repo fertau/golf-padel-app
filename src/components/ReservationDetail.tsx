@@ -1,13 +1,18 @@
 import { type ChangeEvent } from "react";
-import type { Reservation, User } from "../lib/types";
-import { buildWhatsAppMessage, canJoinReservation, formatDateTime, getActiveSignups } from "../lib/utils";
+import type { AttendanceStatus, Reservation, User } from "../lib/types";
+import {
+  buildWhatsAppMessage,
+  canJoinReservation,
+  formatDateTime,
+  getSignupsByStatus,
+  getUserAttendance
+} from "../lib/utils";
 
 type Props = {
   reservation: Reservation;
   currentUser: User;
   appUrl: string;
-  onJoin: (reservationId: string) => void;
-  onLeave: (reservationId: string) => void;
+  onSetAttendanceStatus: (reservationId: string, status: AttendanceStatus) => void;
   onCancel: (reservationId: string) => void;
   onUpdateScreenshot: (reservationId: string, screenshotUrl: string) => void;
 };
@@ -24,14 +29,14 @@ export default function ReservationDetail({
   reservation,
   currentUser,
   appUrl,
-  onJoin,
-  onLeave,
+  onSetAttendanceStatus,
   onCancel,
   onUpdateScreenshot
 }: Props) {
   const isCreator = reservation.createdBy.id === currentUser.id;
-  const players = getActiveSignups(reservation);
-  const mySignup = players.find((signup) => signup.userId === currentUser.id);
+  const confirmed = getSignupsByStatus(reservation, "confirmed");
+  const maybe = getSignupsByStatus(reservation, "maybe");
+  const myAttendance = getUserAttendance(reservation, currentUser.id);
 
   const eligibility = canJoinReservation(reservation, currentUser);
 
@@ -73,24 +78,48 @@ export default function ReservationDetail({
       ) : null}
 
       <div className="actions">
-        <button onClick={() => onJoin(reservation.id)} disabled={!eligibility.ok || Boolean(mySignup)}>
-          Unirme
+        <button
+          onClick={() => onSetAttendanceStatus(reservation.id, "confirmed")}
+          disabled={myAttendance?.attendanceStatus === "confirmed"}
+        >
+          Confirmar
         </button>
-        <button onClick={() => onLeave(reservation.id)} disabled={!mySignup}>
-          Salir
+        <button
+          onClick={() => onSetAttendanceStatus(reservation.id, "maybe")}
+          disabled={myAttendance?.attendanceStatus === "maybe" || (!myAttendance && !eligibility.ok)}
+        >
+          Quizás
+        </button>
+        <button
+          onClick={() => onSetAttendanceStatus(reservation.id, "cancelled")}
+          disabled={!myAttendance}
+        >
+          Cancelar confirmación
         </button>
       </div>
 
-      {!eligibility.ok && !mySignup ? <p className="warning">{eligibility.reason}</p> : null}
+      {!eligibility.ok && !myAttendance ? <p className="warning">{eligibility.reason}</p> : null}
 
-      <div>
-        <h3>Jugadores anotados</h3>
-        {players.length === 0 ? <p className="private-hint">Todavía no hay anotados.</p> : null}
-        <ul>
-          {players.map((signup) => (
-            <li key={signup.id}>{signup.userName}</li>
-          ))}
-        </ul>
+      <div className="list-grid">
+        <div>
+          <h3>Confirmados</h3>
+          {confirmed.length === 0 ? <p className="private-hint">Sin confirmados por ahora.</p> : null}
+          <ul>
+            {confirmed.map((signup) => (
+              <li key={signup.id}>{signup.userName}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h3>Quizás</h3>
+          {maybe.length === 0 ? <p className="private-hint">Sin jugadores en quizás.</p> : null}
+          <ul>
+            {maybe.map((signup) => (
+              <li key={signup.id}>{signup.userName}</li>
+            ))}
+          </ul>
+        </div>
       </div>
 
       <div className="actions">

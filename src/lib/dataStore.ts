@@ -10,14 +10,13 @@ import {
 import { getDownloadURL, ref, uploadString } from "firebase/storage";
 import { db, firebaseEnabled, storage } from "./firebase";
 import {
-  addSignupLocal,
   createReservationLocal,
-  removeSignupLocal,
+  setAttendanceStatusLocal,
   subscribeLocalReservations,
   updateReservationLocal,
   type ReservationInput
 } from "./localStore";
-import type { Reservation, ReservationRules, Signup, User } from "./types";
+import type { AttendanceStatus, Reservation, ReservationRules, Signup, User } from "./types";
 import { canJoinReservation } from "./utils";
 
 const nowIso = () => new Date().toISOString();
@@ -28,10 +27,12 @@ const normalizeReservation = (id: string, data: Omit<Reservation, "id">): Reserv
 });
 
 export const isCloudMode = () => firebaseEnabled && Boolean(db);
+export const isCloudDbEnabled = () =>
+  isCloudMode() && import.meta.env.VITE_USE_FIREBASE_DB === "true";
 
 export const subscribeReservations = (onChange: (reservations: Reservation[]) => void) => {
   const cloudDb = db;
-  if (!isCloudMode() || !cloudDb) {
+  if (!isCloudDbEnabled() || !cloudDb) {
     return subscribeLocalReservations(onChange);
   }
 
@@ -58,7 +59,7 @@ const uploadScreenshotIfNeeded = async (reservationId: string, screenshotUrl?: s
 
 export const createReservation = async (input: ReservationInput, currentUser: User) => {
   const cloudDb = db;
-  if (!isCloudMode() || !cloudDb) {
+  if (!isCloudDbEnabled() || !cloudDb) {
     createReservationLocal(input, currentUser);
     return;
   }
@@ -94,7 +95,7 @@ export const updateReservationRules = async (
   currentUser: User
 ) => {
   const cloudDb = db;
-  if (!isCloudMode() || !cloudDb) {
+  if (!isCloudDbEnabled() || !cloudDb) {
     updateReservationLocal(reservationId, (reservation) => {
       if (reservation.createdBy.id !== currentUser.id) {
         return reservation;
@@ -129,10 +130,14 @@ export const updateReservationRules = async (
   });
 };
 
-export const joinReservation = async (reservationId: string, user: User) => {
+export const setAttendanceStatus = async (
+  reservationId: string,
+  user: User,
+  status: AttendanceStatus
+) => {
   const cloudDb = db;
-  if (!isCloudMode() || !cloudDb) {
-    const { error } = addSignupLocal(reservationId, user);
+  if (!isCloudDbEnabled() || !cloudDb) {
+    const { error } = setAttendanceStatusLocal(reservationId, user, status);
     if (error) {
       throw new Error(error);
     }
@@ -148,48 +153,43 @@ export const joinReservation = async (reservationId: string, user: User) => {
     }
 
     const reservation = normalizeReservation(reservationId, snapshot.data() as Omit<Reservation, "id">);
-    const eligibility = canJoinReservation(reservation, user);
 
-    if (!eligibility.ok) {
-      throw new Error(eligibility.reason ?? "No se pudo anotar");
+    const existing = reservation.signups.find((signup) => signup.userId === user.id);
+
+    if (!existing && status !== "cancelled") {
+      const eligibility = canJoinReservation(reservation, user);
+      if (!eligibility.ok) {
+        throw new Error(eligibility.reason ?? "No se pudo actualizar asistencia");
+      }
     }
 
-    const signup: Signup = {
-      id: crypto.randomUUID(),
-      reservationId,
-      userId: user.id,
-      userName: user.name,
-      createdAt: nowIso(),
-      active: true
-    };
+    let nextSignups: Signup[] = reservation.signups;
 
-    transaction.update(reservationRef, {
-      signups: [...reservation.signups, signup],
-      updatedAt: nowIso()
-    });
-  });
-};
-
-export const leaveReservation = async (reservationId: string, userId: string) => {
-  const cloudDb = db;
-  if (!isCloudMode() || !cloudDb) {
-    removeSignupLocal(reservationId, userId);
-    return;
-  }
-
-  await runTransaction(cloudDb, async (transaction) => {
-    const reservationRef = doc(cloudDb, "reservations", reservationId);
-    const snapshot = await transaction.get(reservationRef);
-
-    if (!snapshot.exists()) {
-      throw new Error("Reserva no encontrada");
+    if (existing) {
+      nextSignups = reservation.signups.map((signup) =>
+        signup.userId === user.id
+          ? {
+              ...signup,
+              userName: user.name,
+              attendanceStatus: status,
+              updatedAt: nowIso()
+            }
+          : signup
+      );
+    } else if (status !== "cancelled") {
+      nextSignups = [
+        ...reservation.signups,
+        {
+          id: crypto.randomUUID(),
+          reservationId,
+          userId: user.id,
+          userName: user.name,
+          createdAt: nowIso(),
+          updatedAt: nowIso(),
+          attendanceStatus: status
+        }
+      ];
     }
-
-    const reservation = normalizeReservation(reservationId, snapshot.data() as Omit<Reservation, "id">);
-
-    const nextSignups = reservation.signups.map((signup) =>
-      signup.userId === userId && signup.active ? { ...signup, active: false } : signup
-    );
 
     transaction.update(reservationRef, {
       signups: nextSignups,
@@ -200,7 +200,7 @@ export const leaveReservation = async (reservationId: string, userId: string) =>
 
 export const cancelReservation = async (reservationId: string, currentUser: User) => {
   const cloudDb = db;
-  if (!isCloudMode() || !cloudDb) {
+  if (!isCloudDbEnabled() || !cloudDb) {
     updateReservationLocal(reservationId, (reservation) => {
       if (reservation.createdBy.id !== currentUser.id) {
         return reservation;
@@ -241,7 +241,7 @@ export const updateReservationScreenshot = async (
   currentUser: User
 ) => {
   const cloudDb = db;
-  if (!isCloudMode() || !cloudDb) {
+  if (!isCloudDbEnabled() || !cloudDb) {
     updateReservationLocal(reservationId, (reservation) => {
       if (reservation.createdBy.id !== currentUser.id) {
         return reservation;

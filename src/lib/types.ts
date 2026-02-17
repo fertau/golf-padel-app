@@ -5,6 +5,25 @@ export type User = {
   name: string;
 };
 
+export type PlayerVisibility = "public" | "private";
+
+export type Player = {
+  id: string;
+  name: string;
+  avatar: string;
+  pin: string;
+  ownerId: string;
+  createdAt: string;
+  isPinned: boolean;
+  visibility: PlayerVisibility;
+  isAdmin: boolean;
+  stats: Record<string, number>;
+  derivedStats: Record<string, number>;
+  friends: string[];
+  friendRequests: string[];
+  sentRequests: string[];
+};
+
 export type ReservationRules = {
   maxPlayersAccepted: number;
   priorityUserIds: string[];
@@ -12,13 +31,16 @@ export type ReservationRules = {
   signupDeadline?: string;
 };
 
+export type AttendanceStatus = "confirmed" | "maybe" | "cancelled";
+
 export type Signup = {
   id: string;
   reservationId: string;
   userId: string;
   userName: string;
   createdAt: string;
-  active: boolean;
+  updatedAt: string;
+  attendanceStatus: AttendanceStatus;
 };
 
 export type Reservation = {

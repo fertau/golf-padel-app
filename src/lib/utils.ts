@@ -1,4 +1,4 @@
-import type { Reservation, Signup, SignupResult, User } from "./types";
+import type { AttendanceStatus, Reservation, Signup, SignupResult, User } from "./types";
 
 export const slugifyId = (value: string): string =>
   value
@@ -25,8 +25,31 @@ export const isDeadlinePassed = (reservation: Reservation): boolean => {
 
 export const getActiveSignups = (reservation: Reservation): Signup[] =>
   reservation.signups
-    .filter((signup) => signup.active)
+    .map((signup) => normalizeSignup(signup))
+    .filter((signup) => signup.attendanceStatus !== "cancelled")
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+export const getSignupsByStatus = (reservation: Reservation, status: AttendanceStatus): Signup[] =>
+  reservation.signups
+    .map((signup) => normalizeSignup(signup))
+    .filter((signup) => signup.attendanceStatus === status)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+export const getUserAttendance = (reservation: Reservation, userId: string): Signup | undefined =>
+  reservation.signups
+    .map((signup) => normalizeSignup(signup))
+    .find((signup) => signup.userId === userId && signup.attendanceStatus !== "cancelled");
+
+const normalizeSignup = (signup: Signup): Signup => {
+  const legacy = signup as Signup & { active?: boolean };
+  const fallbackStatus: AttendanceStatus = legacy.active === false ? "cancelled" : "confirmed";
+
+  return {
+    ...signup,
+    attendanceStatus: signup.attendanceStatus ?? fallbackStatus,
+    updatedAt: signup.updatedAt ?? signup.createdAt
+  };
+};
 
 export const calculateSignupResult = (reservation: Reservation): SignupResult => {
   const activeSignups = getActiveSignups(reservation);
@@ -55,10 +78,9 @@ export const canJoinReservation = (
     return { ok: false, reason: "La reserva está cancelada" };
   }
 
-  const alreadyJoined = getActiveSignups(reservation).some((signup) => signup.userId === user.id);
-
-  if (alreadyJoined) {
-    return { ok: false, reason: "Ya estás anotado" };
+  const currentAttendance = getUserAttendance(reservation, user.id);
+  if (currentAttendance) {
+    return { ok: false, reason: "Ya tenés asistencia marcada" };
   }
 
   return { ok: true };

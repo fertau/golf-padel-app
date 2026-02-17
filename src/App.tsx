@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import ReservationCard from "./components/ReservationCard";
 import ReservationDetail from "./components/ReservationDetail";
 import ReservationForm from "./components/ReservationForm";
@@ -7,37 +6,53 @@ import SplashScreen from "./components/SplashScreen";
 import {
   cancelReservation,
   createReservation,
-  isCloudMode,
-  joinReservation,
-  leaveReservation,
+  isCloudDbEnabled,
+  setAttendanceStatus,
   subscribeReservations,
   updateReservationScreenshot
 } from "./lib/dataStore";
-import { slugifyId } from "./lib/utils";
-import type { Reservation, User } from "./lib/types";
-import { auth } from "./lib/firebase";
 import { registerPushToken } from "./lib/push";
+import type { AttendanceStatus, Reservation, User } from "./lib/types";
+import { getSignupsByStatus, slugifyId } from "./lib/utils";
 
-const USER_KEY = "golf-padel-user";
+const USER_KEY = "golf-padel-local-user";
 
-const loadCurrentUser = (): User => {
-  const saved = localStorage.getItem(USER_KEY);
-  if (saved) {
-    return JSON.parse(saved) as User;
+const loadLocalUser = (): User => {
+  const raw = localStorage.getItem(USER_KEY);
+  if (!raw) {
+    const fallback = {
+      id: "organizador",
+      name: "Organizador"
+    };
+    localStorage.setItem(USER_KEY, JSON.stringify(fallback));
+    return fallback;
   }
 
-  const fallback = { id: "anon-user", name: "Jugador" };
-  localStorage.setItem(USER_KEY, JSON.stringify(fallback));
-  return fallback;
+  try {
+    const parsed = JSON.parse(raw) as User;
+    if (!parsed.name?.trim()) {
+      throw new Error("Invalid user");
+    }
+    return parsed;
+  } catch {
+    const fallback = {
+      id: "organizador",
+      name: "Organizador"
+    };
+    localStorage.setItem(USER_KEY, JSON.stringify(fallback));
+    return fallback;
+  }
 };
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
-  const [currentUserName, setCurrentUserName] = useState("");
-  const [currentUser, setCurrentUser] = useState<User>(() => loadCurrentUser());
+  const [currentUser, setCurrentUser] = useState<User>(() => loadLocalUser());
+  const [nameInput, setNameInput] = useState(currentUser.name);
+
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   useEffect(() => {
     const splashTimer = window.setTimeout(() => setShowSplash(false), 3000);
@@ -45,45 +60,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    setCurrentUserName(currentUser.name);
-  }, [currentUser.name]);
-
-  useEffect(() => {
     const unsubscribe = subscribeReservations(setReservations);
-    return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    const cloudAuth = auth;
-    if (!isCloudMode() || !cloudAuth) {
-      return;
-    }
-
-    const unsubscribe = onAuthStateChanged(cloudAuth, (firebaseUser) => {
-      if (!firebaseUser) {
-        void signInAnonymously(cloudAuth);
-        return;
-      }
-
-      setCurrentUser((prev) => {
-        if (prev.id === firebaseUser.uid) {
-          return prev;
-        }
-
-        const next = {
-          id: firebaseUser.uid,
-          name: prev.name || "Jugador"
-        };
-
-        localStorage.setItem(USER_KEY, JSON.stringify(next));
-        return next;
-      });
-    });
-
-    if (!cloudAuth.currentUser) {
-      void signInAnonymously(cloudAuth);
-    }
-
     return unsubscribe;
   }, []);
 
@@ -92,21 +69,35 @@ export default function App() {
     [reservations, selectedId]
   );
 
-  const saveUser = () => {
-    const name = currentUserName.trim();
-    if (!name) {
-      return;
-    }
+  const activeReservations = useMemo(
+    () => reservations.filter((reservation) => reservation.status === "active"),
+    [reservations]
+  );
 
-    const user = { id: isCloudMode() && auth?.currentUser ? auth.currentUser.uid : slugifyId(name), name };
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
-    setCurrentUser(user);
+  const totalConfirmedAttendances = useMemo(
+    () =>
+      activeReservations.reduce(
+        (acc, reservation) => acc + getSignupsByStatus(reservation, "confirmed").length,
+        0
+      ),
+    [activeReservations]
+  );
+
+  const saveCurrentUser = () => {
+    const nextName = nameInput.trim() || "Organizador";
+    const nextUser = {
+      id: slugifyId(nextName),
+      name: nextName
+    };
+    setCurrentUser(nextUser);
+    localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
   };
 
   const onCreateReservation: React.ComponentProps<typeof ReservationForm>["onCreate"] = async (payload) => {
     try {
       setBusy(true);
       await createReservation(payload, currentUser);
+      setShowCreateForm(false);
 
       if (Notification.permission === "granted") {
         new Notification("Nueva reserva creada", {
@@ -120,21 +111,10 @@ export default function App() {
     }
   };
 
-  const onJoin = async (reservationId: string) => {
+  const onSetAttendanceStatus = async (reservationId: string, status: AttendanceStatus) => {
     try {
       setBusy(true);
-      await joinReservation(reservationId, currentUser);
-    } catch (error) {
-      alert((error as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const onLeave = async (reservationId: string) => {
-    try {
-      setBusy(true);
-      await leaveReservation(reservationId, currentUser.id);
+      await setAttendanceStatus(reservationId, currentUser, status);
     } catch (error) {
       alert((error as Error).message);
     } finally {
@@ -191,65 +171,76 @@ export default function App() {
     <>
       <SplashScreen visible={showSplash} />
 
-      <main className="app">
+      <main className="app mobile-shell">
         <header className="header court-header">
           <div>
-            <p className="eyebrow">PWA para grupos de WhatsApp</p>
+            <p className="eyebrow">Golf Padel</p>
             <div className="brand-shell">
               <img src="/icon-192.png" alt="Golf Padel icon" className="brand-icon" />
               <h1>Golf Padel App</h1>
             </div>
-            <p>Reservas simples para que se anoten todos los que quieran.</p>
+            <p>Flujo simple para registrar reservas y confirmar asistencias.</p>
           </div>
-          <div className="header-pill">{isCloudMode() ? "Modo Firebase" : "Modo Local"}</div>
+          <div className="header-pill">{isCloudDbEnabled() ? "Modo Firebase" : "Modo Local"}</div>
         </header>
 
-        <section className="panel user-panel">
-          <h2>Tu perfil</h2>
-          <label>
-            Nombre
-            <input
-              value={currentUserName}
-              onChange={(e) => setCurrentUserName(e.target.value)}
-              placeholder="Tu nombre"
-            />
-          </label>
-          <div className="actions">
-            <button onClick={saveUser} disabled={busy}>
-              Guardar usuario
-            </button>
-            <button onClick={requestNotifications} disabled={busy}>
-              Activar notificaciones
-            </button>
-          </div>
-        </section>
-
-        <div className="layout">
-          <ReservationForm currentUser={currentUser} onCreate={onCreateReservation} />
-
-          <section className="panel">
-            <h2>Reservas activas</h2>
-            <div className="list">
-              {reservations.length === 0 ? <p>No hay reservas todavía.</p> : null}
-              {reservations.map((reservation) => (
-                <ReservationCard
-                  key={reservation.id}
-                  reservation={reservation}
-                  currentUser={currentUser}
-                  onOpen={setSelectedId}
+        {!showCreateForm ? (
+          <>
+            <section className="panel">
+              <h2>Inicio</h2>
+              <p className="private-hint">Usuario actual: {currentUser.name}</p>
+              <label>
+                Cambiar usuario
+                <input
+                  value={nameInput}
+                  onChange={(event) => setNameInput(event.target.value)}
+                  placeholder="Tu nombre"
                 />
-              ))}
-            </div>
-          </section>
-        </div>
+              </label>
+              <button onClick={saveCurrentUser} disabled={busy}>
+                Guardar usuario
+              </button>
+              <button onClick={() => setShowCreateForm(true)} disabled={busy}>
+                Registrar nueva reserva
+              </button>
+              <button onClick={requestNotifications} disabled={busy}>
+                Activar notificaciones
+              </button>
+            </section>
+
+            <section className="panel">
+              <h2>Reservas activas</h2>
+              <p className="private-hint">
+                {activeReservations.length} reservas activas · {totalConfirmedAttendances} asistencias confirmadas
+              </p>
+
+              <div className="list">
+                {activeReservations.length === 0 ? <p>No hay reservas activas por ahora.</p> : null}
+                {activeReservations.map((reservation) => (
+                  <ReservationCard
+                    key={reservation.id}
+                    reservation={reservation}
+                    currentUser={currentUser}
+                    onOpen={setSelectedId}
+                  />
+                ))}
+              </div>
+            </section>
+          </>
+        ) : (
+          <ReservationForm
+            currentUser={currentUser}
+            onCreate={onCreateReservation}
+            onCancel={() => setShowCreateForm(false)}
+          />
+        )}
 
         {selectedReservation ? (
           <ReservationDetail
             reservation={selectedReservation}
             currentUser={currentUser}
             appUrl={window.location.origin + window.location.pathname}
-            onJoin={onJoin}
-            onLeave={onLeave}
+            onSetAttendanceStatus={onSetAttendanceStatus}
             onCancel={onCancel}
             onUpdateScreenshot={onUpdateScreenshot}
           />

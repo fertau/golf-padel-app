@@ -1,5 +1,5 @@
 import type { Reservation, User } from "../lib/types";
-import { formatDateTime, getActiveSignups } from "../lib/utils";
+import { formatDateTime, getSignupsByStatus, getUserAttendance } from "../lib/utils";
 
 type Props = {
   reservation: Reservation;
@@ -8,8 +8,9 @@ type Props = {
 };
 
 export default function ReservationCard({ reservation, currentUser, onOpen }: Props) {
-  const players = getActiveSignups(reservation);
-  const joined = players.some((signup) => signup.userId === currentUser.id);
+  const confirmed = getSignupsByStatus(reservation, "confirmed");
+  const maybe = getSignupsByStatus(reservation, "maybe");
+  const mine = getUserAttendance(reservation, currentUser.id);
 
   return (
     <button className="reservation-card" onClick={() => onOpen(reservation.id)}>
@@ -19,8 +20,9 @@ export default function ReservationCard({ reservation, currentUser, onOpen }: Pr
       </div>
 
       <div className="meta">
-        <span className="meta-pill">Jugadores {players.length}</span>
-        {joined ? <span className="tag">Anotado</span> : null}
+        <span className="meta-pill">Confirmados {confirmed.length}</span>
+        <span className="meta-pill">Quizás {maybe.length}</span>
+        {mine ? <span className="tag">Mi estado: {mine.attendanceStatus === "confirmed" ? "Confirmado" : "Quizás"}</span> : null}
         {reservation.status === "cancelled" ? <span className="tag danger">Cancelada</span> : null}
       </div>
     </button>

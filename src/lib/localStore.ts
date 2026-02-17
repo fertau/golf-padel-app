@@ -1,4 +1,4 @@
-import type { Reservation, ReservationRules, Signup, User } from "./types";
+import type { AttendanceStatus, Reservation, ReservationRules, Signup, User } from "./types";
 import { canJoinReservation } from "./utils";
 
 const STORAGE_KEY = "golf-padel-reservations";
@@ -90,17 +90,41 @@ export const updateReservationLocal = (
   return next;
 };
 
-export const addSignupLocal = (
+export const setAttendanceStatusLocal = (
   reservationId: string,
-  user: User
+  user: User,
+  status: AttendanceStatus
 ): { next: Reservation[]; error?: string } => {
   let error: string | undefined;
 
   const next = updateReservationLocal(reservationId, (reservation) => {
-    const eligibility = canJoinReservation(reservation, user);
+    const existing = reservation.signups.find((signup) => signup.userId === user.id);
 
-    if (!eligibility.ok) {
-      error = eligibility.reason;
+    if (!existing && status !== "cancelled") {
+      const eligibility = canJoinReservation(reservation, user);
+      if (!eligibility.ok) {
+        error = eligibility.reason;
+        return reservation;
+      }
+    }
+
+    if (existing) {
+      return {
+        ...reservation,
+        signups: reservation.signups.map((signup) =>
+          signup.userId === user.id
+            ? {
+                ...signup,
+                userName: user.name,
+                attendanceStatus: status,
+                updatedAt: nowIso()
+              }
+            : signup
+        )
+      };
+    }
+
+    if (status === "cancelled") {
       return reservation;
     }
 
@@ -110,7 +134,8 @@ export const addSignupLocal = (
       userId: user.id,
       userName: user.name,
       createdAt: nowIso(),
-      active: true
+      updatedAt: nowIso(),
+      attendanceStatus: status
     };
 
     return {
@@ -121,14 +146,6 @@ export const addSignupLocal = (
 
   return { next, error };
 };
-
-export const removeSignupLocal = (reservationId: string, userId: string): Reservation[] =>
-  updateReservationLocal(reservationId, (reservation) => ({
-    ...reservation,
-    signups: reservation.signups.map((signup) =>
-      signup.userId === userId && signup.active ? { ...signup, active: false } : signup
-    )
-  }));
 
 export const cancelReservationLocal = (reservationId: string): Reservation[] =>
   updateReservationLocal(reservationId, (reservation) => ({
