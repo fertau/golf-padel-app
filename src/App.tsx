@@ -98,6 +98,8 @@ const getShareBaseUrl = (): string => {
   return (configured && configured.length > 0 ? configured : fallback).replace(/\/+$/, "");
 };
 
+type HistoryFilter = "all" | "played" | "confirmed" | "maybe" | "cancelled" | "court-1" | "court-2";
+
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -113,6 +115,9 @@ export default function App() {
   const [matchesFilter, setMatchesFilter] = useState<"all" | "pending" | "confirmed">("all");
   const [quickDateFilter, setQuickDateFilter] = useState<"all" | "hoy" | "manana" | "semana">("all");
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
+  const [historySearch, setHistorySearch] = useState("");
   const [nameDraft, setNameDraft] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [savingName, setSavingName] = useState(false);
@@ -225,6 +230,83 @@ export default function App() {
       return g !== "mas-adelante";
     });
   }, [activeReservations, matchesFilter, quickDateFilter, currentUser]);
+
+  const historyBase = useMemo(() => {
+    if (!currentUser) {
+      return [];
+    }
+    return reservations
+      .filter((reservation) => {
+        const isPast = new Date(reservation.startDateTime).getTime() < Date.now();
+        if (!isPast) {
+          return false;
+        }
+        return Boolean(getUserAttendance(reservation, currentUser.id)) || isReservationCreator(reservation, currentUser.id);
+      })
+      .sort((a, b) => new Date(b.startDateTime).getTime() - new Date(a.startDateTime).getTime());
+  }, [reservations, currentUser]);
+
+  const historyStats = useMemo(() => {
+    if (!currentUser) {
+      return { total: 0, confirmed: 0, cancelled: 0, latest: "-" };
+    }
+    const total = historyBase.length;
+    const confirmed = historyBase.filter(
+      (reservation) => getUserAttendance(reservation, currentUser.id)?.attendanceStatus === "confirmed"
+    ).length;
+    const cancelled = historyBase.filter(
+      (reservation) => getUserAttendance(reservation, currentUser.id)?.attendanceStatus === "cancelled"
+    ).length;
+    const latest = historyBase[0]?.startDateTime
+      ? new Date(historyBase[0].startDateTime).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })
+      : "-";
+    return { total, confirmed, cancelled, latest };
+  }, [historyBase, currentUser]);
+
+  const filteredHistory = useMemo(() => {
+    if (!currentUser) {
+      return [];
+    }
+
+    const query = historySearch.trim().toLowerCase();
+
+    return historyBase.filter((reservation) => {
+      const attendanceStatus = getUserAttendance(reservation, currentUser.id)?.attendanceStatus;
+
+      if (historyFilter === "played" && attendanceStatus !== "confirmed") {
+        return false;
+      }
+      if (historyFilter === "confirmed" && attendanceStatus !== "confirmed") {
+        return false;
+      }
+      if (historyFilter === "maybe" && attendanceStatus !== "maybe") {
+        return false;
+      }
+      if (historyFilter === "cancelled" && attendanceStatus !== "cancelled") {
+        return false;
+      }
+      if (historyFilter === "court-1" && reservation.courtName !== "Cancha 1") {
+        return false;
+      }
+      if (historyFilter === "court-2" && reservation.courtName !== "Cancha 2") {
+        return false;
+      }
+
+      if (!query) {
+        return true;
+      }
+
+      const candidates = [
+        reservation.courtName,
+        reservation.createdBy.name,
+        ...reservation.signups.map((signup) => signup.userName)
+      ]
+        .filter(Boolean)
+        .map((value) => value.toLowerCase());
+
+      return candidates.some((value) => value.includes(query));
+    });
+  }, [currentUser, historyBase, historyFilter, historySearch]);
 
   const selectedReservation = expandedReservationId ? reservations.find(r => r.id === expandedReservationId) || null : null;
   const isSynchronized = Boolean(currentUser && isCloudDbEnabled() && isOnline);
@@ -503,6 +585,111 @@ export default function App() {
             </section>
 
             {renderReservationList("Reservas activas", filteredMatches, "No hay reservas actualmente.", true)}
+
+            <section className="panel history-panel">
+              <button
+                type="button"
+                className="history-toggle"
+                onClick={() => setHistoryExpanded((prev) => !prev)}
+              >
+                <span>Historial y estadísticas</span>
+                <span>{historyExpanded ? "Ocultar" : "Ver historial"}</span>
+              </button>
+
+              {historyExpanded ? (
+                <>
+                  <div className="detail-kpis history-kpis">
+                    <article className="kpi-card">
+                      <span className="kpi-label">Partidos</span>
+                      <strong>{historyStats.total}</strong>
+                    </article>
+                    <article className="kpi-card">
+                      <span className="kpi-label">Juego</span>
+                      <strong>{historyStats.confirmed}</strong>
+                    </article>
+                    <article className="kpi-card">
+                      <span className="kpi-label">No juego</span>
+                      <strong>{historyStats.cancelled}</strong>
+                    </article>
+                    <article className="kpi-card">
+                      <span className="kpi-label">Último</span>
+                      <strong>{historyStats.latest}</strong>
+                    </article>
+                  </div>
+
+                  <div className="quick-chip-row">
+                    {[
+                      { id: "all", label: "Todos" },
+                      { id: "played", label: "Jugados" },
+                      { id: "maybe", label: "Quizás" },
+                      { id: "cancelled", label: "No juego" },
+                      { id: "court-1", label: "Cancha 1" },
+                      { id: "court-2", label: "Cancha 2" }
+                    ].map((chip) => (
+                      <button
+                        key={`history-${chip.id}`}
+                        type="button"
+                        className={`quick-chip ${historyFilter === chip.id ? "active" : ""}`}
+                        onClick={() => setHistoryFilter(chip.id as HistoryFilter)}
+                      >
+                        {chip.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <input
+                    type="search"
+                    placeholder="Buscar por jugador o cancha"
+                    value={historySearch}
+                    onChange={(event) => setHistorySearch(event.target.value)}
+                    className="history-search"
+                  />
+
+                  {filteredHistory.length === 0 ? (
+                    <p className="private-hint">Sin resultados para los filtros elegidos.</p>
+                  ) : (
+                    <div className="history-list">
+                      {filteredHistory.slice(0, 20).map((reservation) => {
+                        const attendance = getUserAttendance(reservation, currentUser.id)?.attendanceStatus;
+                        const statusLabel = attendance === "confirmed"
+                          ? "Juego"
+                          : attendance === "maybe"
+                            ? "Quizás"
+                            : attendance === "cancelled"
+                              ? "No juego"
+                              : "Sin respuesta";
+                        const statusClass = attendance === "confirmed"
+                          ? "badge-confirmed"
+                          : attendance === "maybe"
+                            ? "badge-maybe"
+                            : "badge-cancelled";
+                        return (
+                          <article key={`history-${reservation.id}`} className="history-row">
+                            <div className="history-main">
+                              <strong>{reservation.courtName}</strong>
+                              <small>
+                                {new Date(reservation.startDateTime).toLocaleDateString("es-AR", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "2-digit"
+                                })}
+                                {" · "}
+                                {new Date(reservation.startDateTime).toLocaleTimeString("es-AR", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  hour12: false
+                                })}
+                              </small>
+                            </div>
+                            <span className={`badge ${statusClass}`}>{statusLabel}</span>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </section>
           </>
         )}
 
