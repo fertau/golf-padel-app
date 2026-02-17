@@ -25,6 +25,25 @@ const normalizeReservation = (id: string, data: Omit<Reservation, "id">): Reserv
   ...data
 });
 
+const stripUndefinedDeep = <T>(value: T): T => {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripUndefinedDeep(item)) as T;
+  }
+
+  if (value && typeof value === "object") {
+    const next: Record<string, unknown> = {};
+    for (const [key, nestedValue] of Object.entries(value as Record<string, unknown>)) {
+      if (nestedValue === undefined) {
+        continue;
+      }
+      next[key] = stripUndefinedDeep(nestedValue);
+    }
+    return next as T;
+  }
+
+  return value;
+};
+
 export const isCloudMode = () => firebaseEnabled && Boolean(db);
 export const isCloudDbEnabled = () =>
   isCloudMode() && import.meta.env.VITE_USE_FIREBASE_DB === "true";
@@ -73,7 +92,7 @@ export const createReservation = async (input: ReservationInput, currentUser: Us
     updatedAt: nowIso()
   };
 
-  await setDoc(doc(cloudDb, "reservations", id), payload);
+  await setDoc(doc(cloudDb, "reservations", id), stripUndefinedDeep(payload));
 };
 
 export const updateReservationRules = async (
@@ -119,10 +138,10 @@ export const updateReservationRules = async (
       throw new Error("Solo el creador puede editar reglas");
     }
 
-    transaction.update(reservationRef, {
+    transaction.update(reservationRef, stripUndefinedDeep({
       rules,
       updatedAt: nowIso()
-    });
+    }));
   });
 };
 
@@ -196,10 +215,10 @@ export const setAttendanceStatus = async (
       ];
     }
 
-    transaction.update(reservationRef, {
+    transaction.update(reservationRef, stripUndefinedDeep({
       signups: nextSignups,
       updatedAt: nowIso()
-    });
+    }));
   });
 };
 
@@ -242,9 +261,9 @@ export const cancelReservation = async (reservationId: string, currentUser: User
       throw new Error("Solo el creador puede cancelar");
     }
 
-    transaction.update(reservationRef, {
+    transaction.update(reservationRef, stripUndefinedDeep({
       status: "cancelled",
       updatedAt: nowIso()
-    });
+    }));
   });
 };
