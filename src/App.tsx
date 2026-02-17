@@ -27,7 +27,7 @@ import {
 } from "./lib/dataStore";
 import { registerPushToken } from "./lib/push";
 import type { AttendanceStatus, Reservation, User } from "./lib/types";
-import { getUserAttendance } from "./lib/utils";
+import { getUserAttendance, isReservationCreator } from "./lib/utils";
 import { auth } from "./lib/firebase";
 
 type TabId = "mis-partidos" | "mis-reservas" | "perfil";
@@ -237,7 +237,7 @@ export default function App() {
   const myReservations = useMemo(
     () =>
       activeReservations.filter((reservation) =>
-        Boolean(currentUser && reservation.createdByAuthUid === currentUser.id)
+        Boolean(currentUser && isReservationCreator(reservation, currentUser.id))
       ),
     [activeReservations, currentUser]
   );

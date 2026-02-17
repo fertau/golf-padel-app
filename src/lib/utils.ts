@@ -54,6 +54,13 @@ export const getUserAttendance = (reservation: Reservation, userIdOrAuthUid: str
         signup.userId === userIdOrAuthUid || signup.authUid === userIdOrAuthUid
     );
 
+export const isReservationCreator = (reservation: Reservation, userIdOrAuthUid: string): boolean => {
+  if (reservation.createdByAuthUid) {
+    return reservation.createdByAuthUid === userIdOrAuthUid;
+  }
+  return reservation.createdBy.id === userIdOrAuthUid;
+};
+
 const normalizeSignup = (signup: Signup): Signup => {
   const legacy = signup as Signup & { active?: boolean };
   const fallbackStatus: AttendanceStatus = legacy.active === false ? "cancelled" : "confirmed";

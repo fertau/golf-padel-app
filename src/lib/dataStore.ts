@@ -17,7 +17,7 @@ import {
   type ReservationInput
 } from "./localStore";
 import type { AttendanceStatus, Reservation, ReservationRules, Signup, User } from "./types";
-import { canJoinReservation } from "./utils";
+import { canJoinReservation, isReservationCreator } from "./utils";
 
 const nowIso = () => new Date().toISOString();
 
@@ -104,7 +104,7 @@ export const updateReservationRules = async (
   const cloudDb = db;
   if (!isCloudDbEnabled() || !cloudDb) {
     updateReservationLocal(reservationId, (reservation) => {
-      if (reservation.createdBy.id !== currentUser.id) {
+      if (!isReservationCreator(reservation, currentUser.id)) {
         return reservation;
       }
 
@@ -131,11 +131,7 @@ export const updateReservationRules = async (
 
     const reservation = normalizeReservation(reservationId, snapshot.data() as Omit<Reservation, "id">);
 
-    if (
-      reservation.createdByAuthUid
-        ? reservation.createdByAuthUid !== actorAuthUid
-        : reservation.createdBy.id !== currentUser.id
-    ) {
+    if (!isReservationCreator(reservation, actorAuthUid)) {
       throw new Error("Solo el creador puede editar reglas");
     }
 
@@ -229,7 +225,7 @@ export const cancelReservation = async (reservationId: string, currentUser: User
   const cloudDb = db;
   if (!isCloudDbEnabled() || !cloudDb) {
     updateReservationLocal(reservationId, (reservation) => {
-      if (reservation.createdBy.id !== currentUser.id) {
+      if (!isReservationCreator(reservation, currentUser.id)) {
         return reservation;
       }
 
@@ -256,11 +252,7 @@ export const cancelReservation = async (reservationId: string, currentUser: User
 
     const reservation = normalizeReservation(reservationId, snapshot.data() as Omit<Reservation, "id">);
 
-    if (
-      reservation.createdByAuthUid
-        ? reservation.createdByAuthUid !== actorAuthUid
-        : reservation.createdBy.id !== currentUser.id
-    ) {
+    if (!isReservationCreator(reservation, actorAuthUid)) {
       throw new Error("Solo el creador puede cancelar");
     }
 
@@ -296,11 +288,7 @@ export const updateReservationDetails = async (
     }
 
     const reservation = normalizeReservation(reservationId, snapshot.data() as Omit<Reservation, "id">);
-    if (
-      reservation.createdByAuthUid
-        ? reservation.createdByAuthUid !== actorAuthUid
-        : reservation.createdBy.id !== currentUser.id
-    ) {
+    if (!isReservationCreator(reservation, actorAuthUid)) {
       throw new Error("Solo el creador puede editar");
     }
 

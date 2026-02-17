@@ -1,5 +1,5 @@
 import type { AttendanceStatus, Reservation, ReservationRules, Signup, User } from "./types";
-import { canJoinReservation } from "./utils";
+import { canJoinReservation, isReservationCreator } from "./utils";
 
 const STORAGE_KEY = "golf-padel-reservations";
 const STORE_EVENT = "golf-padel-store-updated";
@@ -57,7 +57,7 @@ export const createReservationLocal = (input: ReservationInput, currentUser: Use
     startDateTime: input.startDateTime,
     durationMinutes: input.durationMinutes,
     createdBy: currentUser,
-    createdByAuthUid: undefined,
+    createdByAuthUid: currentUser.id,
     rules: {
       maxPlayersAccepted: input.rules?.maxPlayersAccepted ?? 9999,
       priorityUserIds: input.rules?.priorityUserIds ?? [],
@@ -154,7 +154,7 @@ export const updateReservationDetailsLocal = (
   currentUser: User
 ): Reservation[] =>
   updateReservationLocal(reservationId, (reservation) => {
-    if (reservation.createdBy.id !== currentUser.id) {
+    if (!isReservationCreator(reservation, currentUser.id)) {
       return reservation;
     }
 

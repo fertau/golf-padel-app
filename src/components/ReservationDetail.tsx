@@ -4,7 +4,8 @@ import {
   buildWhatsAppMessage,
   canJoinReservation,
   getSignupsByStatus,
-  getUserAttendance
+  getUserAttendance,
+  isReservationCreator
 } from "../lib/utils";
 
 type Props = {
@@ -65,7 +66,7 @@ export default function ReservationDetail({
     await navigator.clipboard.writeText(message);
     alert("Mensaje copiado");
   };
-  const isCreator = reservation.createdBy.id === currentUser.id;
+  const isCreator = isReservationCreator(reservation, currentUser.id);
   const [editing, setEditing] = useState(false);
   const [editCourtName, setEditCourtName] = useState(reservation.courtName);
   const [editStartDateTime, setEditStartDateTime] = useState(
