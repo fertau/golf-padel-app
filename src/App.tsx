@@ -34,6 +34,7 @@ type TabId = "mis-partidos" | "mis-reservas" | "perfil";
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
 const ONE_TIME_CLEANUP_KEY = "golf-padel-cleanup-v1";
+const LOGIN_PENDING_KEY = "golf-padel-google-login-pending";
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -75,13 +76,19 @@ export default function App() {
     }
 
     let cancelled = false;
+    let gotAuthState = false;
     const setupRedirectFlow = async () => {
       try {
         await setPersistence(firebaseAuth, browserLocalPersistence);
-        await getRedirectResult(firebaseAuth);
+        const result = await getRedirectResult(firebaseAuth);
+        if (result?.user && !cancelled) {
+          setFirebaseUser(result.user);
+          sessionStorage.removeItem(LOGIN_PENDING_KEY);
+        }
       } catch (error) {
         if (!cancelled) {
           setAuthError((error as Error).message);
+          sessionStorage.removeItem(LOGIN_PENDING_KEY);
         }
       }
     };
@@ -92,15 +99,32 @@ export default function App() {
       if (cancelled) {
         return;
       }
+      gotAuthState = true;
       setFirebaseUser(nextUser);
       setAuthLoading(false);
       if (nextUser) {
         setAuthError(null);
+        sessionStorage.removeItem(LOGIN_PENDING_KEY);
+      } else if (sessionStorage.getItem(LOGIN_PENDING_KEY) === "1") {
+        setAuthError(
+          "Google devolvió sin sesión activa. Revisá dominios autorizados y volvé a intentar."
+        );
       }
     });
 
+    const timeout = window.setTimeout(() => {
+      if (cancelled || gotAuthState) {
+        return;
+      }
+      setAuthLoading(false);
+      if (sessionStorage.getItem(LOGIN_PENDING_KEY) === "1") {
+        setAuthError("No se pudo completar el login con Google en este intento.");
+      }
+    }, 4500);
+
     return () => {
       cancelled = true;
+      window.clearTimeout(timeout);
       unsubscribe();
     };
   }, []);
@@ -164,9 +188,11 @@ export default function App() {
     try {
       setBusy(true);
       setAuthError(null);
+      sessionStorage.setItem(LOGIN_PENDING_KEY, "1");
       await signInWithRedirect(auth, googleProvider);
     } catch (error) {
       setAuthError((error as Error).message);
+      sessionStorage.removeItem(LOGIN_PENDING_KEY);
     } finally {
       setBusy(false);
     }
