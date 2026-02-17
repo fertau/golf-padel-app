@@ -24,10 +24,6 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
       <div className="reservation-card-glow" />
       <div className="reservation-card-main">
         <div className="card-header">
-          <div className="card-title-group">
-            <span className="card-label">Cancha</span>
-            <strong className="text-dynamic card-title">{reservation.courtName}</strong>
-          </div>
           <div className="card-datetime-chips" aria-label="Fecha y hora del partido">
             <span className="date-chip date-chip-icon">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
@@ -39,6 +35,7 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
             </span>
           </div>
         </div>
+        <strong className="text-dynamic card-title">{reservation.courtName}</strong>
 
         <div className="card-footer">
           <div className="player-stats">

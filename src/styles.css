@@ -490,7 +490,7 @@ body::before {
 
 .card-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
 }
 
@@ -502,6 +502,7 @@ body::before {
 .card-title {
   font-size: 1.1rem;
   color: #fff;
+  margin: 0;
 }
 
 .card-label {
@@ -531,15 +532,15 @@ body::before {
 
 .card-datetime-chips {
   display: flex;
-  gap: 0.35rem;
+  gap: 0.45rem;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .date-chip {
   border-radius: 999px;
   padding: 0.2rem 0.5rem;
-  font-size: 0.74rem;
+  font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -681,6 +682,7 @@ body::before {
 
 .my-summary {
   gap: 0.85rem;
+  align-items: stretch;
 }
 
 .detail-kpis {
@@ -705,7 +707,7 @@ body::before {
 }
 
 .kpi-card strong {
-  font-size: 1.35rem;
+  font-size: 1.45rem;
   line-height: 1;
 }
 
@@ -733,7 +735,7 @@ body::before {
 }
 
 .upcoming-widget {
-  gap: 0.8rem;
+  gap: 0.65rem;
 }
 
 .upcoming-list {
@@ -741,90 +743,69 @@ body::before {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.5rem;
+  gap: 0.72rem;
 }
 
 .upcoming-list li {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.62rem;
+  gap: 0.85rem;
   align-items: center;
-  border: 1px solid rgba(179, 207, 255, 0.22);
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 12px;
-  padding: 0.58rem 0.64rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 
 .upcoming-date {
   display: grid;
-  gap: 0.28rem;
-}
-
-.upcoming-date-calendar {
   justify-items: center;
-  min-width: 64px;
-}
-
-.upcoming-date-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 10px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(179, 207, 255, 0.35);
-  background: rgba(255, 255, 255, 0.1);
-  color: #f0f7ff;
+  min-width: 62px;
+  gap: 0.02rem;
 }
 
 .upcoming-date span,
 .upcoming-date strong {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 56px;
-  border-radius: 12px;
-  border: 1px solid rgba(179, 207, 255, 0.35);
-  background: rgba(255, 255, 255, 0.08);
+  display: block;
+  min-width: 0;
+  border: none;
+  background: transparent;
   text-transform: uppercase;
 }
 
 .upcoming-date span {
-  font-size: 0.68rem;
-  padding: 0.2rem 0.44rem;
-  color: #d8e7ff;
+  font-size: 0.5rem;
+  letter-spacing: 0.09em;
+  color: #c8daf8;
   font-weight: 700;
 }
 
 .upcoming-date strong {
-  font-size: 0.84rem;
-  padding: 0.28rem 0.52rem;
+  font-size: 2rem;
+  line-height: 0.95;
   color: #ffffff;
   font-weight: 800;
 }
 
 .upcoming-content {
   display: grid;
-  gap: 0.28rem;
+  gap: 0.18rem;
 }
 
 .upcoming-content p {
   margin: 0;
-  font-size: 0.93rem;
-  font-weight: 700;
-}
-
-.upcoming-content span {
-  color: var(--text-dim);
-  font-size: 0.82rem;
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 .upcoming-time {
   display: inline-flex;
   align-items: center;
-  gap: 0.34rem;
+  gap: 0.38rem;
   color: var(--text-dim);
-  font-size: 0.84rem;
+  font-size: 0.92rem;
+  font-weight: 600;
 }
 
 .upcoming-meta-chips {
