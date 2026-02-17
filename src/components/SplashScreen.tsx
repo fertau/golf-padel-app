@@ -77,20 +77,15 @@ export default function SplashScreen({ visible }: Props) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
 
-      // Animation Stages (3200ms total)
-      // 0.0 - 0.2: Racket Fade In (0 - 640ms)
-      // 0.2 - 0.5: Racket Stay (640ms - 1600ms)
-      // 0.5 - 0.65: Racket Fade Out (1600ms - 2080ms)
-      // 0.6 - 1.0: Logo Hero Stage (1920ms - 3200ms)
+      // Animation Stages (3200ms)
+      // 0.0 - 0.3: Racket Fade In
+      // 0.3 - 1.0: Persistence & Logo Trigger
 
-      const racketFadeOutStart = 0.5;
-      const racketFadeOutEnd = 0.65;
-      const logoRevealStart = 0.6;
-      const bgFadeToHeroStart = 0.55;
+      const logoRevealT = 0.35;
 
-      if (t > logoRevealStart && !showContent) setShowContent(true);
+      if (t > logoRevealT && !showContent) setShowContent(true);
 
-      // 1. Draw Court Background
+      // 1. Draw Court Background (PERSISTENT)
       const courtAspect = court.width / court.height;
       const screenAspect = w / h;
       let drawW, drawH, drawX, drawY;
@@ -108,46 +103,28 @@ export default function SplashScreen({ visible }: Props) {
       }
       ctx.drawImage(court, drawX, drawY, drawW, drawH);
 
-      const overlayGrad = ctx.createLinearGradient(0, 0, 0, h);
-      overlayGrad.addColorStop(0, "rgba(0,0,0,0.1)");
-      overlayGrad.addColorStop(1, "rgba(0,0,0,0.4)");
-      ctx.fillStyle = overlayGrad;
+      // Darker overlay to help the logo pop
+      ctx.fillStyle = "rgba(1, 6, 20, 0.35)";
       ctx.fillRect(0, 0, w, h);
 
-      // 2. Draw Real Racket (With independent fade out)
+      // 2. Draw Real Racket (PERSISTENT after fade-in)
       const rackW = 320;
       const rackH = rackW * (racket.height / racket.width);
       const racketX = w / 2;
-      const racketY = h * 0.72;
-      const racketAngle = -Math.PI / 18;
+      const racketY = h * 0.78; // Even lower to give the logo the main stage
+      const racketAngle = -Math.PI / 20;
 
-      let racketAlpha = 0;
-      if (t < 0.2) {
-        racketAlpha = easeInOutQuad(t / 0.2);
-      } else if (t < racketFadeOutStart) {
-        racketAlpha = 1;
-      } else if (t < racketFadeOutEnd) {
-        racketAlpha = 1 - easeInOutQuad((t - racketFadeOutStart) / (racketFadeOutEnd - racketFadeOutStart));
-      }
+      const racketAlpha = easeInOutQuad(clamp(t / 0.3, 0, 1));
 
-      if (racketAlpha > 0) {
-        ctx.save();
-        ctx.globalAlpha = racketAlpha;
-        ctx.translate(racketX, racketY + (1 - racketAlpha) * 30);
-        ctx.rotate(racketAngle);
-        ctx.shadowColor = "rgba(0,0,0,0.5)";
-        ctx.shadowBlur = 50;
-        ctx.shadowOffsetY = 25;
-        ctx.drawImage(racket, -rackW / 2, -rackH / 2, rackW, rackH);
-        ctx.restore();
-      }
-
-      // 3. Sequential Transition to Dark Hero Background
-      if (t > bgFadeToHeroStart) {
-        const bgAlpha = clamp((t - bgFadeToHeroStart) / 0.15, 0, 1);
-        ctx.fillStyle = `rgba(1, 6, 20, ${bgAlpha})`;
-        ctx.fillRect(0, 0, w, h);
-      }
+      ctx.save();
+      ctx.globalAlpha = racketAlpha;
+      ctx.translate(racketX, racketY + (1 - racketAlpha) * 40);
+      ctx.rotate(racketAngle);
+      ctx.shadowColor = "rgba(0,0,0,0.7)";
+      ctx.shadowBlur = 60;
+      ctx.shadowOffsetY = 30;
+      ctx.drawImage(racket, -rackW / 2, -rackH / 2, rackW, rackH);
+      ctx.restore();
 
       raf = requestAnimationFrame(render);
     };
@@ -161,8 +138,8 @@ export default function SplashScreen({ visible }: Props) {
   return (
     <div className="splash" aria-hidden>
       <canvas ref={canvasRef} className="splash-canvas" />
-      <div className={`splash-content ${showContent ? "visible" : ""}`} style={{ paddingTop: '15vh' }}>
-        <h1 className="splash-brand">
+      <div className={`splash-content ${showContent ? "visible" : ""}`}>
+        <h1 className="splash-brand" style={{ marginBottom: '10vh' }}>
           GOLF <span>PADEL</span> APP
         </h1>
       </div>

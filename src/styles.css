@@ -630,15 +630,47 @@ button.neutral {
 }
 
 .my-summary {
-  gap: 0.7rem;
-  justify-items: center;
-  text-align: center;
+  gap: 0.58rem;
+  justify-items: stretch;
+  text-align: left;
 }
 
 .summary-kpis {
   width: 100%;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  max-width: 460px;
+  max-width: 100%;
+  gap: 0.42rem;
+}
+
+.my-summary .section-title {
+  width: 100%;
+  text-align: left;
+}
+
+.summary-kpis .kpi-action {
+  text-align: center;
+  justify-items: center;
+  align-content: center;
+  gap: 0.12rem;
+  padding: 0.46rem 0.5rem;
+  min-height: 70px;
+  border-radius: 11px;
+}
+
+.summary-kpis .kpi-label {
+  font-size: 0.65rem;
+}
+
+.summary-kpis .kpi-action strong {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 1.06rem;
+  line-height: 1.1;
+}
+
+.my-summary .link-btn {
+  justify-self: start;
 }
 
 .upcoming-wrap {
