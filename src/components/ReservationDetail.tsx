@@ -28,6 +28,43 @@ export default function ReservationDetail({
   onCancel,
   onUpdateReservation
 }: Props) {
+  const IconWhatsApp = (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 3.3A8.7 8.7 0 0 0 4.5 16l-1.2 4.7L8 19.4A8.7 8.7 0 1 0 12 3.3Zm0 15.9a7.2 7.2 0 0 1-3.7-1L8 18l-2.6.7.7-2.5-.2-.4a7.2 7.2 0 1 1 6.1 3.4Zm4-5.4c-.2-.1-1.1-.6-1.3-.6s-.3-.1-.4.1c-.1.2-.5.6-.6.7-.1.1-.2.2-.4.1a5.9 5.9 0 0 1-1.7-1.1 6.4 6.4 0 0 1-1.2-1.5c-.1-.2 0-.3.1-.4l.3-.3.2-.3v-.3c0-.1-.4-1-.6-1.4-.2-.4-.3-.3-.4-.3h-.4c-.1 0-.3 0-.4.2-.1.2-.6.6-.6 1.4s.6 1.5.7 1.6c.1.1 1.2 2 2.9 2.8 1.7.7 1.7.5 2 .5.3 0 1.1-.4 1.3-.8.2-.4.2-.7.1-.8Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+  const IconShare = (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 3.5v10.2m0-10.2 3.2 3.1M12 3.5 8.8 6.6M5.2 11v6.6c0 .9.7 1.6 1.6 1.6h10.4c.9 0 1.6-.7 1.6-1.6V11"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+  const IconCopy = (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M9.2 7.2h8.1c.8 0 1.5.7 1.5 1.5v8.1c0 .8-.7 1.5-1.5 1.5H9.2c-.8 0-1.5-.7-1.5-1.5V8.7c0-.8.7-1.5 1.5-1.5Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M5.2 14.8V6.7c0-.8.7-1.5 1.5-1.5h8.1"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
   const isCreator = reservation.createdBy.id === currentUser.id;
   const [editing, setEditing] = useState(false);
   const [editCourtName, setEditCourtName] = useState(reservation.courtName);
@@ -153,20 +190,32 @@ export default function ReservationDetail({
         </div>
       </div>
 
-      <div className="actions">
-        <button onClick={openWhatsApp}>Abrir WhatsApp</button>
-        <button onClick={share}>Compartir</button>
-        <button onClick={copyMessage}>Copiar mensaje</button>
+      <div className="actions actions-share">
+        <button className="action-ghost" onClick={openWhatsApp}>
+          <span className="button-icon" aria-hidden="true">{IconWhatsApp}</span>
+          Whatsapp
+        </button>
+        <button className="action-ghost" onClick={share}>
+          <span className="button-icon" aria-hidden="true">{IconShare}</span>
+          Compartir
+        </button>
+        <button className="action-ghost" onClick={copyMessage}>
+          <span className="button-icon" aria-hidden="true">{IconCopy}</span>
+          Copiar mensaje
+        </button>
       </div>
 
       {isCreator ? (
-        <div className="actions">
-          <button type="button" onClick={() => setEditing((value) => !value)}>
-            {editing ? "Cancelar edición" : "Modificar reserva"}
-          </button>
-          <button className="danger" onClick={() => onCancel(reservation.id)}>
-            Cancelar reserva
-          </button>
+        <div className="danger-zone">
+          <p className="danger-zone-title">Zona sensible</p>
+          <div className="actions danger-actions">
+            <button type="button" className="danger-outline" onClick={() => setEditing((value) => !value)}>
+              {editing ? "Cancelar edición" : "Modificar reserva"}
+            </button>
+            <button className="danger" onClick={() => onCancel(reservation.id)}>
+              Cancelar reserva
+            </button>
+          </div>
         </div>
       ) : null}
 
