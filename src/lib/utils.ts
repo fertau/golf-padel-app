@@ -46,10 +46,14 @@ export const getSignupsByStatus = (reservation: Reservation, status: AttendanceS
     .filter((signup) => signup.attendanceStatus === status)
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
-export const getUserAttendance = (reservation: Reservation, userId: string): Signup | undefined =>
+export const getUserAttendance = (reservation: Reservation, userIdOrAuthUid: string): Signup | undefined =>
   reservation.signups
     .map((signup) => normalizeSignup(signup))
-    .find((signup) => signup.userId === userId && signup.attendanceStatus !== "cancelled");
+    .find(
+      (signup) =>
+        (signup.userId === userIdOrAuthUid || signup.authUid === userIdOrAuthUid) &&
+        signup.attendanceStatus !== "cancelled"
+    );
 
 const normalizeSignup = (signup: Signup): Signup => {
   const legacy = signup as Signup & { active?: boolean };

@@ -190,6 +190,8 @@ export const setAttendanceStatus = async (
 
     if (existing) {
       nextSignups = reservation.signups.map((signup) =>
+        signup.id === existing.id ||
+        signup.authUid === actorAuthUid ||
         signup.userId === user.id
           ? {
               ...signup,
