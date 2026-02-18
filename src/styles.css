@@ -68,9 +68,9 @@ body::before {
   position: fixed;
   inset: 0;
   width: 100%;
-  height: 100%;
+  height: calc(100% + env(safe-area-inset-bottom));
   min-height: 100vh;
-  min-height: 100dvh;
+  min-height: calc(100dvh + env(safe-area-inset-bottom));
   z-index: 3000;
   background: var(--blue-950);
   display: flex;
@@ -78,7 +78,6 @@ body::before {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding-bottom: env(safe-area-inset-bottom);
   animation: splash-fade 0.8s ease forwards;
   animation-delay: 2.4s;
 }
