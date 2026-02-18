@@ -66,12 +66,11 @@ body::before {
 
 .splash {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh;
-  min-height: -webkit-fill-available;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   z-index: 3000;
   background: var(--blue-950);
   display: flex;
@@ -79,25 +78,30 @@ body::before {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom);
   animation: splash-fade 0.8s ease forwards;
   animation-delay: 2.4s;
 }
 
 .splash-canvas {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100%;
-  height: calc(100% + env(safe-area-inset-bottom));
+  height: 100%;
+  display: block;
 }
 
 .splash-content {
-  position: relative;
+  position: absolute;
+  top: 25vh;
+  left: 0;
+  right: 0;
   z-index: 10;
   text-align: center;
   opacity: 0;
   transform: translateY(20px);
   transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+  pointer-events: none;
 }
 
 .splash-content.visible {
@@ -2168,8 +2172,8 @@ ul {
     grid-template-columns: 1fr;
   }
 
-  .splash-brand {
-    bottom: max(15vh, 96px);
+  .splash-content {
+    top: 23vh;
   }
 }
 

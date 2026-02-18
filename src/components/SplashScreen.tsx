@@ -27,7 +27,7 @@ export default function SplashScreen({ visible }: Props) {
   const racketSrcRef = useRef(rackets[Math.floor(Math.random() * rackets.length)]);
 
   useEffect(() => {
-    // Preload Assets
+    // Preload assets once; the racket is selected randomly for this app launch.
     const court = new Image();
     const racket = new Image();
     court.src = "/court_texture.avif";
@@ -43,6 +43,12 @@ export default function SplashScreen({ visible }: Props) {
     };
     court.onload = onLoaded;
     racket.onload = onLoaded;
+  }, []);
+
+  useEffect(() => {
+    if (visible) {
+      setShowContent(false);
+    }
   }, [visible]);
 
   useEffect(() => {
@@ -57,18 +63,21 @@ export default function SplashScreen({ visible }: Props) {
     let raf = 0;
     const start = performance.now();
     const duration = 3200;
+    let logoShown = false;
 
     const render = (now: number) => {
       const elapsed = now - start;
       const t = clamp(elapsed / duration, 0, 1);
       const dpr = window.devicePixelRatio || 1;
-      const hostBounds = canvas.parentElement?.getBoundingClientRect();
-      const w = hostBounds ? Math.ceil(hostBounds.width) : window.innerWidth;
-      const h = hostBounds ? Math.ceil(hostBounds.height) : window.innerHeight;
+      const bounds = canvas.getBoundingClientRect();
+      const w = Math.max(1, Math.ceil(bounds.width));
+      const h = Math.max(1, Math.ceil(bounds.height));
+      const pixelW = Math.floor(w * dpr);
+      const pixelH = Math.floor(h * dpr);
 
-      if (canvas.width !== Math.floor(w * dpr)) {
-        canvas.width = Math.floor(w * dpr);
-        canvas.height = Math.floor(h * dpr);
+      if (canvas.width !== pixelW || canvas.height !== pixelH) {
+        canvas.width = pixelW;
+        canvas.height = pixelH;
         canvas.style.width = `${w}px`;
         canvas.style.height = `${h}px`;
       }
@@ -77,7 +86,10 @@ export default function SplashScreen({ visible }: Props) {
       ctx.clearRect(0, 0, w, h);
 
       // Logo Reveal Point
-      if (t > 0.25 && !showContent) setShowContent(true);
+      if (t > 0.25 && !logoShown) {
+        logoShown = true;
+        setShowContent(true);
+      }
 
       // 1. Draw Court Background (PERSISTENT & STATIC)
       const courtAspect = court.width / court.height;
@@ -123,19 +135,21 @@ export default function SplashScreen({ visible }: Props) {
       ctx.drawImage(racket, -rackW / 2, -rackH / 2, rackW, rackH);
       ctx.restore();
 
-      raf = requestAnimationFrame(render);
+      if (t < 1) {
+        raf = requestAnimationFrame(render);
+      }
     };
 
     raf = requestAnimationFrame(render);
     return () => cancelAnimationFrame(raf);
-  }, [visible, assetsLoaded, showContent]);
+  }, [visible, assetsLoaded]);
 
   if (!visible) return null;
 
   return (
     <div className="splash" aria-hidden>
       <canvas ref={canvasRef} className="splash-canvas" />
-      <div className={`splash-content ${showContent ? "visible" : ""}`} style={{ pointerEvents: 'none', position: 'absolute', top: '25vh', width: '100%' }}>
+      <div className={`splash-content ${showContent ? "visible" : ""}`}>
         <h1 className="splash-brand">
           GOLF <span>PADEL</span> APP
         </h1>
