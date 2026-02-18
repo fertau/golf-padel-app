@@ -212,20 +212,24 @@ export default function App() {
 
   // 5. Derived State
   const activeReservations = useMemo(() => reservations.filter(r => r.status === "active"), [reservations]);
+  const activeUpcomingReservations = useMemo(
+    () => activeReservations.filter((reservation) => parseReservationDate(reservation.startDateTime).getTime() >= Date.now()),
+    [activeReservations]
+  );
 
-  const myPendingResponseCount = activeReservations.filter(r => !getUserAttendance(r, currentUser?.id ?? "")).length;
-  const myConfirmedCount = activeReservations.filter(r => getUserAttendance(r, currentUser?.id ?? "")?.attendanceStatus === "confirmed").length;
+  const myPendingResponseCount = activeUpcomingReservations.filter(r => !getUserAttendance(r, currentUser?.id ?? "")).length;
+  const myConfirmedCount = activeUpcomingReservations.filter(r => getUserAttendance(r, currentUser?.id ?? "")?.attendanceStatus === "confirmed").length;
 
   const myUpcomingConfirmed = useMemo(() =>
-    activeReservations
-      .filter(r => getUserAttendance(r, currentUser?.id ?? "")?.attendanceStatus === "confirmed" && new Date(r.startDateTime).getTime() >= Date.now())
-      .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime())
-    , [activeReservations, currentUser]);
+    activeUpcomingReservations
+      .filter(r => getUserAttendance(r, currentUser?.id ?? "")?.attendanceStatus === "confirmed")
+      .sort((a, b) => parseReservationDate(a.startDateTime).getTime() - parseReservationDate(b.startDateTime).getTime())
+    , [activeUpcomingReservations, currentUser]);
 
   const visibleUpcoming = showAllUpcoming ? myUpcomingConfirmed : myUpcomingConfirmed.slice(0, 3);
 
   const filteredMatches = useMemo(() => {
-    let list = activeReservations;
+    let list = activeUpcomingReservations;
     if (matchesFilter === "pending") list = list.filter(r => !getUserAttendance(r, currentUser?.id ?? ""));
     if (matchesFilter === "confirmed") list = list.filter(r => getUserAttendance(r, currentUser?.id ?? "")?.attendanceStatus === "confirmed");
 
@@ -236,7 +240,7 @@ export default function App() {
       if (quickDateFilter === "manana") return g === "manana";
       return g !== "mas-adelante";
     });
-  }, [activeReservations, matchesFilter, quickDateFilter, currentUser]);
+  }, [activeUpcomingReservations, matchesFilter, quickDateFilter, currentUser]);
 
   const historyBase = useMemo(() => {
     if (!currentUser) {
@@ -244,13 +248,13 @@ export default function App() {
     }
     return reservations
       .filter((reservation) => {
-        const isPast = new Date(reservation.startDateTime).getTime() < Date.now();
+        const isPast = parseReservationDate(reservation.startDateTime).getTime() < Date.now();
         if (!isPast) {
           return false;
         }
         return Boolean(getUserAttendance(reservation, currentUser.id)) || isReservationCreator(reservation, currentUser.id);
       })
-      .sort((a, b) => new Date(b.startDateTime).getTime() - new Date(a.startDateTime).getTime());
+      .sort((a, b) => parseReservationDate(b.startDateTime).getTime() - parseReservationDate(a.startDateTime).getTime());
   }, [reservations, currentUser]);
 
   const historyStats = useMemo(() => {
