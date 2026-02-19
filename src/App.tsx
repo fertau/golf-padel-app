@@ -110,7 +110,7 @@ const getShareBaseUrl = (): string => {
 };
 
 type HistoryStatus = "confirmed" | "maybe" | "cancelled";
-type HistoryRange = "1m" | "3m" | "6m" | "1y" | "month";
+type HistoryRange = "all" | "1m" | "3m" | "6m" | "1y" | "month";
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -129,7 +129,7 @@ export default function App() {
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [historyStatuses, setHistoryStatuses] = useState<HistoryStatus[]>(["confirmed", "maybe", "cancelled"]);
-  const [historyRange, setHistoryRange] = useState<HistoryRange>("3m");
+  const [historyRange, setHistoryRange] = useState<HistoryRange>("all");
   const [historyMonth, setHistoryMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${`${now.getMonth() + 1}`.padStart(2, "0")}`;
@@ -947,6 +947,7 @@ export default function App() {
                     <small className="private-hint">Periodo</small>
                     <div className="quick-chip-row">
                       {[
+                        { id: "all", label: "Todo" },
                         { id: "1m", label: "Último mes" },
                         { id: "3m", label: "Últimos 3 meses" },
                         { id: "6m", label: "Últimos 6 meses" },
