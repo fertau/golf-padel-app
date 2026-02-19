@@ -33,6 +33,7 @@ import {
   getLocalGroups,
   getLocalVenues,
   linkVenueToGroupLocal,
+  renameGroupLocal,
   setGroupMemberAdminLocal,
   subscribeLocalCourts,
   subscribeLocalGroupsForUser,
@@ -408,7 +409,23 @@ export const ensureUserDefaultGroup = async (currentUser: User): Promise<Group> 
   const existingSnapshot = await getDocs(q);
   if (!existingSnapshot.empty) {
     const existing = existingSnapshot.docs[0];
-    return normalizeGroup(existing.id, existing.data() as Omit<Group, "id">);
+    const group = normalizeGroup(existing.id, existing.data() as Omit<Group, "id">);
+    if (!group.adminAuthUids.includes(currentUser.id)) {
+      await setDoc(
+        doc(cloudDb, groupCollection, group.id),
+        stripUndefinedDeep({
+          ...group,
+          adminAuthUids: Array.from(new Set([...group.adminAuthUids, currentUser.id])),
+          updatedAt: nowIso()
+        }),
+        { merge: true }
+      );
+      return {
+        ...group,
+        adminAuthUids: Array.from(new Set([...group.adminAuthUids, currentUser.id]))
+      };
+    }
+    return group;
   }
 
   const id = crypto.randomUUID();
@@ -458,6 +475,143 @@ export const createGroup = async (name: string, currentUser: User): Promise<Grou
   };
   await setDoc(doc(cloudDb, groupCollection, id), stripUndefinedDeep(group));
   return group;
+};
+
+export const renameGroup = async (
+  groupId: string,
+  name: string,
+  currentUser: User
+): Promise<Group> => {
+  const trimmedName = name.trim();
+  if (!trimmedName) {
+    throw new Error("Ingresá un nombre de grupo.");
+  }
+
+  const cloudDb = db;
+  if (!isCloudDbEnabled() || !cloudDb) {
+    const updated = renameGroupLocal(groupId, trimmedName);
+    if (!updated) {
+      throw new Error("No se pudo renombrar el grupo.");
+    }
+    return updated;
+  }
+
+  const actorAuthUid = auth?.currentUser?.uid;
+  if (!actorAuthUid) {
+    throw new Error("Necesitás iniciar sesión.");
+  }
+
+  await runTransaction(cloudDb, async (transaction) => {
+    const groupRef = doc(cloudDb, groupCollection, groupId);
+    const groupSnapshot = await transaction.get(groupRef);
+    if (!groupSnapshot.exists()) {
+      throw new Error("Grupo no encontrado.");
+    }
+    const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
+    if (!isGroupAdmin(group, actorAuthUid)) {
+      throw new Error("Solo administradores pueden renombrar el grupo.");
+    }
+    transaction.update(groupRef, {
+      name: trimmedName,
+      updatedAt: nowIso()
+    });
+  });
+
+  return {
+    id: groupId,
+    name: trimmedName,
+    ownerAuthUid: currentUser.id,
+    memberAuthUids: [],
+    adminAuthUids: [],
+    memberNamesByAuthUid: {},
+    venueIds: [],
+    createdAt: nowIso(),
+    updatedAt: nowIso()
+  };
+};
+
+export const migrateLegacyReservationsForUser = async (
+  currentUser: User,
+  fallbackGroupId: string,
+  fallbackGroupName: string
+) => {
+  const cloudDb = db;
+  if (!isCloudDbEnabled() || !cloudDb) {
+    const reservations = getReservations();
+    let hasChanges = false;
+    const next = reservations.map((reservation) => {
+      let changed = false;
+      const nextReservation: Reservation = { ...reservation };
+      if (!nextReservation.groupId || nextReservation.groupId === "default-group") {
+        const relatedToUser =
+          nextReservation.createdByAuthUid === currentUser.id ||
+          nextReservation.createdBy.id === currentUser.id ||
+          nextReservation.createdBy.name === currentUser.name ||
+          nextReservation.signups.some(
+            (signup) => signup.authUid === currentUser.id || signup.userId === currentUser.id
+          );
+        if (relatedToUser) {
+          nextReservation.groupId = fallbackGroupId;
+          nextReservation.groupName = fallbackGroupName;
+          changed = true;
+        }
+      }
+      if (!nextReservation.createdByAuthUid && nextReservation.createdBy.name === currentUser.name) {
+        nextReservation.createdByAuthUid = currentUser.id;
+        changed = true;
+      }
+      if (changed) {
+        nextReservation.updatedAt = nowIso();
+        hasChanges = true;
+      }
+      return nextReservation;
+    });
+    if (hasChanges) {
+      localStorage.setItem("golf-padel-reservations", JSON.stringify(next));
+      window.dispatchEvent(new Event("golf-padel-store-updated"));
+    }
+    return;
+  }
+
+  const actorAuthUid = auth?.currentUser?.uid;
+  if (!actorAuthUid) return;
+
+  const legacyByGroupQuery = query(collection(cloudDb, reservationCollection), where("groupId", "==", "default-group"));
+  const legacyByCreatorQuery = query(collection(cloudDb, reservationCollection), where("createdByAuthUid", "==", actorAuthUid));
+  const [legacyByGroupSnapshot, legacyByCreatorSnapshot] = await Promise.all([
+    getDocs(legacyByGroupQuery),
+    getDocs(legacyByCreatorQuery)
+  ]);
+  const snapshots = [...legacyByGroupSnapshot.docs, ...legacyByCreatorSnapshot.docs];
+  if (snapshots.length === 0) return;
+  const uniqueById = new Map<string, typeof snapshots[number]>();
+  snapshots.forEach((snapshotDoc) => uniqueById.set(snapshotDoc.id, snapshotDoc));
+
+  await runTransaction(cloudDb, async (transaction) => {
+    for (const snapshotDoc of uniqueById.values()) {
+      const reservation = normalizeReservation(snapshotDoc.id, snapshotDoc.data() as Omit<Reservation, "id">);
+      const relatedToUser =
+        reservation.createdByAuthUid === actorAuthUid ||
+        reservation.createdBy.id === actorAuthUid ||
+        reservation.createdBy.name === currentUser.name ||
+        reservation.signups.some((signup) => signup.authUid === actorAuthUid || signup.userId === actorAuthUid);
+      if (!relatedToUser) {
+        continue;
+      }
+
+      const updates: Partial<Reservation> & { updatedAt: string } = {
+        updatedAt: nowIso(),
+        groupId: fallbackGroupId,
+        groupName: fallbackGroupName
+      };
+
+      if (!reservation.createdByAuthUid && reservation.createdBy.name === currentUser.name) {
+        updates.createdByAuthUid = actorAuthUid;
+      }
+
+      transaction.update(doc(cloudDb, reservationCollection, reservation.id), stripUndefinedDeep(updates));
+    }
+  });
 };
 
 export const setGroupMemberAdmin = async (

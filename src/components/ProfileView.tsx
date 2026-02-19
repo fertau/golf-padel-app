@@ -8,6 +8,7 @@ type Props = {
   activeGroupScope: "all" | string;
   onSetActiveGroupScope: (scope: "all" | string) => void;
   onCreateGroup: (name: string) => Promise<void>;
+  onRenameGroup: (groupId: string, name: string) => Promise<void>;
   onCreateGroupInvite: (groupId: string, channel?: "whatsapp" | "email" | "link") => Promise<string>;
   onSetGroupMemberAdmin: (groupId: string, targetAuthUid: string, makeAdmin: boolean) => Promise<void>;
   onLogout: () => void;
@@ -22,6 +23,7 @@ export default function ProfileView({
   activeGroupScope,
   onSetActiveGroupScope,
   onCreateGroup,
+  onRenameGroup,
   onCreateGroupInvite,
   onSetGroupMemberAdmin,
   onLogout,
@@ -35,6 +37,8 @@ export default function ProfileView({
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [inviteBusyGroupId, setInviteBusyGroupId] = useState<string | null>(null);
   const [roleBusyKey, setRoleBusyKey] = useState<string | null>(null);
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [groupNameDraft, setGroupNameDraft] = useState("");
 
   useEffect(() => {
     setNameDraft(user.name);
@@ -128,6 +132,22 @@ export default function ProfileView({
     }
   };
 
+  const startRenameGroup = (groupId: string, currentName: string) => {
+    setEditingGroupId(groupId);
+    setGroupNameDraft(currentName);
+  };
+
+  const confirmRenameGroup = async (groupId: string) => {
+    try {
+      await onRenameGroup(groupId, groupNameDraft);
+      setEditingGroupId(null);
+      setGroupNameDraft("");
+      triggerHaptic("medium");
+    } catch (error) {
+      alert((error as Error).message);
+    }
+  };
+
   return (
     <div className="profile-view-elite">
       <header className="profile-hero-elite">
@@ -213,6 +233,13 @@ export default function ProfileView({
                     {role !== "member" ? (
                       <>
                         <button
+                          className="quick-chip"
+                          onClick={() => startRenameGroup(group.id, group.name)}
+                          disabled={inviteBusyGroupId === group.id}
+                        >
+                          Renombrar
+                        </button>
+                        <button
                           className="quick-chip active"
                           onClick={() => shareGroupInvite(group.id, "whatsapp")}
                           disabled={inviteBusyGroupId === group.id}
@@ -236,6 +263,23 @@ export default function ProfileView({
                       </>
                     ) : null}
                   </div>
+                  {editingGroupId === group.id ? (
+                    <div className="quick-chip-row" style={{ marginTop: "0.4rem" }}>
+                      <input
+                        className="elite-input"
+                        type="text"
+                        value={groupNameDraft}
+                        onChange={(event) => setGroupNameDraft(event.target.value)}
+                        maxLength={48}
+                      />
+                      <button className="quick-chip active" onClick={() => confirmRenameGroup(group.id)}>
+                        Guardar
+                      </button>
+                      <button className="quick-chip" onClick={() => setEditingGroupId(null)}>
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : null}
                   <div className="history-level" style={{ marginTop: "0.5rem" }}>
                     {Object.entries(group.memberNamesByAuthUid).map(([memberAuthUid, memberName]) => {
                       const isOwner = group.ownerAuthUid === memberAuthUid;

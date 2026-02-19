@@ -105,11 +105,46 @@ export const createGroupLocal = (name: string, user: User): Group => {
   return group;
 };
 
+export const renameGroupLocal = (groupId: string, name: string): Group | null => {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const groups = getLocalGroups();
+  let nextGroup: Group | null = null;
+  const next = groups.map((group) => {
+    if (group.id !== groupId) {
+      return group;
+    }
+    nextGroup = {
+      ...group,
+      name: trimmed,
+      updatedAt: nowIso()
+    };
+    return nextGroup;
+  });
+  write(GROUPS_KEY, next);
+  return nextGroup;
+};
+
 export const ensureDefaultGroupLocal = (user: User): Group => {
   const groups = getLocalGroups();
   const existing = groups.find((group) => group.memberAuthUids.includes(user.id));
   if (existing) {
-    return existing;
+    if (existing.adminAuthUids.includes(user.id)) {
+      return existing;
+    }
+    const updated = {
+      ...existing,
+      adminAuthUids: Array.from(new Set([...existing.adminAuthUids, user.id])),
+      updatedAt: nowIso()
+    };
+    write(
+      GROUPS_KEY,
+      groups.map((group) => (group.id === existing.id ? updated : group))
+    );
+    return updated;
   }
   return createGroupLocal("Mi grupo", user);
 };

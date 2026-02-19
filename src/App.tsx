@@ -35,6 +35,8 @@ import {
   createReservationInviteLink,
   ensureUserDefaultGroup,
   isCloudDbEnabled,
+  migrateLegacyReservationsForUser,
+  renameGroup,
   setGroupMemberAdmin,
   setAttendanceStatus,
   subscribeCourts,
@@ -262,6 +264,12 @@ export default function App() {
       cancelled = true;
     };
   }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser || groups.length === 0) return;
+    const fallbackGroup = groups.find((group) => group.ownerAuthUid === currentUser.id) ?? groups[0];
+    migrateLegacyReservationsForUser(currentUser, fallbackGroup.id, fallbackGroup.name).catch(() => null);
+  }, [currentUser, groups]);
 
   // 4.2 Invite resolution
   useEffect(() => {
@@ -600,6 +608,11 @@ export default function App() {
     if (!currentUser) return;
     const created = await createGroup(name, currentUser);
     setActiveGroupScope(created.id);
+  };
+
+  const handleRenameGroup = async (groupId: string, name: string) => {
+    if (!currentUser) return;
+    await renameGroup(groupId, name, currentUser);
   };
 
   const handleCreateGroupInviteLink = async (
@@ -1075,6 +1088,7 @@ export default function App() {
             activeGroupScope={activeGroupScope}
             onSetActiveGroupScope={setActiveGroupScope}
             onCreateGroup={handleCreateGroup}
+            onRenameGroup={handleRenameGroup}
             onCreateGroupInvite={handleCreateGroupInviteLink}
             onSetGroupMemberAdmin={handleSetGroupMemberAdmin}
             onLogout={handleLogout}
