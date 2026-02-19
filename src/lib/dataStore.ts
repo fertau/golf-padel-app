@@ -14,6 +14,7 @@ import {
 import { auth, db, firebaseEnabled } from "./firebase";
 import {
   createReservationLocal,
+  getReservations,
   updateReservationDetailsLocal,
   setAttendanceStatusLocal,
   subscribeLocalReservations,
@@ -30,7 +31,9 @@ import {
   ensureDefaultGroupLocal,
   getInviteByTokenLocal,
   getLocalGroups,
+  getLocalVenues,
   linkVenueToGroupLocal,
+  setGroupMemberAdminLocal,
   subscribeLocalCourts,
   subscribeLocalGroupsForUser,
   subscribeLocalVenues
@@ -225,7 +228,7 @@ const resolveLocalVenueAndCourt = (
 ): { venue?: Venue; court?: Court } => {
   let venue: Venue | undefined;
   if (input.venueId) {
-    venue = undefined;
+    venue = getLocalVenues().find((item) => item.id === input.venueId);
   } else if (input.venueName?.trim()) {
     venue = createVenueLocal(
       {
@@ -402,6 +405,61 @@ export const createGroup = async (name: string, currentUser: User): Promise<Grou
   };
   await setDoc(doc(cloudDb, groupCollection, id), stripUndefinedDeep(group));
   return group;
+};
+
+export const setGroupMemberAdmin = async (
+  groupId: string,
+  targetAuthUid: string,
+  makeAdmin: boolean,
+  currentUser: User
+) => {
+  const cloudDb = db;
+  if (!isCloudDbEnabled() || !cloudDb) {
+    const localGroup = getLocalGroups().find((group) => group.id === groupId);
+    if (!localGroup) {
+      throw new Error("Grupo no encontrado.");
+    }
+    if (!isGroupAdmin(localGroup, currentUser.id)) {
+      throw new Error("Solo administradores pueden gestionar roles.");
+    }
+    const updated = setGroupMemberAdminLocal(groupId, targetAuthUid, makeAdmin);
+    if (!updated) {
+      throw new Error("No se pudo actualizar el rol.");
+    }
+    return;
+  }
+
+  const actorAuthUid = auth?.currentUser?.uid;
+  if (!actorAuthUid) {
+    throw new Error("Necesitás iniciar sesión.");
+  }
+
+  await runTransaction(cloudDb, async (transaction) => {
+    const groupRef = doc(cloudDb, groupCollection, groupId);
+    const groupSnapshot = await transaction.get(groupRef);
+    if (!groupSnapshot.exists()) {
+      throw new Error("Grupo no encontrado.");
+    }
+    const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
+    if (!isGroupAdmin(group, actorAuthUid)) {
+      throw new Error("Solo administradores pueden gestionar roles.");
+    }
+    if (!group.memberAuthUids.includes(targetAuthUid)) {
+      throw new Error("El usuario no es miembro del grupo.");
+    }
+    if (group.ownerAuthUid === targetAuthUid) {
+      throw new Error("El owner siempre mantiene permisos de admin.");
+    }
+
+    const adminAuthUids = makeAdmin
+      ? Array.from(new Set([...group.adminAuthUids, targetAuthUid]))
+      : group.adminAuthUids.filter((authUid) => authUid !== targetAuthUid);
+
+    transaction.update(groupRef, {
+      adminAuthUids,
+      updatedAt: nowIso()
+    });
+  });
 };
 
 export const createReservation = async (input: ReservationInput, currentUser: User) => {
@@ -774,11 +832,10 @@ export const createReservationInviteLink = async (
   const cloudDb = db;
   const normalizedBase = baseUrl.replace(/\/+$/, "");
   if (!isCloudDbEnabled() || !cloudDb) {
-    const reservation = (() => {
-      const localGroups = getLocalGroups();
-      const membershipGroupId = localGroups.find((group) => group.memberAuthUids.includes(currentUser.id))?.id ?? "default-group";
-      return { groupId: membershipGroupId };
-    })();
+    const reservation = getReservations().find((candidate) => candidate.id === reservationId);
+    if (!reservation) {
+      throw new Error("Reserva no encontrada.");
+    }
     const invite = createReservationInviteLocal(reservation.groupId, reservationId, currentUser.id, "link");
     return `${normalizedBase}/join/${invite.token}`;
   }

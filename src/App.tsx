@@ -35,6 +35,7 @@ import {
   createReservationInviteLink,
   ensureUserDefaultGroup,
   isCloudDbEnabled,
+  setGroupMemberAdmin,
   setAttendanceStatus,
   subscribeCourts,
   subscribeGroups,
@@ -615,6 +616,17 @@ export default function App() {
     return createReservationInviteLink(reservationId, currentUser, shareBaseUrl);
   };
 
+  const handleSetGroupMemberAdmin = async (
+    groupId: string,
+    targetAuthUid: string,
+    makeAdmin: boolean
+  ) => {
+    if (!currentUser) {
+      throw new Error("Necesitás iniciar sesión.");
+    }
+    await setGroupMemberAdmin(groupId, targetAuthUid, makeAdmin, currentUser);
+  };
+
   const handleUpdateDisplayName = async (nextName: string) => {
     const firebaseAuth = auth;
     if (!firebaseAuth?.currentUser) {
@@ -1058,6 +1070,7 @@ export default function App() {
             onSetActiveGroupScope={setActiveGroupScope}
             onCreateGroup={handleCreateGroup}
             onCreateGroupInvite={handleCreateGroupInviteLink}
+            onSetGroupMemberAdmin={handleSetGroupMemberAdmin}
             onLogout={handleLogout}
             onRequestNotifications={registerPushToken}
             onUpdateDisplayName={handleUpdateDisplayName}

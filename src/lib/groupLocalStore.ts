@@ -146,6 +146,39 @@ export const addGroupMemberLocal = (
   return nextGroup;
 };
 
+export const setGroupMemberAdminLocal = (
+  groupId: string,
+  targetAuthUid: string,
+  makeAdmin: boolean
+): Group | null => {
+  const groups = getLocalGroups();
+  let nextGroup: Group | null = null;
+  const next = groups.map((group) => {
+    if (group.id !== groupId) {
+      return group;
+    }
+    if (!group.memberAuthUids.includes(targetAuthUid)) {
+      return group;
+    }
+    if (group.ownerAuthUid === targetAuthUid) {
+      return group;
+    }
+
+    const adminAuthUids = makeAdmin
+      ? Array.from(new Set([...group.adminAuthUids, targetAuthUid]))
+      : group.adminAuthUids.filter((authUid) => authUid !== targetAuthUid);
+
+    nextGroup = {
+      ...group,
+      adminAuthUids,
+      updatedAt: nowIso()
+    };
+    return nextGroup;
+  });
+  write(GROUPS_KEY, next);
+  return nextGroup;
+};
+
 export const createVenueLocal = (
   input: { name: string; address: string; googlePlaceId?: string; mapsUrl?: string },
   authUid: string

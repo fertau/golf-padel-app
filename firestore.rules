@@ -38,6 +38,36 @@ service cloud.firestore {
       );
     }
 
+    function isReservationManager(data) {
+      return isSignedIn() && (
+        data.createdByAuthUid == request.auth.uid ||
+        (
+          ("groupId" in data) &&
+          data.groupId != "default-group" &&
+          isGroupAdmin(data.groupId)
+        )
+      );
+    }
+
+    function reservationMetaUnchanged() {
+      return (
+        request.resource.data.courtName == resource.data.courtName &&
+        request.resource.data.courtId == resource.data.courtId &&
+        request.resource.data.venueId == resource.data.venueId &&
+        request.resource.data.venueName == resource.data.venueName &&
+        request.resource.data.venueAddress == resource.data.venueAddress &&
+        request.resource.data.groupId == resource.data.groupId &&
+        request.resource.data.groupName == resource.data.groupName &&
+        request.resource.data.startDateTime == resource.data.startDateTime &&
+        request.resource.data.durationMinutes == resource.data.durationMinutes &&
+        request.resource.data.createdBy == resource.data.createdBy &&
+        request.resource.data.rules == resource.data.rules &&
+        request.resource.data.status == resource.data.status &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.guestAccessUids == resource.data.guestAccessUids
+      );
+    }
+
     function playerAllowedKeys(data) {
       return data.keys().hasOnly([
         'id',
@@ -117,7 +147,13 @@ service cloud.firestore {
 
       allow update: if isSignedIn() &&
         request.resource.data.createdByAuthUid == resource.data.createdByAuthUid &&
-        canReadReservation(resource.data);
+        (
+          isReservationManager(resource.data) ||
+          (
+            canReadReservation(resource.data) &&
+            reservationMetaUnchanged()
+          )
+        );
 
       allow delete: if false;
     }

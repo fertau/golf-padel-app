@@ -9,6 +9,7 @@ type Props = {
   onSetActiveGroupScope: (scope: "all" | string) => void;
   onCreateGroup: (name: string) => Promise<void>;
   onCreateGroupInvite: (groupId: string) => Promise<string>;
+  onSetGroupMemberAdmin: (groupId: string, targetAuthUid: string, makeAdmin: boolean) => Promise<void>;
   onLogout: () => void;
   onRequestNotifications: () => void;
   onUpdateDisplayName: (nextName: string) => Promise<void>;
@@ -22,6 +23,7 @@ export default function ProfileView({
   onSetActiveGroupScope,
   onCreateGroup,
   onCreateGroupInvite,
+  onSetGroupMemberAdmin,
   onLogout,
   onRequestNotifications,
   onUpdateDisplayName,
@@ -32,6 +34,7 @@ export default function ProfileView({
   const [groupDraft, setGroupDraft] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [inviteBusyGroupId, setInviteBusyGroupId] = useState<string | null>(null);
+  const [roleBusyKey, setRoleBusyKey] = useState<string | null>(null);
 
   useEffect(() => {
     setNameDraft(user.name);
@@ -102,6 +105,19 @@ export default function ProfileView({
       alert((error as Error).message);
     } finally {
       setInviteBusyGroupId(null);
+    }
+  };
+
+  const toggleAdminRole = async (groupId: string, targetAuthUid: string, makeAdmin: boolean) => {
+    const key = `${groupId}:${targetAuthUid}`;
+    try {
+      setRoleBusyKey(key);
+      await onSetGroupMemberAdmin(groupId, targetAuthUid, makeAdmin);
+      triggerHaptic("medium");
+    } catch (error) {
+      alert((error as Error).message);
+    } finally {
+      setRoleBusyKey(null);
     }
   };
 
@@ -181,21 +197,50 @@ export default function ProfileView({
             </div>
             <div className="history-level" style={{ marginTop: "0.5rem" }}>
               {groupsWithRole.map(({ group, role }) => (
-                <div key={group.id} className="history-row">
-                  <div className="history-main">
+                <details key={group.id} className="history-row" open={activeGroupScope === group.id}>
+                  <summary className="history-main" style={{ listStyle: "none", cursor: "pointer" }}>
                     <strong>{group.name}</strong>
                     <small>Rol: {role === "owner" ? "Owner" : role === "admin" ? "Admin" : "Miembro"}</small>
+                  </summary>
+                  <div className="quick-chip-row" style={{ marginTop: "0.5rem" }}>
+                    {role !== "member" ? (
+                      <button
+                        className="quick-chip active"
+                        onClick={() => shareGroupInvite(group.id)}
+                        disabled={inviteBusyGroupId === group.id}
+                      >
+                        {inviteBusyGroupId === group.id ? "..." : "Invitar por link"}
+                      </button>
+                    ) : null}
                   </div>
-                  {role !== "member" ? (
-                    <button
-                      className="quick-chip active"
-                      onClick={() => shareGroupInvite(group.id)}
-                      disabled={inviteBusyGroupId === group.id}
-                    >
-                      {inviteBusyGroupId === group.id ? "..." : "Invitar"}
-                    </button>
-                  ) : null}
-                </div>
+                  <div className="history-level" style={{ marginTop: "0.5rem" }}>
+                    {Object.entries(group.memberNamesByAuthUid).map(([memberAuthUid, memberName]) => {
+                      const isOwner = group.ownerAuthUid === memberAuthUid;
+                      const isAdmin = group.adminAuthUids.includes(memberAuthUid);
+                      const canManage = role !== "member" && !isOwner && memberAuthUid !== user.id;
+                      const key = `${group.id}:${memberAuthUid}`;
+                      return (
+                        <div key={key} className="history-row">
+                          <div className="history-main">
+                            <strong>{memberName}</strong>
+                            <small>
+                              {isOwner ? "Owner" : isAdmin ? "Admin" : "Miembro"}
+                            </small>
+                          </div>
+                          {canManage ? (
+                            <button
+                              className={`quick-chip ${isAdmin ? "active" : ""}`}
+                              onClick={() => toggleAdminRole(group.id, memberAuthUid, !isAdmin)}
+                              disabled={roleBusyKey === key}
+                            >
+                              {roleBusyKey === key ? "..." : isAdmin ? "Quitar admin" : "Hacer admin"}
+                            </button>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </details>
               ))}
             </div>
           </div>

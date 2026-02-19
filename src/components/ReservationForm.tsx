@@ -71,6 +71,11 @@ export default function ReservationForm({
     return venues.filter((venue) => selectedGroup.venueIds.includes(venue.id));
   }, [venues, selectedGroup]);
 
+  const globalVenues = useMemo(() => {
+    if (!selectedGroup) return [];
+    return venues.filter((venue) => !selectedGroup.venueIds.includes(venue.id));
+  }, [venues, selectedGroup]);
+
   const selectedVenue = useMemo(
     () => availableVenues.find((venue) => venue.id === selectedVenueId) ?? null,
     [availableVenues, selectedVenueId]
@@ -238,13 +243,31 @@ export default function ReservationForm({
             required
           >
             {availableVenues.length === 0 ? <option value="">No hay complejos en el grupo</option> : null}
-            {availableVenues.map((venue) => (
-              <option key={venue.id} value={venue.id}>
-                {venue.name}
-              </option>
-            ))}
+            {availableVenues.length > 0 ? (
+              <optgroup label="Complejos del grupo">
+                {availableVenues.map((venue) => (
+                  <option key={venue.id} value={venue.id}>
+                    {venue.name}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
+            {globalVenues.length > 0 ? (
+              <optgroup label="Complejos globales">
+                {globalVenues.map((venue) => (
+                  <option key={venue.id} value={venue.id}>
+                    {venue.name}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
           </select>
         )}
+        {!useNewVenue && selectedVenue && selectedGroup && !selectedGroup.venueIds.includes(selectedVenue.id) ? (
+          <p className="private-hint">
+            Se agregará este complejo global a {selectedGroup.name} al confirmar.
+          </p>
+        ) : null}
       </div>
 
       <div className="elite-field-group">
