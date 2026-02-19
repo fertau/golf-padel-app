@@ -2159,6 +2159,12 @@ button.neutral {
   gap: 0.42rem;
 }
 
+.group-invite-menu {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.42rem;
+}
+
 .group-rename-row {
   display: grid;
   grid-template-columns: 1fr auto auto;
@@ -2189,6 +2195,24 @@ button.neutral {
 .member-row-main small {
   color: var(--text-dim);
   font-size: 0.72rem;
+}
+
+@media (max-width: 640px) {
+  .groups-create-row {
+    grid-template-columns: 1fr;
+  }
+
+  .group-card-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .group-invite-menu {
+    grid-template-columns: 1fr;
+  }
+
+  .group-rename-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .section-info small {

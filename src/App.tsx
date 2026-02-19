@@ -985,6 +985,7 @@ export default function App() {
           <ProfileView
             user={currentUser}
             groups={groups}
+            memberDirectory={signupNameByAuthUid}
             activeGroupScope={activeGroupScope}
             onSetActiveGroupScope={setActiveGroupScope}
             onCreateGroup={handleCreateGroup}

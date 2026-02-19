@@ -5,6 +5,7 @@ import { isValidDisplayName, normalizeDisplayName, triggerHaptic } from "../lib/
 type Props = {
   user: User;
   groups: Group[];
+  memberDirectory?: Record<string, string>;
   activeGroupScope: "all" | string;
   onSetActiveGroupScope: (scope: "all" | string) => void;
   onCreateGroup: (name: string) => Promise<void>;
@@ -24,6 +25,7 @@ const CardIcon = ({ children }: { children: ReactNode }) => (
 export default function ProfileView({
   user,
   groups,
+  memberDirectory,
   activeGroupScope,
   onSetActiveGroupScope,
   onCreateGroup,
@@ -40,6 +42,7 @@ export default function ProfileView({
   const [groupDraft, setGroupDraft] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [inviteBusyGroupId, setInviteBusyGroupId] = useState<string | null>(null);
+  const [inviteMenuGroupId, setInviteMenuGroupId] = useState<string | null>(null);
   const [roleBusyKey, setRoleBusyKey] = useState<string | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [groupNameDraft, setGroupNameDraft] = useState("");
@@ -271,10 +274,24 @@ export default function ProfileView({
                       </button>
                       <button
                         className="btn-elite btn-elite-accent btn-compact"
+                        onClick={() =>
+                          setInviteMenuGroupId((current) => (current === group.id ? null : group.id))
+                        }
+                        disabled={inviteBusyGroupId === group.id}
+                      >
+                        {inviteBusyGroupId === group.id ? "..." : "Invitar"}
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {role !== "member" && inviteMenuGroupId === group.id ? (
+                    <div className="group-invite-menu">
+                      <button
+                        className="btn-elite btn-elite-outline btn-compact"
                         onClick={() => shareGroupInvite(group.id, "whatsapp")}
                         disabled={inviteBusyGroupId === group.id}
                       >
-                        {inviteBusyGroupId === group.id ? "..." : "Invitar WA"}
+                        WhatsApp
                       </button>
                       <button
                         className="btn-elite btn-elite-outline btn-compact"
@@ -312,7 +329,11 @@ export default function ProfileView({
                   ) : null}
 
                   <div className="member-list">
-                    {Object.entries(group.memberNamesByAuthUid).map(([memberAuthUid, memberName]) => {
+                    {group.memberAuthUids.map((memberAuthUid) => {
+                      const memberName =
+                        group.memberNamesByAuthUid[memberAuthUid] ??
+                        memberDirectory?.[memberAuthUid] ??
+                        (memberAuthUid === user.id ? user.name : `Miembro ${memberAuthUid.slice(-4).toUpperCase()}`);
                       const isOwner = group.ownerAuthUid === memberAuthUid;
                       const isAdmin = group.adminAuthUids.includes(memberAuthUid);
                       const canManage = role !== "member" && !isOwner && memberAuthUid !== user.id;
