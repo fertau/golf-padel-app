@@ -670,10 +670,10 @@ export default function App() {
   const handleCancelReservation = async (reservationId: string) => {
     if (!currentUser) return;
     try {
-      setBusy(true);
-      await cancelReservation(reservationId, currentUser);
       setExpandedReservationId(null);
       triggerHaptic("medium");
+      setBusy(true);
+      await cancelReservation(reservationId, currentUser);
     } catch (error) {
       alert((error as Error).message || "No se pudo eliminar la reserva.");
     } finally {

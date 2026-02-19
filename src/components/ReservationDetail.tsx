@@ -212,31 +212,37 @@ export default function ReservationDetail({
         </div>
       </div>
 
-      <section className="attendance-section-elite">
-        <h3>Tu asistencia</h3>
-        <div className="attendance-pills-elite">
-          <button
-            className={`elite-choice confirmed ${myAttendance?.attendanceStatus === "confirmed" ? "active" : ""}`}
-            onClick={() => handleSetAttendance("confirmed")}
-          >
-            Juego
-          </button>
-          <button
-            className={`elite-choice maybe ${myAttendance?.attendanceStatus === "maybe" ? "active" : ""}`}
-            onClick={() => handleSetAttendance("maybe")}
-            disabled={!myAttendance && !eligibility.ok}
-          >
-            Quizás
-          </button>
-          <button
-            className={`elite-choice cancelled ${myAttendance?.attendanceStatus === "cancelled" ? "active" : ""}`}
-            onClick={() => handleSetAttendance("cancelled")}
-          >
-            No juego
-          </button>
-        </div>
-        {!eligibility.ok && !myAttendance && <p className="eligibility-warning" style={{ marginTop: '0.8rem', fontSize: '0.8rem', color: 'var(--danger)' }}>{eligibility.reason}</p>}
-      </section>
+      {reservation.status !== "cancelled" ? (
+        <section className="attendance-section-elite">
+          <h3>Tu asistencia</h3>
+          <div className="attendance-pills-elite">
+            <button
+              className={`elite-choice confirmed ${myAttendance?.attendanceStatus === "confirmed" ? "active" : ""}`}
+              onClick={() => handleSetAttendance("confirmed")}
+            >
+              Juego
+            </button>
+            <button
+              className={`elite-choice maybe ${myAttendance?.attendanceStatus === "maybe" ? "active" : ""}`}
+              onClick={() => handleSetAttendance("maybe")}
+              disabled={!myAttendance && !eligibility.ok}
+            >
+              Quizás
+            </button>
+            <button
+              className={`elite-choice cancelled ${myAttendance?.attendanceStatus === "cancelled" ? "active" : ""}`}
+              onClick={() => handleSetAttendance("cancelled")}
+            >
+              No juego
+            </button>
+          </div>
+          {!eligibility.ok && !myAttendance && eligibility.reason !== "La reserva está cancelada" ? (
+            <p className="eligibility-warning" style={{ marginTop: '0.8rem', fontSize: '0.8rem', color: 'var(--danger)' }}>
+              {eligibility.reason}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       <div className="players-section-elite" style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '20px', padding: '0.5rem' }}>
         {renderPlayerList(confirmed, "Juego", true)}
