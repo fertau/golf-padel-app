@@ -11,9 +11,10 @@ if (!projectId || !clientEmail || !privateKey) {
 
 const ownerAuthUid = process.argv[2]?.trim();
 if (!ownerAuthUid) {
-  console.error("Uso: node scripts/repairMiGrupoData.mjs <ownerAuthUid>");
+  console.error("Uso: node scripts/repairMiGrupoData.mjs <ownerAuthUid> [--all-missing]");
   process.exit(1);
 }
+const forceAllMissing = process.argv.includes("--all-missing");
 
 initializeApp({
   credential: cert({ projectId, clientEmail, privateKey })
@@ -93,14 +94,14 @@ const run = async () => {
       reservation.createdBy?.id === ownerAuthUid ||
       signups.some((signup) => signup?.authUid === ownerAuthUid || signup?.userId === ownerAuthUid);
 
-    if (!belongsToOwner) {
-      return;
-    }
-
     const needsGroupBackfill =
       !reservation.groupId ||
       reservation.groupId === "default-group" ||
       duplicateIds.has(reservation.groupId);
+
+    if (!belongsToOwner && !(forceAllMissing && needsGroupBackfill)) {
+      return;
+    }
 
     const data = {
       ...(needsGroupBackfill

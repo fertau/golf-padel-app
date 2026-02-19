@@ -120,6 +120,11 @@ Este script:
 - Renombra duplicados a `Mi grupo (legacy X)`.
 - Completa `groupId/groupName` en reservas legacy del owner.
 
+Para forzar backfill de **todas** las reservas legacy sin grupo (aunque no estén vinculadas al owner):
+```bash
+npm run repair:mi-grupo -- <ownerAuthUid> --all-missing
+```
+
 ## Seguridad
 - Firestore bloquea writes anónimas.
 - `players` solo accesible por dueño autenticado.
