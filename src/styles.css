@@ -2121,30 +2121,30 @@ button.neutral {
 .section-icon {
   font-size: 1.5rem;
   background: rgba(255, 255, 255, 0.05);
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 14px;
+  border-radius: 11px;
 }
 
 .section-icon-svg svg {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   fill: currentColor;
   color: #a8c7ff;
 }
 
 .section-icon-groups {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
 }
 
 .section-icon-groups svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .section-info h3 {
@@ -2225,6 +2225,18 @@ button.neutral {
   display: grid;
   gap: 0.5rem;
   padding: 0.5rem;
+}
+
+.group-summary-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.group-summary-edit {
+  width: 100%;
+  display: grid;
+  gap: 0.42rem;
 }
 
 .group-empty-state {
@@ -2329,6 +2341,17 @@ button.neutral {
   opacity: 0.9;
 }
 
+.action-chip {
+  border-color: rgba(135, 186, 255, 0.5);
+  background: linear-gradient(145deg, rgba(32, 86, 190, 0.38), rgba(17, 54, 128, 0.45));
+  color: #eaf3ff;
+}
+
+.action-chip.active {
+  border-color: rgba(182, 218, 255, 0.75);
+  background: linear-gradient(145deg, rgba(41, 110, 230, 0.75), rgba(17, 66, 167, 0.85));
+}
+
 .group-members-collapse {
   border: 1px solid rgba(179, 207, 255, 0.2);
   border-radius: 12px;
@@ -2378,7 +2401,7 @@ button.neutral {
 }
 
 .member-row-main strong {
-  font-size: 1rem;
+  font-size: 0.9rem;
   line-height: 1.15;
 }
 

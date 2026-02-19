@@ -226,11 +226,11 @@ export default function ProfileView({
                     onChange={(event) => setGroupDraft(event.target.value)}
                   />
                   <div className="quick-chip-row">
-                    <button className="quick-chip active" type="button" onClick={createGroup} disabled={creatingGroup}>
+                    <button className="quick-chip action-chip active" type="button" onClick={createGroup} disabled={creatingGroup}>
                       {creatingGroup ? "Creando..." : "Crear"}
                     </button>
                     <button
-                      className="quick-chip"
+                      className="quick-chip action-chip"
                       type="button"
                       onClick={() => {
                         setShowCreateGroupForm(false);
@@ -257,50 +257,66 @@ export default function ProfileView({
                 {groupsWithRole.map(({ group, role }) => (
                   <details key={group.id} className="group-item-collapse">
                     <summary>
-                      <strong>{group.name}</strong>
-                      <span className={`role-tag role-tag-${role}`}>{role === "owner" ? "Owner" : role === "admin" ? "Admin" : "Miembro"}</span>
+                      {editingGroupId === group.id ? (
+                        <div className="group-summary-edit" onClick={(event) => event.preventDefault()}>
+                          <input
+                            className="input-elite"
+                            type="text"
+                            value={groupNameDraft}
+                            onChange={(event) => setGroupNameDraft(event.target.value)}
+                            maxLength={48}
+                          />
+                          <div className="quick-chip-row">
+                            <button
+                              className="quick-chip action-chip active"
+                              type="button"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                void confirmRenameGroup(group.id);
+                              }}
+                            >
+                              Guardar
+                            </button>
+                            <button
+                              className="quick-chip action-chip"
+                              type="button"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                setEditingGroupId(null);
+                              }}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <strong>{group.name}</strong>
+                          <div className="group-summary-actions">
+                            <span className={`role-tag role-tag-${role}`}>{role === "owner" ? "Owner" : role === "admin" ? "Admin" : "Miembro"}</span>
+                            {role !== "member" ? (
+                              <button
+                                className="quick-chip action-chip quick-chip-icon"
+                                type="button"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  startRenameGroup(group.id, group.name);
+                                }}
+                                title="Editar nombre"
+                              >
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <path d="M3 17.3V21h3.7L18 9.7l-3.7-3.7L3 17.3Zm17.7-10.2a1 1 0 0 0 0-1.4l-2.4-2.4a1 1 0 0 0-1.4 0l-1.7 1.7 3.7 3.7 1.8-1.7Z" />
+                                </svg>
+                              </button>
+                            ) : null}
+                          </div>
+                        </>
+                      )}
                     </summary>
                     <div className="group-item-content">
-                      <div className="group-card-head">
-                        <div>
-                          {editingGroupId === group.id ? (
-                            <div className="group-name-edit-inline">
-                              <input
-                                className="input-elite"
-                                type="text"
-                                value={groupNameDraft}
-                                onChange={(event) => setGroupNameDraft(event.target.value)}
-                                maxLength={48}
-                              />
-                              <div className="quick-chip-row">
-                                <button className="quick-chip active" type="button" onClick={() => confirmRenameGroup(group.id)}>
-                                  Guardar
-                                </button>
-                                <button className="quick-chip" type="button" onClick={() => setEditingGroupId(null)}>
-                                  Cancelar
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              <small className="group-card-role">Datos del grupo</small>
-                            </>
-                          )}
-                        </div>
-                        {role !== "member" && editingGroupId !== group.id ? (
-                          <button
-                            className="quick-chip quick-chip-icon"
-                            type="button"
-                            onClick={() => startRenameGroup(group.id, group.name)}
-                            title="Editar nombre"
-                          >
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                              <path d="M3 17.3V21h3.7L18 9.7l-3.7-3.7L3 17.3Zm17.7-10.2a1 1 0 0 0 0-1.4l-2.4-2.4a1 1 0 0 0-1.4 0l-1.7 1.7 3.7 3.7 1.8-1.7Z" />
-                            </svg>
-                          </button>
-                        ) : null}
-                      </div>
-
                       <details className="group-members-collapse" open>
                         <summary>Miembros ({group.memberAuthUids.length})</summary>
                         <div className="member-list">
@@ -317,15 +333,17 @@ export default function ProfileView({
                               <div key={key} className="member-row-soft">
                                 <div className="member-row-main">
                                   <strong>{memberName}</strong>
-                                  <div>
-                                    <span className={`member-role-chip ${isOwner ? "owner" : isAdmin ? "admin" : "member"}`}>
-                                      {isOwner ? "Owner" : isAdmin ? "Admin" : "Miembro"}
-                                    </span>
-                                  </div>
+                                  {!isOwner ? (
+                                    <div>
+                                      <span className={`member-role-chip ${isAdmin ? "admin" : "member"}`}>
+                                        {isAdmin ? "Admin" : "Miembro"}
+                                      </span>
+                                    </div>
+                                  ) : null}
                                 </div>
                                 {canManage ? (
                                   <button
-                                    className={`quick-chip ${isAdmin ? "active" : ""}`}
+                                    className={`quick-chip action-chip ${isAdmin ? "active" : ""}`}
                                     onClick={() => toggleAdminRole(group.id, memberAuthUid, !isAdmin)}
                                     disabled={roleBusyKey === key}
                                   >
@@ -340,10 +358,10 @@ export default function ProfileView({
 
                       {role !== "member" ? (
                         <details className="group-share-collapse">
-                          <summary>Compartir</summary>
+                          <summary>Invitar</summary>
                           <div className="group-invite-menu group-action-menu">
                             <button
-                              className="quick-chip quick-chip-icon"
+                              className="quick-chip action-chip quick-chip-icon"
                               onClick={() => shareGroupInvite(group.id, "whatsapp")}
                               disabled={inviteBusyGroupId === group.id}
                               type="button"
@@ -354,7 +372,7 @@ export default function ProfileView({
                               WA
                             </button>
                             <button
-                              className="quick-chip quick-chip-icon"
+                              className="quick-chip action-chip quick-chip-icon"
                               onClick={() => shareGroupInvite(group.id, "email")}
                               disabled={inviteBusyGroupId === group.id}
                               type="button"
@@ -365,7 +383,7 @@ export default function ProfileView({
                               Email
                             </button>
                             <button
-                              className="quick-chip quick-chip-icon"
+                              className="quick-chip action-chip quick-chip-icon"
                               onClick={() => shareGroupInvite(group.id, "link")}
                               disabled={inviteBusyGroupId === group.id}
                               type="button"
