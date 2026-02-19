@@ -20,6 +20,10 @@
   --glass-border: rgba(255, 255, 255, 0.08);
   --glass-stroke: rgba(255, 255, 255, 0.1);
   --shadow-elite: 0 20px 50px -12px rgba(0, 0, 0, 0.5);
+  --radius-elite: 24px;
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --transition-elite: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 * {
@@ -937,7 +941,7 @@ body::before {
   padding: 0;
 }
 
-.upcoming-list li + li {
+.upcoming-list li+li {
   border-top: 1px solid rgba(179, 207, 255, 0.18);
   padding-top: 0.62rem;
 }
@@ -1171,6 +1175,217 @@ button.neutral {
   color: #ffffff;
   border-color: rgba(224, 238, 255, 0.7);
   background: linear-gradient(145deg, rgba(44, 129, 255, 0.72), rgba(16, 74, 191, 0.85));
+}
+
+.glass-panel-elite {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-elite);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+.animate-fade-in {
+  animation: fade-in-elite 220ms ease-out both;
+}
+
+.btn-elite {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(179, 207, 255, 0.35);
+  color: #f4f8ff;
+  border-radius: var(--radius-sm);
+  padding: 0.56rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.btn-elite:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-elite-accent {
+  background: linear-gradient(145deg, rgba(232, 255, 61, 0.2), rgba(232, 255, 61, 0.1));
+  color: var(--accent);
+  border-color: rgba(232, 255, 61, 0.45);
+}
+
+.btn-elite-outline {
+  background: transparent;
+  border: 1px solid rgba(179, 207, 255, 0.35);
+}
+
+.input-elite,
+.select-elite {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(179, 207, 255, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  color: #edf4ff;
+  padding: 0.54rem 0.72rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.segmented-control-elite {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.filter-bar-elite {
+  margin-bottom: 1rem;
+}
+
+.history-content-elite {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.kpi-card-compact {
+  padding: 0.75rem;
+}
+
+.history-latest {
+  font-size: 0.85rem;
+}
+
+.kpi-label-left {
+  text-align: left;
+  font-size: 0.65rem;
+}
+
+.history-empty {
+  padding: 2rem;
+}
+
+.upcoming-day-active {
+  color: var(--accent);
+}
+
+.upcoming-chip-accent {
+  border-color: var(--accent-light);
+  color: var(--accent);
+}
+
+.upcoming-more-btn {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.4rem;
+}
+
+.card-title-accent {
+  color: var(--accent);
+}
+
+.card-meta-muted {
+  opacity: 0.8;
+}
+
+.mini-avatar-elite-border {
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.badge-elevated {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.eligibility-warning-centered {
+  margin-top: 0.8rem;
+  font-size: 0.8rem;
+  color: var(--danger);
+  text-align: center;
+}
+
+.players-section-compact {
+  padding: 0.5rem;
+}
+
+.edit-pane-with-top-gap {
+  margin-top: 1rem;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-auto {
+  width: auto;
+}
+
+.input-top-gap {
+  margin-top: 0.5rem;
+}
+
+.profile-ok-btn {
+  padding: 0.5rem 1rem;
+}
+
+.top-gap-sm {
+  margin-top: 0.6rem;
+}
+
+.top-gap-md {
+  margin-top: 1rem;
+}
+
+.group-details-row {
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.history-summary-plain {
+  list-style: none;
+  cursor: pointer;
+}
+
+.history-summary-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.history-summary-arrow {
+  font-size: 0.8rem;
+}
+
+.btn-compact {
+  padding: 0.4rem 1rem;
+}
+
+.gap-sm {
+  gap: 0.5rem;
+}
+
+.member-row-soft {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.soft-opacity {
+  opacity: 0.5;
+}
+
+.btn-logout {
+  padding: 1rem;
+  border-radius: 15px;
+  background: var(--danger);
+  color: #fff;
+}
+
+@keyframes fade-in-elite {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .group-block {

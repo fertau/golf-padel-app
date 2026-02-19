@@ -163,15 +163,14 @@ export default function ProfileView({
         <div className="profile-level-badge">Perfil de jugador</div>
       </header>
 
-      <div className="profile-content-elite">
-        <section className="profile-section-elite glass-effect">
+      <div className="profile-content-elite animate-fade-in">
+        <section className="profile-section-elite glass-panel-elite">
           <div className="section-icon">🪪</div>
           <div className="section-info">
             <h3>Nombre visible</h3>
             <p>Así te van a ver en reservas y asistencias.</p>
             <input
-              className="elite-input"
-              style={{ marginTop: "0.5rem" }}
+              className="input-elite input-top-gap"
               type="text"
               value={nameDraft}
               onChange={(event) => setNameDraft(event.target.value)}
@@ -180,8 +179,7 @@ export default function ProfileView({
             />
           </div>
           <button
-            className="btn-action-elite btn-primary-elite"
-            style={{ padding: "0.5rem 1rem", width: "auto" }}
+            className="btn-elite btn-elite-accent btn-auto profile-ok-btn"
             onClick={saveDisplayName}
             disabled={busy || savingName || normalizeDisplayName(nameDraft) === user.name}
           >
@@ -189,13 +187,13 @@ export default function ProfileView({
           </button>
         </section>
 
-        <section className="profile-section-elite glass-effect">
+        <section className="profile-section-elite glass-panel-elite">
           <div className="section-icon">👥</div>
           <div className="section-info">
             <h3>Grupos</h3>
             <p>Pertenecés a {groups.length} grupo(s).</p>
             <select
-              className="elite-select"
+              className="select-elite"
               value={activeGroupScope}
               onChange={(event) => onSetActiveGroupScope(event.target.value === "all" ? "all" : event.target.value)}
             >
@@ -206,30 +204,33 @@ export default function ProfileView({
                 </option>
               ))}
             </select>
-            <div className="history-level" style={{ marginTop: "0.5rem" }}>
+            <div className="history-level top-gap-sm">
               <input
-                className="elite-input"
+                className="input-elite"
                 type="text"
                 value={groupDraft}
                 placeholder="Nuevo grupo"
                 onChange={(event) => setGroupDraft(event.target.value)}
               />
               <button
-                className="btn-action-elite"
+                className="btn-elite btn-block top-gap-sm"
                 onClick={createGroup}
                 disabled={creatingGroup}
               >
                 {creatingGroup ? "Creando..." : "Crear grupo"}
               </button>
             </div>
-            <div className="history-level" style={{ marginTop: "0.5rem" }}>
+            <div className="history-level top-gap-md">
               {groupsWithRole.map(({ group, role }) => (
-                <details key={group.id} className="history-row" open={activeGroupScope === group.id}>
-                  <summary className="history-main" style={{ listStyle: "none", cursor: "pointer" }}>
+                <details key={group.id} className="history-row glass-panel-elite group-details-row" open={activeGroupScope === group.id}>
+                  <summary className="history-main history-summary-plain">
                     <strong>{group.name}</strong>
-                    <small>Rol: {role === "owner" ? "Owner" : role === "admin" ? "Admin" : "Miembro"}</small>
+                    <div className="history-summary-meta">
+                      <small>Rol: {role === "owner" ? "Owner" : role === "admin" ? "Admin" : "Miembro"}</small>
+                      <span className="history-summary-arrow">{activeGroupScope === group.id ? '▲' : '▼'}</span>
+                    </div>
                   </summary>
-                  <div className="quick-chip-row" style={{ marginTop: "0.5rem" }}>
+                  <div className="quick-chip-row top-gap-sm">
                     {role !== "member" ? (
                       <>
                         <button
@@ -264,30 +265,30 @@ export default function ProfileView({
                     ) : null}
                   </div>
                   {editingGroupId === group.id ? (
-                    <div className="quick-chip-row" style={{ marginTop: "0.4rem" }}>
+                    <div className="quick-chip-row top-gap-sm">
                       <input
-                        className="elite-input"
+                        className="input-elite"
                         type="text"
                         value={groupNameDraft}
                         onChange={(event) => setGroupNameDraft(event.target.value)}
                         maxLength={48}
                       />
-                      <button className="quick-chip active" onClick={() => confirmRenameGroup(group.id)}>
+                      <button className="btn-elite btn-elite-accent btn-compact" onClick={() => confirmRenameGroup(group.id)}>
                         Guardar
                       </button>
-                      <button className="quick-chip" onClick={() => setEditingGroupId(null)}>
-                        Cancelar
+                      <button className="btn-elite btn-elite-outline btn-compact" onClick={() => setEditingGroupId(null)}>
+                        X
                       </button>
                     </div>
                   ) : null}
-                  <div className="history-level" style={{ marginTop: "0.5rem" }}>
+                  <div className="history-level top-gap-sm gap-sm">
                     {Object.entries(group.memberNamesByAuthUid).map(([memberAuthUid, memberName]) => {
                       const isOwner = group.ownerAuthUid === memberAuthUid;
                       const isAdmin = group.adminAuthUids.includes(memberAuthUid);
                       const canManage = role !== "member" && !isOwner && memberAuthUid !== user.id;
                       const key = `${group.id}:${memberAuthUid}`;
                       return (
-                        <div key={key} className="history-row">
+                        <div key={key} className="history-row member-row-soft">
                           <div className="history-main">
                             <strong>{memberName}</strong>
                             <small>
@@ -313,31 +314,31 @@ export default function ProfileView({
           </div>
         </section>
 
-        <section className="profile-section-elite glass-effect">
+        <section className="profile-section-elite glass-panel-elite">
           <div className="section-icon">🔔</div>
           <div className="section-info">
             <h3>Notificaciones</h3>
             <p>Recibí alertas de nuevos partidos.</p>
           </div>
-          <button className="btn-action-elite" onClick={() => handleAction(onRequestNotifications)} disabled={busy}>
+          <button className="btn-elite btn-elite-outline" onClick={() => handleAction(onRequestNotifications)} disabled={busy}>
             Configurar
           </button>
         </section>
 
-        <section className="profile-section-elite glass-effect">
+        <section className="profile-section-elite glass-panel-elite">
           <div className="section-icon">🛡️</div>
           <div className="section-info">
             <h3>Privacidad</h3>
             <p>ID único de jugador.</p>
-            <small>{user.id}</small>
+            <small className="soft-opacity">{user.id}</small>
           </div>
         </section>
 
-        <footer className="profile-footer-elite">
-          <button className="btn-danger-elite" onClick={() => handleAction(onLogout)} disabled={busy} style={{ width: "100%", padding: "1rem", borderRadius: "15px" }}>
+        <footer className="profile-footer-elite animate-fade-in">
+          <button className="btn-elite btn-link-danger-elite btn-block btn-logout" onClick={() => handleAction(onLogout)} disabled={busy}>
             Cerrar sesión
           </button>
-          <p className="version-tag">Golf Padel App v3.0</p>
+          <p className="version-tag">Golf Padel App v3.1</p>
         </footer>
       </div>
     </div>

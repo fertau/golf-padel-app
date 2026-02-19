@@ -221,9 +221,9 @@ export default function ReservationDetail({
       </div>
 
       {reservation.status !== "cancelled" ? (
-        <section className="attendance-section-elite">
+        <section className="attendance-section-elite animate-fade-in">
           <h3>Tu asistencia</h3>
-          <div className="attendance-pills-elite">
+          <div className="segmented-control-elite">
             <button
               className={`elite-choice confirmed ${myAttendance?.attendanceStatus === "confirmed" ? "active" : ""}`}
               onClick={() => handleSetAttendance("confirmed")}
@@ -245,20 +245,20 @@ export default function ReservationDetail({
             </button>
           </div>
           {!eligibility.ok && !myAttendance && eligibility.reason !== "La reserva está cancelada" ? (
-            <p className="eligibility-warning" style={{ marginTop: '0.8rem', fontSize: '0.8rem', color: 'var(--danger)' }}>
+            <p className="eligibility-warning animate-fade-in eligibility-warning-centered">
               {eligibility.reason}
             </p>
           ) : null}
         </section>
       ) : null}
 
-      <div className="players-section-elite" style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '20px', padding: '0.5rem' }}>
+      <div className="players-section-elite glass-panel-elite animate-fade-in players-section-compact">
         {renderPlayerList(confirmed, "Juego", true)}
         {renderPlayerList(maybe, "Quizás")}
         {renderPlayerList(cancelled, "No juego")}
       </div>
 
-      <div className="actions-section-elite">
+      <div className="actions-section-elite animate-fade-in">
         <button className="btn-secondary-elite" onClick={openGoogleCalendar}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
           Google Calendar
@@ -297,21 +297,21 @@ export default function ReservationDetail({
       </div>
 
       {editing && (
-        <div className="edit-pane-elite glass-effect animate-in">
+        <div className="edit-pane-elite glass-panel-elite animate-fade-in edit-pane-with-top-gap">
           <label className="elite-field-label">Cancha
-            <select className="elite-select" value={editCourtName} onChange={(e) => setEditCourtName(e.target.value)}>
+            <select className="select-elite" value={editCourtName} onChange={(e) => setEditCourtName(e.target.value)}>
               <option value="Cancha 1">Cancha 1</option><option value="Cancha 2">Cancha 2</option>
             </select>
           </label>
           <label className="elite-field-label">Fecha y hora
-            <input className="elite-input" type="datetime-local" value={editStartDateTime} onChange={(e) => setEditStartDateTime(e.target.value)} />
+            <input className="input-elite" type="datetime-local" value={editStartDateTime} onChange={(e) => setEditStartDateTime(e.target.value)} />
           </label>
           <label className="elite-field-label">Duración
-            <select className="elite-select" value={editDuration} onChange={(e) => setEditDuration(Number(e.target.value))}>
+            <select className="select-elite" value={editDuration} onChange={(e) => setEditDuration(Number(e.target.value))}>
               <option value={60}>60m</option><option value={90}>90m</option><option value={120}>120m</option>
             </select>
           </label>
-          <button className="btn-primary-elite" onClick={submitEdit}>Guardar cambios</button>
+          <button className="btn-elite btn-elite-accent btn-block" onClick={submitEdit}>Guardar cambios</button>
         </div>
       )}
     </div>

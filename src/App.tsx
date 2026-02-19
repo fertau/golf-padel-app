@@ -20,6 +20,8 @@ import AuthView from "./components/AuthView";
 import Navbar from "./components/Navbar";
 import ProfileView from "./components/ProfileView";
 import SmartHandoff from "./components/SmartHandoff";
+import { FilterBar } from "./components/FilterBar";
+import { HistoryView } from "./components/HistoryView";
 import { ReservationSkeleton } from "./components/Skeletons";
 
 // Stores & Lib
@@ -742,16 +744,10 @@ export default function App() {
   };
 
   const renderReservationList = (title: string, items: Reservation[], emptyText: string, groupByDate = false) => (
-    <section className="panel">
+    <section className="panel glass-panel-elite animate-fade-in">
       <h2 className="section-title">{title}</h2>
       {groupByDate && (
-        <div className="quick-chip-row">
-          {["all", "hoy", "manana", "semana"].map(id => (
-            <button key={id} className={`quick-chip ${quickDateFilter === id ? "active" : ""}`} onClick={() => setQuickDateFilter(id as any)}>
-              {id === "all" ? "Todos" : id.charAt(0).toUpperCase() + id.slice(1)}
-            </button>
-          ))}
-        </div>
+        <FilterBar currentFilter={quickDateFilter} onFilterChange={setQuickDateFilter} />
       )}
       <div className="list">
         {reservationsLoading ? (
@@ -810,7 +806,7 @@ export default function App() {
       <SmartHandoff />
 
       <main className="app mobile-shell">
-        <header className="header court-header">
+        <header className="header court-header glass-panel-elite animate-fade-in">
           <div className="brand-shell">
             <img src="/apple-touch-icon.png" alt="Golf Padel" className="brand-icon" />
             <h1 className="name-logo">GOLF <span>PADEL</span> APP</h1>
@@ -821,7 +817,7 @@ export default function App() {
           </div>
         </header>
 
-        <section className="panel">
+        <section className="panel glass-panel-elite animate-fade-in">
           <h2 className="section-title">Grupo activo</h2>
           <div className="quick-chip-row">
             <button
@@ -844,7 +840,7 @@ export default function App() {
           </div>
           {inviteFeedback ? <p className="private-hint">{inviteFeedback}</p> : null}
           {contextNotice ? (
-            <div className="context-notice" role="status">
+            <div className="context-notice animate-fade-in" role="status">
               <span>{contextNotice}</span>
               <button type="button" className="context-notice-close" onClick={() => setContextNotice(null)}>
                 OK
@@ -870,7 +866,7 @@ export default function App() {
               {matchesFilter !== "all" && <button className="link-btn active" onClick={() => setMatchesFilter("all")}>Ver todas</button>}
             </section>
 
-            <section className="panel upcoming-widget">
+            <section className="panel upcoming-widget glass-panel-elite animate-fade-in">
               <h2 className="section-title">Próximos partidos</h2>
               {myUpcomingConfirmed.length === 0 ? (
                 <p className="private-hint">Todavía no confirmaste próximos partidos.</p>
@@ -902,7 +898,7 @@ export default function App() {
                           >
                             <div className="upcoming-date">
                               <span>{month}</span>
-                              <strong>{day}</strong>
+                              <strong className={isActive ? "upcoming-day-active" : ""}>{day}</strong>
                             </div>
                             <div className="upcoming-content">
                               <div className="upcoming-details-line">
@@ -914,7 +910,7 @@ export default function App() {
                               </div>
                               <div className="upcoming-meta-chips">
                                 {activeGroupScope === "all" && reservation.groupName ? (
-                                  <span className="upcoming-chip">{reservation.groupName}</span>
+                                  <span className="upcoming-chip upcoming-chip-accent">{reservation.groupName}</span>
                                 ) : null}
                                 <span className="upcoming-chip">{confirmedCount}/4 jugando</span>
                               </div>
@@ -925,7 +921,7 @@ export default function App() {
                     })}
                   </ul>
                   {myUpcomingConfirmed.length > 3 ? (
-                    <button className="link-btn active" onClick={() => setShowAllUpcoming(!showAllUpcoming)}>
+                    <button className="btn-elite btn-elite-outline upcoming-more-btn" onClick={() => setShowAllUpcoming(!showAllUpcoming)}>
                       {showAllUpcoming ? "Ver menos" : "Ver más"}
                     </button>
                   ) : null}
@@ -935,197 +931,28 @@ export default function App() {
 
             {renderReservationList("Reservas activas", filteredMatches, "No hay reservas actualmente.", true)}
 
-            <section className="panel history-panel">
-              <button
-                type="button"
-                className="history-toggle"
-                onClick={() => setHistoryExpanded((prev) => !prev)}
-              >
-                <span>Historial y estadísticas</span>
-                <span>{historyExpanded ? "Ocultar" : "Ver historial"}</span>
-              </button>
-
-              {historyExpanded ? (
-                <>
-                  <div className="detail-kpis history-kpis">
-                    <article className="kpi-card">
-                      <span className="kpi-label">Partidos jugados</span>
-                      <strong>{historyStats.playedCount}</strong>
-                    </article>
-                    <article className="kpi-card">
-                      <span className="kpi-label">Último partido</span>
-                      <strong>{historyStats.latest}</strong>
-                    </article>
-                  </div>
-
-                  <div className="history-level">
-                    <small className="private-hint">Todos / Ninguno</small>
-                    <div className="quick-chip-row">
-                      <button
-                        type="button"
-                        className={`quick-chip ${historyStatuses.length === 3 ? "active" : ""}`}
-                        onClick={() => setHistoryStatuses(["confirmed", "maybe", "cancelled"])}
-                      >
-                        Todos
-                      </button>
-                      <button
-                        type="button"
-                        className={`quick-chip ${historyStatuses.length === 0 ? "active" : ""}`}
-                        onClick={() => setHistoryStatuses([])}
-                      >
-                        Ninguno
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="history-level">
-                    <small className="private-hint">Jugados / Quizás / No jugados</small>
-                    <div className="quick-chip-row">
-                      {[
-                        { id: "confirmed", label: "Jugados" },
-                        { id: "maybe", label: "Quizás" },
-                        { id: "cancelled", label: "No jugados" }
-                      ].map((chip) => {
-                        const active = historyStatuses.includes(chip.id as HistoryStatus);
-                        return (
-                          <button
-                            key={`history-status-${chip.id}`}
-                            type="button"
-                            className={`quick-chip ${active ? "active" : ""}`}
-                            onClick={() =>
-                              setHistoryStatuses((prev) =>
-                                prev.includes(chip.id as HistoryStatus)
-                                  ? prev.filter((item) => item !== chip.id)
-                                  : [...prev, chip.id as HistoryStatus]
-                              )
-                            }
-                          >
-                            {chip.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="history-level">
-                    <small className="private-hint">Periodo</small>
-                    <div className="quick-chip-row">
-                      {[
-                        { id: "all", label: "Todo" },
-                        { id: "1m", label: "Último mes" },
-                        { id: "3m", label: "Últimos 3 meses" },
-                        { id: "6m", label: "Últimos 6 meses" },
-                        { id: "1y", label: "Último año" },
-                        { id: "month", label: "Selector de mes" }
-                      ].map((chip) => (
-                        <button
-                          key={`history-range-${chip.id}`}
-                          type="button"
-                          className={`quick-chip ${historyRange === chip.id ? "active" : ""}`}
-                          onClick={() => setHistoryRange(chip.id as HistoryRange)}
-                        >
-                          {chip.label}
-                        </button>
-                      ))}
-                    </div>
-                    {historyRange === "month" ? (
-                      <select
-                        className="history-select"
-                        value={historyMonth}
-                        onChange={(event) => setHistoryMonth(event.target.value)}
-                      >
-                        {historyMonthOptions.length === 0 ? (
-                          <option value={historyMonth}>Sin meses en historial</option>
-                        ) : historyMonthOptions.map((option) => (
-                          <option key={`history-month-${option}`} value={option}>
-                            {new Date(`${option}-01T00:00:00`).toLocaleDateString("es-AR", {
-                              month: "long",
-                              year: "numeric"
-                            })}
-                          </option>
-                        ))}
-                      </select>
-                    ) : null}
-                  </div>
-
-                  <div className="history-level history-grid-filters">
-                    <div>
-                      <small className="private-hint">Jugador/es</small>
-                      <select
-                        className="history-select"
-                        value={historyPlayerFilter}
-                        onChange={(event) => setHistoryPlayerFilter(event.target.value)}
-                      >
-                        <option value="all">Todos los jugadores</option>
-                        {historyPlayers.map((player) => (
-                          <option key={`history-player-${player.id}`} value={player.id}>
-                            {player.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <small className="private-hint">Cancha</small>
-                      <div className="quick-chip-row">
-                        {["all", ...historyCourtOptions].map((court) => (
-                          <button
-                            key={`history-court-${court}`}
-                            type="button"
-                            className={`quick-chip ${historyCourtFilter === court ? "active" : ""}`}
-                            onClick={() => setHistoryCourtFilter(court)}
-                          >
-                            {court === "all" ? "Todas" : court}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {filteredHistory.length === 0 ? (
-                    <p className="private-hint">Sin resultados para los filtros elegidos.</p>
-                  ) : (
-                    <div className="history-list">
-                      {filteredHistory.slice(0, 20).map((reservation) => {
-                        const attendance = getUserAttendance(reservation, currentUser.id)?.attendanceStatus;
-                        const statusLabel = attendance === "confirmed"
-                          ? "Juego"
-                          : attendance === "maybe"
-                            ? "Quizás"
-                            : attendance === "cancelled"
-                              ? "No juego"
-                              : "Sin respuesta";
-                        const statusClass = attendance === "confirmed"
-                          ? "badge-confirmed"
-                          : attendance === "maybe"
-                            ? "badge-maybe"
-                            : "badge-cancelled";
-                        return (
-                          <article key={`history-${reservation.id}`} className="history-row">
-                            <div className="history-main">
-                              <strong>{reservation.courtName}</strong>
-                              <small>
-                                {new Date(reservation.startDateTime).toLocaleDateString("es-AR", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "2-digit"
-                                })}
-                                {" · "}
-                                {new Date(reservation.startDateTime).toLocaleTimeString("es-AR", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  hour12: false
-                                })}
-                              </small>
-                            </div>
-                            <span className={`badge ${statusClass}`}>{statusLabel}</span>
-                          </article>
-                        );
-                      })}
-                    </div>
-                  )}
-                </>
-              ) : null}
-            </section>
+            <HistoryView
+              historyExpanded={historyExpanded}
+              setHistoryExpanded={setHistoryExpanded}
+              historyStats={historyStats}
+              historyStatuses={historyStatuses}
+              setHistoryStatuses={setHistoryStatuses}
+              historyRange={historyRange}
+              setHistoryRange={setHistoryRange}
+              historyMonth={historyMonth}
+              setHistoryMonth={setHistoryMonth}
+              historyMonthOptions={historyMonthOptions}
+              historyPlayerFilter={historyPlayerFilter}
+              setHistoryPlayerFilter={setHistoryPlayerFilter}
+              historyPlayers={historyPlayers}
+              historyCourtFilter={historyCourtFilter}
+              setHistoryCourtFilter={setHistoryCourtFilter}
+              historyCourtOptions={historyCourtOptions}
+              filteredHistory={filteredHistory}
+              currentUser={currentUser}
+              onOpenReservation={setExpandedReservationId}
+              expandedReservationId={expandedReservationId}
+            />
           </>
         )}
 
