@@ -16,7 +16,7 @@ type Props = {
   appUrl: string;
   signupNameByAuthUid: Record<string, string>;
   onSetAttendanceStatus: (reservationId: string, status: AttendanceStatus) => void;
-  onCancel: (reservationId: string) => void;
+  onCancel: (reservationId: string) => Promise<void>;
   onCreateGuestInvite: (
     reservationId: string,
     channel?: "whatsapp" | "email" | "link"
@@ -146,6 +146,14 @@ export default function ReservationDetail({
     }
   };
 
+  const confirmCancelReservation = async () => {
+    const confirmedAction = window.confirm("¿Querés eliminar esta reserva?");
+    if (!confirmedAction) {
+      return;
+    }
+    await onCancel(reservation.id);
+  };
+
   const renderPlayerList = (list: Signup[], label: string, isOpen = false) => (
     <details className="player-collapse-elite" open={isOpen}>
       <summary>
@@ -243,22 +251,33 @@ export default function ReservationDetail({
         </button>
 
         {isCreator && (
-          <div className="creator-actions-elite">
-            <button className="btn-secondary-elite" onClick={openWhatsApp}>WhatsApp</button>
-            <button className="btn-secondary-elite" onClick={() => inviteGuest("whatsapp")} disabled={guestInviteBusy}>
-              {guestInviteBusy ? "Generando..." : "Invitar externo WA"}
+          <div className="creator-actions-elite compact">
+            <button className="btn-secondary-elite" onClick={openWhatsApp}>
+              Compartir por WhatsApp
             </button>
-            <button className="btn-secondary-elite" onClick={() => inviteGuest("email")} disabled={guestInviteBusy}>
-              Externo Email
-            </button>
-            <button className="btn-secondary-elite" onClick={() => inviteGuest("link")} disabled={guestInviteBusy}>
-              Copiar link
-            </button>
-            <button className="btn-secondary-elite" onClick={share}>Compartir</button>
-            <button className="btn-outline-danger-elite" onClick={() => setEditing(!editing)}>
-              {editing ? "Cerrar edición" : "Modificar reserva"}
-            </button>
-            <button className="btn-link-danger-elite" onClick={() => onCancel(reservation.id)}>Eliminar reserva</button>
+            <details className="action-menu-elite">
+              <summary>Más acciones</summary>
+              <div className="action-menu-content">
+                <button className="btn-secondary-elite" onClick={() => inviteGuest("whatsapp")} disabled={guestInviteBusy}>
+                  {guestInviteBusy ? "Generando..." : "Invitar externo WA"}
+                </button>
+                <button className="btn-secondary-elite" onClick={() => inviteGuest("email")} disabled={guestInviteBusy}>
+                  Invitar externo por email
+                </button>
+                <button className="btn-secondary-elite" onClick={() => inviteGuest("link")} disabled={guestInviteBusy}>
+                  Copiar link externo
+                </button>
+                <button className="btn-secondary-elite" onClick={share}>
+                  Compartir (sistema)
+                </button>
+                <button className="btn-outline-danger-elite" onClick={() => setEditing(!editing)}>
+                  {editing ? "Cerrar edición" : "Modificar reserva"}
+                </button>
+                <button className="btn-link-danger-elite" onClick={confirmCancelReservation}>
+                  Eliminar reserva
+                </button>
+              </div>
+            </details>
           </div>
         )}
       </div>

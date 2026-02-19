@@ -667,6 +667,36 @@ export default function App() {
     setFirebaseUser(firebaseAuth.currentUser);
   };
 
+  const handleCancelReservation = async (reservationId: string) => {
+    if (!currentUser) return;
+    try {
+      setBusy(true);
+      await cancelReservation(reservationId, currentUser);
+      setExpandedReservationId(null);
+      triggerHaptic("medium");
+    } catch (error) {
+      alert((error as Error).message || "No se pudo eliminar la reserva.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleUpdateReservation = async (
+    reservationId: string,
+    updates: { courtName: string; startDateTime: string; durationMinutes: number }
+  ) => {
+    if (!currentUser) return;
+    try {
+      setBusy(true);
+      await updateReservationDetails(reservationId, updates, currentUser);
+      triggerHaptic("medium");
+    } catch (error) {
+      alert((error as Error).message || "No se pudo modificar la reserva.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const saveMandatoryDisplayName = async () => {
     const normalized = normalizeDisplayName(nameDraft);
     if (!isValidDisplayName(normalized)) {
@@ -1133,9 +1163,9 @@ export default function App() {
               reservation={selectedReservation} currentUser={currentUser} appUrl={shareBaseUrl}
               signupNameByAuthUid={signupNameByAuthUid}
               onSetAttendanceStatus={(rid, s) => setAttendanceStatus(rid, currentUser, s)}
-              onCancel={id => cancelReservation(id, currentUser)}
+              onCancel={handleCancelReservation}
               onCreateGuestInvite={handleCreateGuestInviteLink}
-              onUpdateReservation={(id, up) => updateReservationDetails(id, up, currentUser)}
+              onUpdateReservation={handleUpdateReservation}
             />
           </section>
         </div>
