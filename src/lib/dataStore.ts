@@ -261,14 +261,74 @@ export const subscribeReservations = (
     return subscribeLocalReservations(onChange);
   }
 
-  let reservationsCache: Reservation[] = [];
+  const reservationSlices = new Map<string, Map<string, Reservation>>();
   let allowedGroupIds = new Set<string>();
+  let reservationUnsubscribers: Array<() => void> = [];
 
   const emit = () => {
-    const filtered = reservationsCache
+    const merged = new Map<string, Reservation>();
+    for (const slice of reservationSlices.values()) {
+      for (const [id, reservation] of slice.entries()) {
+        merged.set(id, reservation);
+      }
+    }
+    const result = Array.from(merged.values())
       .filter((reservation) => canAccessReservation(reservation, currentAuthUid, allowedGroupIds))
       .sort((a, b) => a.startDateTime.localeCompare(b.startDateTime));
-    onChange(filtered);
+    onChange(result);
+  };
+
+  const subscribeReservationSlice = (sliceKey: string, q: ReturnType<typeof query>) => {
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const nextSlice = new Map<string, Reservation>();
+        snapshot.docs.forEach((snapshotDoc) => {
+          nextSlice.set(
+            snapshotDoc.id,
+            normalizeReservation(snapshotDoc.id, snapshotDoc.data() as Omit<Reservation, "id">)
+          );
+        });
+        reservationSlices.set(sliceKey, nextSlice);
+        emit();
+      },
+      () => {
+        reservationSlices.delete(sliceKey);
+        emit();
+      }
+    );
+    reservationUnsubscribers.push(unsubscribe);
+  };
+
+  const chunk = <T,>(items: T[], size: number): T[][] => {
+    const out: T[][] = [];
+    for (let i = 0; i < items.length; i += size) {
+      out.push(items.slice(i, i + size));
+    }
+    return out;
+  };
+
+  const rebuildReservationSubscriptions = (groupIds: string[]) => {
+    reservationUnsubscribers.forEach((unsubscribe) => unsubscribe());
+    reservationUnsubscribers = [];
+    reservationSlices.clear();
+
+    subscribeReservationSlice(
+      `creator:${currentAuthUid}`,
+      query(collection(cloudDb, reservationCollection), where("createdByAuthUid", "==", currentAuthUid))
+    );
+
+    subscribeReservationSlice(
+      `guest:${currentAuthUid}`,
+      query(collection(cloudDb, reservationCollection), where("guestAccessUids", "array-contains", currentAuthUid))
+    );
+
+    chunk(groupIds, 10).forEach((batch, index) => {
+      subscribeReservationSlice(
+        `group-batch-${index}`,
+        query(collection(cloudDb, reservationCollection), where("groupId", "in", batch))
+      );
+    });
   };
 
   const groupsQuery = query(
@@ -276,23 +336,16 @@ export const subscribeReservations = (
     where("memberAuthUids", "array-contains", currentAuthUid)
   );
 
-  const reservationsQuery = query(collection(cloudDb, reservationCollection), orderBy("startDateTime", "asc"));
-
   const unsubscribeGroups = onSnapshot(groupsQuery, (snapshot) => {
-    allowedGroupIds = new Set(snapshot.docs.map((snapshotDoc) => snapshotDoc.id));
-    emit();
-  });
-
-  const unsubscribeReservations = onSnapshot(reservationsQuery, (snapshot) => {
-    reservationsCache = snapshot.docs.map((snapshotDoc) =>
-      normalizeReservation(snapshotDoc.id, snapshotDoc.data() as Omit<Reservation, "id">)
-    );
+    const groupIds = snapshot.docs.map((snapshotDoc) => snapshotDoc.id);
+    allowedGroupIds = new Set(groupIds);
+    rebuildReservationSubscriptions(groupIds);
     emit();
   });
 
   return () => {
     unsubscribeGroups();
-    unsubscribeReservations();
+    reservationUnsubscribers.forEach((unsubscribe) => unsubscribe());
   };
 };
 
@@ -884,6 +937,68 @@ export const createReservationInviteLink = async (
   return `${normalizedBase}/join/${token}`;
 };
 
+const acceptInviteTokenCloudFallback = async (
+  cloudDb: NonNullable<typeof db>,
+  token: string,
+  currentUser: User
+): Promise<{ type: "group" | "reservation"; groupId: string; reservationId?: string }> => {
+  const groupInviteSnapshot = await getDoc(doc(cloudDb, groupInviteCollection, token));
+  if (groupInviteSnapshot.exists()) {
+    const invite = groupInviteSnapshot.data() as GroupInvite;
+    if (invite.status !== "active" || new Date(invite.expiresAt).getTime() < Date.now()) {
+      throw new Error("Invitación vencida.");
+    }
+    await runTransaction(cloudDb, async (transaction) => {
+      const groupRef = doc(cloudDb, groupCollection, invite.groupId);
+      const groupSnapshot = await transaction.get(groupRef);
+      if (!groupSnapshot.exists()) {
+        throw new Error("Grupo no encontrado.");
+      }
+      const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
+      if (!group.memberAuthUids.includes(currentUser.id)) {
+        transaction.update(groupRef, {
+          memberAuthUids: [...group.memberAuthUids, currentUser.id],
+          memberNamesByAuthUid: {
+            ...group.memberNamesByAuthUid,
+            [currentUser.id]: currentUser.name
+          },
+          updatedAt: nowIso()
+        });
+      }
+    });
+    return { type: "group", groupId: invite.groupId };
+  }
+
+  const reservationInviteSnapshot = await getDoc(doc(cloudDb, reservationInviteCollection, token));
+  if (!reservationInviteSnapshot.exists()) {
+    throw new Error("Invitación no encontrada.");
+  }
+  const invite = reservationInviteSnapshot.data() as ReservationInvite;
+  if (invite.status !== "active" || new Date(invite.expiresAt).getTime() < Date.now()) {
+    throw new Error("Invitación vencida.");
+  }
+
+  await runTransaction(cloudDb, async (transaction) => {
+    const reservationRef = doc(cloudDb, reservationCollection, invite.reservationId);
+    const reservationSnapshot = await transaction.get(reservationRef);
+    if (!reservationSnapshot.exists()) {
+      throw new Error("Reserva no encontrada.");
+    }
+    const reservation = normalizeReservation(
+      reservationSnapshot.id,
+      reservationSnapshot.data() as Omit<Reservation, "id">
+    );
+    if (!reservation.guestAccessUids?.includes(currentUser.id)) {
+      transaction.update(reservationRef, {
+        guestAccessUids: [...(reservation.guestAccessUids ?? []), currentUser.id],
+        updatedAt: nowIso()
+      });
+    }
+  });
+
+  return { type: "reservation", groupId: invite.groupId, reservationId: invite.reservationId };
+};
+
 export const acceptInviteToken = async (
   token: string,
   currentUser: User
@@ -916,29 +1031,40 @@ export const acceptInviteToken = async (
     throw new Error("Necesitás iniciar sesión.");
   }
 
-  const response = await fetch("/api/invites/accept", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${idToken}`
-    },
-    body: JSON.stringify({
-      token,
-      displayName: currentUser.name
-    })
-  });
+  try {
+    const response = await fetch("/api/invites/accept", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${idToken}`
+      },
+      body: JSON.stringify({
+        token,
+        displayName: currentUser.name
+      })
+    });
 
-  const payload = (await response.json().catch(() => null)) as
-    | { error?: string; type?: "group" | "reservation"; groupId?: string; reservationId?: string }
-    | null;
+    const payload = (await response.json().catch(() => null)) as
+      | { error?: string; type?: "group" | "reservation"; groupId?: string; reservationId?: string }
+      | null;
 
-  if (!response.ok || !payload?.type || !payload.groupId) {
-    throw new Error(payload?.error ?? "No se pudo aceptar la invitación.");
+    if (response.ok && payload?.type && payload.groupId) {
+      return {
+        type: payload.type,
+        groupId: payload.groupId,
+        reservationId: payload.reservationId
+      };
+    }
+
+    if (response.status !== 404 && response.status !== 405) {
+      throw new Error(payload?.error ?? "No se pudo aceptar la invitación.");
+    }
+  } catch (error) {
+    const message = (error as Error).message ?? "";
+    if (!/Failed to fetch/i.test(message)) {
+      throw error;
+    }
   }
 
-  return {
-    type: payload.type,
-    groupId: payload.groupId,
-    reservationId: payload.reservationId
-  };
+  return acceptInviteTokenCloudFallback(cloudDb, token, currentUser);
 };

@@ -130,8 +130,10 @@ export default function ReservationDetail({
       if (channel === "whatsapp") {
         window.open(`https://wa.me/?text=${encodedMessage}`, "_blank", "noopener,noreferrer");
       } else if (channel === "email") {
+        const emailTo = window.prompt("Email del invitado (opcional):", "")?.trim() ?? "";
         const subject = encodeURIComponent("Invitación a partido de pádel");
-        window.open(`mailto:?subject=${subject}&body=${encodedMessage}`, "_self");
+        const recipient = encodeURIComponent(emailTo);
+        window.open(`mailto:${recipient}?subject=${subject}&body=${encodedMessage}`, "_self");
       } else {
         await navigator.clipboard.writeText(inviteLink);
         alert("Link copiado");

@@ -49,6 +49,14 @@ service cloud.firestore {
       );
     }
 
+    function reservationExists(reservationId) {
+      return exists(/databases/$(database)/documents/reservations/$(reservationId));
+    }
+
+    function reservationData(reservationId) {
+      return get(/databases/$(database)/documents/reservations/$(reservationId)).data;
+    }
+
     function reservationMetaUnchanged() {
       return (
         request.resource.data.courtName == resource.data.courtName &&
@@ -118,7 +126,9 @@ service cloud.firestore {
 
     match /groupInvites/{token} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && isGroupAdmin(request.resource.data.groupId);
+      allow create: if isSignedIn() &&
+        request.resource.data.createdByAuthUid == request.auth.uid &&
+        isGroupAdmin(request.resource.data.groupId);
       allow update: if false;
       allow delete: if false;
     }
@@ -126,8 +136,11 @@ service cloud.firestore {
     match /reservationInvites/{token} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() &&
+        request.resource.data.createdByAuthUid == request.auth.uid &&
+        reservationExists(request.resource.data.reservationId) &&
+        request.resource.data.groupId == reservationData(request.resource.data.reservationId).groupId &&
         (
-          request.resource.data.createdByAuthUid == request.auth.uid ||
+          reservationData(request.resource.data.reservationId).createdByAuthUid == request.auth.uid ||
           isGroupAdmin(request.resource.data.groupId)
         );
       allow update: if false;

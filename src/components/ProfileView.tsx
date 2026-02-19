@@ -97,8 +97,10 @@ export default function ProfileView({
       if (channel === "whatsapp") {
         window.open(`https://wa.me/?text=${encoded}`, "_blank", "noopener,noreferrer");
       } else if (channel === "email") {
+        const emailTo = window.prompt("Email del invitado (opcional):", "")?.trim() ?? "";
         const subject = encodeURIComponent("Invitación a grupo de pádel");
-        window.open(`mailto:?subject=${subject}&body=${encoded}`, "_self");
+        const recipient = encodeURIComponent(emailTo);
+        window.open(`mailto:${recipient}?subject=${subject}&body=${encoded}`, "_self");
       } else if (navigator.share) {
         await navigator.share({ title: "Invitación a grupo", text: message });
       } else {
