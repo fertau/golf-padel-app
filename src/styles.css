@@ -366,7 +366,8 @@ body::before {
 
 /* App Adjustment for Navbar */
 .app {
-  padding-bottom: calc(100px + env(safe-area-inset-bottom));
+  padding-bottom: calc(112px + env(safe-area-inset-bottom));
+  scroll-padding-bottom: calc(120px + env(safe-area-inset-bottom));
 }
 
 .app {
@@ -765,6 +766,7 @@ body::before {
   -webkit-backdrop-filter: blur(24px) saturate(200%);
   box-shadow: var(--shadow-elite), inset 0 1px 1px var(--glass-stroke);
   transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  scroll-margin-bottom: calc(118px + env(safe-area-inset-bottom));
 }
 
 .my-summary {
@@ -823,6 +825,7 @@ body::before {
 
 .history-panel {
   gap: 0.7rem;
+  scroll-margin-bottom: calc(128px + env(safe-area-inset-bottom));
 }
 
 .history-toggle {
@@ -1708,6 +1711,21 @@ button.neutral {
 }
 
 @media (max-width: 520px) {
+  .app {
+    padding-top: calc(env(safe-area-inset-top) + 0.82rem);
+    padding-bottom: calc(116px + env(safe-area-inset-bottom));
+  }
+
+  .navbar {
+    height: calc(70px + env(safe-area-inset-bottom));
+    padding: 0.42rem 0.9rem calc(0.46rem + env(safe-area-inset-bottom));
+  }
+
+  .sheet {
+    max-height: min(90dvh, 920px);
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  }
+
   .panel {
     border-radius: 22px;
     padding: 1rem 0.92rem;
@@ -2243,13 +2261,15 @@ button.neutral {
 
 .sheet {
   width: min(100%, 760px);
-  max-height: min(86vh, 920px);
+  max-height: min(88dvh, 920px);
   border-radius: 24px 24px 0 0;
   background: rgba(4, 18, 54, 0.94);
   border: 1px solid rgba(182, 208, 255, 0.24);
   box-shadow: 0 -12px 42px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.14);
   padding: 0.6rem 0.9rem calc(1.2rem + env(safe-area-inset-bottom));
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   animation: sheet-in 220ms cubic-bezier(0.2, 0.9, 0.2, 1);
 }
 
