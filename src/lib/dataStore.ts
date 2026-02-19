@@ -112,20 +112,23 @@ const reservationInviteCollection = "reservationInvites";
 const isGroupAdmin = (group: Group, authUid: string) =>
   group.ownerAuthUid === authUid || group.adminAuthUids.includes(authUid);
 
+const isReservationRelatedToUser = (reservation: Reservation, authUid: string) =>
+  reservation.createdByAuthUid === authUid ||
+  reservation.createdBy.id === authUid ||
+  reservation.guestAccessUids?.includes(authUid) ||
+  reservation.signups.some((signup) => signup.authUid === authUid || signup.userId === authUid);
+
 const canAccessReservation = (reservation: Reservation, authUid: string, allowedGroupIds: Set<string>) => {
-  if (!reservation.groupId || reservation.groupId === "default-group") {
+  if (!reservation.groupId) {
     return true;
+  }
+  if (reservation.groupId === "default-group") {
+    return isReservationRelatedToUser(reservation, authUid);
   }
   if (allowedGroupIds.has(reservation.groupId)) {
     return true;
   }
-  if (reservation.createdByAuthUid === authUid || reservation.createdBy.id === authUid) {
-    return true;
-  }
-  if (reservation.guestAccessUids?.includes(authUid)) {
-    return true;
-  }
-  return reservation.signups.some((signup) => signup.authUid === authUid || signup.userId === authUid);
+  return isReservationRelatedToUser(reservation, authUid);
 };
 
 const ensureGroupMembership = (group: Group, authUid: string) => {
@@ -327,6 +330,11 @@ export const subscribeReservations = (
     subscribeReservationSlice(
       `guest:${currentAuthUid}`,
       query(collection(cloudDb, reservationCollection), where("guestAccessUids", "array-contains", currentAuthUid))
+    );
+
+    subscribeReservationSlice(
+      "legacy-default-group",
+      query(collection(cloudDb, reservationCollection), where("groupId", "==", "default-group"))
     );
 
     chunk(groupIds, 10).forEach((batch, index) => {
@@ -601,19 +609,15 @@ export const migrateLegacyReservationsForUser = async (
       if (reservation.groupId && reservation.groupId !== "default-group") {
         continue;
       }
+      if (reservation.createdByAuthUid !== actorAuthUid) {
+        continue;
+      }
 
       const updates: Partial<Reservation> & { updatedAt: string } = {
         updatedAt: nowIso(),
         groupId: fallbackGroupId,
         groupName: fallbackGroupName
       };
-
-      if (
-        !reservation.createdByAuthUid &&
-        (reservation.createdBy.id === actorAuthUid || reservation.createdBy.name === currentUser.name)
-      ) {
-        updates.createdByAuthUid = actorAuthUid;
-      }
 
       transaction.update(doc(cloudDb, reservationCollection, reservation.id), stripUndefinedDeep(updates));
     }
