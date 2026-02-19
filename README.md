@@ -110,6 +110,16 @@ npm run migrate:mi-grupo -- <ownerAuthUid>
 Requiere variables server-side:
 `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`.
 
+## Reparación completa de "Mi grupo" (duplicados + reservas sin grupo)
+Si aparecen grupos duplicados llamados `Mi grupo` o reservas sin `groupId/groupName`:
+```bash
+npm run repair:mi-grupo -- <ownerAuthUid>
+```
+Este script:
+- Elige un grupo canónico `Mi grupo`.
+- Renombra duplicados a `Mi grupo (legacy X)`.
+- Completa `groupId/groupName` en reservas legacy del owner.
+
 ## Seguridad
 - Firestore bloquea writes anónimas.
 - `players` solo accesible por dueño autenticado.
