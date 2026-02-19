@@ -543,20 +543,14 @@ export const migrateLegacyReservationsForUser = async (
       let changed = false;
       const nextReservation: Reservation = { ...reservation };
       if (!nextReservation.groupId || nextReservation.groupId === "default-group") {
-        const relatedToUser =
-          nextReservation.createdByAuthUid === currentUser.id ||
-          nextReservation.createdBy.id === currentUser.id ||
-          nextReservation.createdBy.name === currentUser.name ||
-          nextReservation.signups.some(
-            (signup) => signup.authUid === currentUser.id || signup.userId === currentUser.id
-          );
-        if (relatedToUser) {
-          nextReservation.groupId = fallbackGroupId;
-          nextReservation.groupName = fallbackGroupName;
-          changed = true;
-        }
+        nextReservation.groupId = fallbackGroupId;
+        nextReservation.groupName = fallbackGroupName;
+        changed = true;
       }
-      if (!nextReservation.createdByAuthUid && nextReservation.createdBy.name === currentUser.name) {
+      if (
+        !nextReservation.createdByAuthUid &&
+        (nextReservation.createdBy.id === currentUser.id || nextReservation.createdBy.name === currentUser.name)
+      ) {
         nextReservation.createdByAuthUid = currentUser.id;
         changed = true;
       }
@@ -590,14 +584,6 @@ export const migrateLegacyReservationsForUser = async (
   await runTransaction(cloudDb, async (transaction) => {
     for (const snapshotDoc of uniqueById.values()) {
       const reservation = normalizeReservation(snapshotDoc.id, snapshotDoc.data() as Omit<Reservation, "id">);
-      const relatedToUser =
-        reservation.createdByAuthUid === actorAuthUid ||
-        reservation.createdBy.id === actorAuthUid ||
-        reservation.createdBy.name === currentUser.name ||
-        reservation.signups.some((signup) => signup.authUid === actorAuthUid || signup.userId === actorAuthUid);
-      if (!relatedToUser) {
-        continue;
-      }
 
       const updates: Partial<Reservation> & { updatedAt: string } = {
         updatedAt: nowIso(),
@@ -605,7 +591,10 @@ export const migrateLegacyReservationsForUser = async (
         groupName: fallbackGroupName
       };
 
-      if (!reservation.createdByAuthUid && reservation.createdBy.name === currentUser.name) {
+      if (
+        !reservation.createdByAuthUid &&
+        (reservation.createdBy.id === actorAuthUid || reservation.createdBy.name === currentUser.name)
+      ) {
         updates.createdByAuthUid = actorAuthUid;
       }
 

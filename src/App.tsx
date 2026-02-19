@@ -267,7 +267,10 @@ export default function App() {
 
   useEffect(() => {
     if (!currentUser || groups.length === 0) return;
-    const fallbackGroup = groups.find((group) => group.ownerAuthUid === currentUser.id) ?? groups[0];
+    const fallbackGroup =
+      groups.find((group) => group.name.trim().toLowerCase() === "mi grupo") ??
+      groups.find((group) => group.ownerAuthUid === currentUser.id) ??
+      groups[0];
     migrateLegacyReservationsForUser(currentUser, fallbackGroup.id, fallbackGroup.name).catch(() => null);
   }, [currentUser, groups]);
 

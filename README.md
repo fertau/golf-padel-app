@@ -102,6 +102,14 @@ Importante:
 node scripts/migrateLegacyPins.mjs
 ```
 
+## Migración de reservas legacy a "Mi grupo"
+Para forzar que todas las reservas históricas de un owner queden bajo el grupo `Mi grupo`:
+```bash
+npm run migrate:mi-grupo -- <ownerAuthUid>
+```
+Requiere variables server-side:
+`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`.
+
 ## Seguridad
 - Firestore bloquea writes anónimas.
 - `players` solo accesible por dueño autenticado.
