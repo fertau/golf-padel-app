@@ -2162,25 +2162,58 @@ button.neutral {
   gap: 0.58rem;
 }
 
-.profile-group-scope-row {
-  margin-bottom: 0.1rem;
-}
-
 .groups-create-panel {
   display: grid;
   gap: 0.48rem;
 }
 
-.group-admin-actions {
-  margin: 0;
-  font-size: 0.72rem;
-  color: var(--text-dim);
-  opacity: 0.88;
-}
-
 .groups-list {
   display: grid;
   gap: 0.58rem;
+}
+
+.groups-list-collapse,
+.group-item-collapse,
+.group-share-collapse {
+  border: 1px solid rgba(179, 207, 255, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.groups-list-collapse > summary,
+.group-item-collapse > summary,
+.group-share-collapse > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.55rem 0.62rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #e4efff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.groups-list-collapse > summary::-webkit-details-marker,
+.group-item-collapse > summary::-webkit-details-marker,
+.group-share-collapse > summary::-webkit-details-marker {
+  display: none;
+}
+
+.groups-list-collapse[open] > summary,
+.group-item-collapse[open] > summary,
+.group-share-collapse[open] > summary {
+  border-bottom: 1px solid rgba(179, 207, 255, 0.14);
+}
+
+.groups-list-collapse > .groups-list {
+  padding: 0.48rem;
+}
+
+.group-item-content {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.5rem;
 }
 
 .group-empty-state {
@@ -2267,7 +2300,8 @@ button.neutral {
 }
 
 .group-action-menu {
-  margin-top: -0.1rem;
+  margin-top: 0.42rem;
+  padding: 0 0.52rem 0.52rem;
 }
 
 .quick-chip-icon {

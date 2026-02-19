@@ -994,8 +994,6 @@ export default function App() {
             user={currentUser}
             groups={groups}
             memberDirectory={signupNameByAuthUid}
-            activeGroupScope={activeGroupScope}
-            onSetActiveGroupScope={setActiveGroupScope}
             onCreateGroup={handleCreateGroup}
             onRenameGroup={handleRenameGroup}
             onCreateGroupInvite={handleCreateGroupInviteLink}
