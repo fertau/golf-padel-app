@@ -2136,15 +2136,26 @@ button.neutral {
   color: #a8c7ff;
 }
 
+.section-icon-groups {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+}
+
+.section-icon-groups svg {
+  width: 18px;
+  height: 18px;
+}
+
 .section-info h3 {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   margin: 0;
 }
 
 .section-info p {
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   color: var(--text-dim);
-  margin: 2px 0 0;
+  margin: 3px 0 0;
 }
 
 .profile-groups-section {
@@ -2186,7 +2197,7 @@ button.neutral {
   list-style: none;
   cursor: pointer;
   padding: 0.55rem 0.62rem;
-  font-size: 0.8rem;
+  font-size: 0.88rem;
   font-weight: 700;
   color: #e4efff;
   display: flex;
@@ -2243,7 +2254,7 @@ button.neutral {
 
 .group-card-name {
   display: block;
-  font-size: 1rem;
+  font-size: 0.96rem;
 }
 
 .group-name-edit-inline {
@@ -2283,7 +2294,7 @@ button.neutral {
 
 .group-card-role {
   display: block;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: var(--text-dim);
   margin-top: 2px;
 }
@@ -2328,7 +2339,7 @@ button.neutral {
   list-style: none;
   cursor: pointer;
   padding: 0.52rem 0.6rem;
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   font-weight: 700;
   color: #e4efff;
 }
@@ -2367,7 +2378,7 @@ button.neutral {
 }
 
 .member-row-main strong {
-  font-size: 1.15rem;
+  font-size: 1rem;
   line-height: 1.15;
 }
 
@@ -2381,7 +2392,7 @@ button.neutral {
   align-items: center;
   border-radius: 999px;
   padding: 0.2rem 0.5rem;
-  font-size: 0.67rem;
+  font-size: 0.72rem;
   font-weight: 800;
   border: 1px solid rgba(179, 207, 255, 0.35);
   background: rgba(255, 255, 255, 0.06);

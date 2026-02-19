@@ -16,8 +16,8 @@ type Props = {
   busy?: boolean;
 };
 
-const CardIcon = ({ children }: { children: ReactNode }) => (
-  <div className="section-icon section-icon-svg">{children}</div>
+const CardIcon = ({ children, className = "" }: { children: ReactNode; className?: string }) => (
+  <div className={`section-icon section-icon-svg ${className}`.trim()}>{children}</div>
 );
 
 export default function ProfileView({
@@ -198,7 +198,7 @@ export default function ProfileView({
         </section>
 
         <section className="profile-section-elite profile-groups-section glass-panel-elite">
-          <CardIcon>
+          <CardIcon className="section-icon-groups">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M16 11a4 4 0 1 0-3.6-5.8A4 4 0 0 0 16 11ZM8 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm8 1c-2.7 0-8 1.4-8 4v2h12v-2c0-2.6-1.3-4-4-4ZM8 13c-2.7 0-6 1.4-6 4v2h6v-2a4.8 4.8 0 0 1 2.2-4.1A8.6 8.6 0 0 0 8 13Z" />
             </svg>
@@ -283,8 +283,7 @@ export default function ProfileView({
                             </div>
                           ) : (
                             <>
-                              <small className="group-card-role">Nombre del grupo</small>
-                              <strong className="group-card-name">{group.name}</strong>
+                              <small className="group-card-role">Datos del grupo</small>
                             </>
                           )}
                         </div>
