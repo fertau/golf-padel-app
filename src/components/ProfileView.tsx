@@ -8,7 +8,7 @@ type Props = {
   activeGroupScope: "all" | string;
   onSetActiveGroupScope: (scope: "all" | string) => void;
   onCreateGroup: (name: string) => Promise<void>;
-  onCreateGroupInvite: (groupId: string) => Promise<string>;
+  onCreateGroupInvite: (groupId: string, channel?: "whatsapp" | "email" | "link") => Promise<string>;
   onSetGroupMemberAdmin: (groupId: string, targetAuthUid: string, makeAdmin: boolean) => Promise<void>;
   onLogout: () => void;
   onRequestNotifications: () => void;
@@ -87,18 +87,23 @@ export default function ProfileView({
     }
   };
 
-  const shareGroupInvite = async (groupId: string) => {
+  const shareGroupInvite = async (groupId: string, channel: "whatsapp" | "email" | "link") => {
     try {
       setInviteBusyGroupId(groupId);
-      const link = await onCreateGroupInvite(groupId);
+      const link = await onCreateGroupInvite(groupId, channel);
       const message = `🎾 Te invito a mi grupo de pádel.\n\nUnite desde este link (vence en 7 días):\n${link}`;
       const encoded = encodeURIComponent(message);
 
-      if (navigator.share) {
+      if (channel === "whatsapp") {
+        window.open(`https://wa.me/?text=${encoded}`, "_blank", "noopener,noreferrer");
+      } else if (channel === "email") {
+        const subject = encodeURIComponent("Invitación a grupo de pádel");
+        window.open(`mailto:?subject=${subject}&body=${encoded}`, "_self");
+      } else if (navigator.share) {
         await navigator.share({ title: "Invitación a grupo", text: message });
       } else {
         await navigator.clipboard.writeText(link);
-        window.open(`https://wa.me/?text=${encoded}`, "_blank", "noopener,noreferrer");
+        alert("Link copiado.");
       }
       triggerHaptic("medium");
     } catch (error) {
@@ -204,13 +209,29 @@ export default function ProfileView({
                   </summary>
                   <div className="quick-chip-row" style={{ marginTop: "0.5rem" }}>
                     {role !== "member" ? (
-                      <button
-                        className="quick-chip active"
-                        onClick={() => shareGroupInvite(group.id)}
-                        disabled={inviteBusyGroupId === group.id}
-                      >
-                        {inviteBusyGroupId === group.id ? "..." : "Invitar por link"}
-                      </button>
+                      <>
+                        <button
+                          className="quick-chip active"
+                          onClick={() => shareGroupInvite(group.id, "whatsapp")}
+                          disabled={inviteBusyGroupId === group.id}
+                        >
+                          {inviteBusyGroupId === group.id ? "..." : "Invitar WA"}
+                        </button>
+                        <button
+                          className="quick-chip"
+                          onClick={() => shareGroupInvite(group.id, "email")}
+                          disabled={inviteBusyGroupId === group.id}
+                        >
+                          Email
+                        </button>
+                        <button
+                          className="quick-chip"
+                          onClick={() => shareGroupInvite(group.id, "link")}
+                          disabled={inviteBusyGroupId === group.id}
+                        >
+                          Link
+                        </button>
+                      </>
                     ) : null}
                   </div>
                   <div className="history-level" style={{ marginTop: "0.5rem" }}>

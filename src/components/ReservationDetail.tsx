@@ -17,7 +17,10 @@ type Props = {
   signupNameByAuthUid: Record<string, string>;
   onSetAttendanceStatus: (reservationId: string, status: AttendanceStatus) => void;
   onCancel: (reservationId: string) => void;
-  onCreateGuestInvite: (reservationId: string) => Promise<string>;
+  onCreateGuestInvite: (
+    reservationId: string,
+    channel?: "whatsapp" | "email" | "link"
+  ) => Promise<string>;
   onUpdateReservation: (
     reservationId: string,
     updates: { courtName: string; startDateTime: string; durationMinutes: number }
@@ -114,17 +117,25 @@ export default function ReservationDetail({
     triggerHaptic("medium");
   };
 
-  const inviteGuestByWhatsApp = async () => {
+  const inviteGuest = async (channel: "whatsapp" | "email" | "link") => {
     try {
       setGuestInviteBusy(true);
-      const inviteLink = await onCreateGuestInvite(reservation.id);
+      const inviteLink = await onCreateGuestInvite(reservation.id, channel);
       const guestMessage = [
         "🎾 Invitación puntual a partido",
         buildWhatsAppMessage(reservation, appUrl, inviteLink),
         "Este acceso es solo para este partido (sin unirte al grupo)."
       ].join("\n\n");
       const encodedMessage = encodeURIComponent(guestMessage);
-      window.open(`https://wa.me/?text=${encodedMessage}`, "_blank", "noopener,noreferrer");
+      if (channel === "whatsapp") {
+        window.open(`https://wa.me/?text=${encodedMessage}`, "_blank", "noopener,noreferrer");
+      } else if (channel === "email") {
+        const subject = encodeURIComponent("Invitación a partido de pádel");
+        window.open(`mailto:?subject=${subject}&body=${encodedMessage}`, "_self");
+      } else {
+        await navigator.clipboard.writeText(inviteLink);
+        alert("Link copiado");
+      }
       triggerHaptic("medium");
     } catch (error) {
       alert((error as Error).message);
@@ -232,12 +243,14 @@ export default function ReservationDetail({
         {isCreator && (
           <div className="creator-actions-elite">
             <button className="btn-secondary-elite" onClick={openWhatsApp}>WhatsApp</button>
-            <button
-              className="btn-secondary-elite"
-              onClick={inviteGuestByWhatsApp}
-              disabled={guestInviteBusy}
-            >
-              {guestInviteBusy ? "Generando..." : "Invitar externo"}
+            <button className="btn-secondary-elite" onClick={() => inviteGuest("whatsapp")} disabled={guestInviteBusy}>
+              {guestInviteBusy ? "Generando..." : "Invitar externo WA"}
+            </button>
+            <button className="btn-secondary-elite" onClick={() => inviteGuest("email")} disabled={guestInviteBusy}>
+              Externo Email
+            </button>
+            <button className="btn-secondary-elite" onClick={() => inviteGuest("link")} disabled={guestInviteBusy}>
+              Copiar link
             </button>
             <button className="btn-secondary-elite" onClick={share}>Compartir</button>
             <button className="btn-outline-danger-elite" onClick={() => setEditing(!editing)}>

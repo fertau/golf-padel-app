@@ -602,18 +602,24 @@ export default function App() {
     setActiveGroupScope(created.id);
   };
 
-  const handleCreateGroupInviteLink = async (groupId: string) => {
+  const handleCreateGroupInviteLink = async (
+    groupId: string,
+    channel: "whatsapp" | "email" | "link" = "link"
+  ) => {
     if (!currentUser) {
       throw new Error("Necesitás iniciar sesión.");
     }
-    return createGroupInviteLink(groupId, currentUser, shareBaseUrl);
+    return createGroupInviteLink(groupId, currentUser, shareBaseUrl, channel);
   };
 
-  const handleCreateGuestInviteLink = async (reservationId: string) => {
+  const handleCreateGuestInviteLink = async (
+    reservationId: string,
+    channel: "whatsapp" | "email" | "link" = "link"
+  ) => {
     if (!currentUser) {
       throw new Error("Necesitás iniciar sesión.");
     }
-    return createReservationInviteLink(reservationId, currentUser, shareBaseUrl);
+    return createReservationInviteLink(reservationId, currentUser, shareBaseUrl, channel);
   };
 
   const handleSetGroupMemberAdmin = async (

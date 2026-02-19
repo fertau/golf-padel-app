@@ -786,12 +786,13 @@ export const updateReservationDetails = async (
 export const createGroupInviteLink = async (
   groupId: string,
   currentUser: User,
-  baseUrl: string
+  baseUrl: string,
+  channel: GroupInvite["channel"] = "link"
 ): Promise<string> => {
   const cloudDb = db;
   const normalizedBase = baseUrl.replace(/\/+$/, "");
   if (!isCloudDbEnabled() || !cloudDb) {
-    const invite = createGroupInviteLocal(groupId, currentUser.id, "link");
+    const invite = createGroupInviteLocal(groupId, currentUser.id, channel);
     return `${normalizedBase}/join/${invite.token}`;
   }
 
@@ -818,7 +819,7 @@ export const createGroupInviteLink = async (
     createdAt: nowIso(),
     expiresAt: inviteExpirationIso(),
     status: "active",
-    channel: "link"
+    channel
   };
   await setDoc(doc(cloudDb, groupInviteCollection, token), stripUndefinedDeep(invite));
   return `${normalizedBase}/join/${token}`;
@@ -827,7 +828,8 @@ export const createGroupInviteLink = async (
 export const createReservationInviteLink = async (
   reservationId: string,
   currentUser: User,
-  baseUrl: string
+  baseUrl: string,
+  channel: ReservationInvite["channel"] = "link"
 ): Promise<string> => {
   const cloudDb = db;
   const normalizedBase = baseUrl.replace(/\/+$/, "");
@@ -836,7 +838,7 @@ export const createReservationInviteLink = async (
     if (!reservation) {
       throw new Error("Reserva no encontrada.");
     }
-    const invite = createReservationInviteLocal(reservation.groupId, reservationId, currentUser.id, "link");
+    const invite = createReservationInviteLocal(reservation.groupId, reservationId, currentUser.id, channel);
     return `${normalizedBase}/join/${invite.token}`;
   }
 
@@ -876,7 +878,7 @@ export const createReservationInviteLink = async (
     createdAt: nowIso(),
     expiresAt: inviteExpirationIso(),
     status: "active",
-    channel: "link"
+    channel
   };
   await setDoc(doc(cloudDb, reservationInviteCollection, token), stripUndefinedDeep(invite));
   return `${normalizedBase}/join/${token}`;
