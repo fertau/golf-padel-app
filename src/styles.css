@@ -77,6 +77,7 @@ body::before {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding-bottom: env(safe-area-inset-bottom);
   overflow: hidden;
   animation: splash-fade 0.8s ease forwards;
   animation-delay: 2.4s;
@@ -86,7 +87,7 @@ body::before {
   position: absolute;
   inset: 0;
   width: 100%;
-  height: 100%;
+  height: calc(100% + env(safe-area-inset-bottom));
   display: block;
 }
 
@@ -569,11 +570,15 @@ body::before {
   gap: 12px;
   min-width: 0;
   flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .avatar-stack {
   display: flex;
   align-items: center;
+  max-width: 124px;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .mini-avatar {
@@ -619,6 +624,8 @@ body::before {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .badge {
@@ -891,6 +898,28 @@ body::before {
   font-size: 0.76rem;
 }
 
+.context-notice {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  border: 1px solid rgba(179, 207, 255, 0.35);
+  border-radius: 12px;
+  padding: 0.6rem 0.72rem;
+  background: rgba(27, 87, 204, 0.2);
+  font-size: 0.82rem;
+  color: #eaf2ff;
+}
+
+.context-notice-close {
+  padding: 0.28rem 0.55rem;
+  font-size: 0.72rem;
+  border-radius: 999px;
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
 .upcoming-widget {
   gap: 0.65rem;
 }
@@ -909,8 +938,8 @@ body::before {
 }
 
 .upcoming-list li + li {
-  border-top: 1px solid rgba(179, 207, 255, 0.2);
-  padding-top: 0.48rem;
+  border-top: 1px solid rgba(179, 207, 255, 0.18);
+  padding-top: 0.62rem;
 }
 
 .upcoming-row {
@@ -919,10 +948,10 @@ body::before {
   grid-template-columns: auto 1fr;
   gap: 0.85rem;
   align-items: center;
-  padding: 0.26rem 0;
+  padding: 0.4rem 0.3rem;
   background: transparent;
-  border: none;
-  border-radius: 0;
+  border: 1px solid transparent;
+  border-radius: 14px;
   box-shadow: none;
   text-align: left;
 }
@@ -934,8 +963,8 @@ body::before {
 }
 
 .upcoming-row.active {
-  border-left: 3px solid var(--blue-500);
-  padding-left: 0.35rem;
+  border-color: rgba(104, 169, 255, 0.55);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .upcoming-date {
@@ -970,7 +999,7 @@ body::before {
 
 .upcoming-content {
   display: grid;
-  gap: 0;
+  gap: 0.36rem;
 }
 
 .upcoming-details-line {
@@ -985,21 +1014,20 @@ body::before {
   display: inline-flex;
   align-items: center;
   gap: 0.38rem;
-  color: var(--text-dim);
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.upcoming-dot {
-  color: rgba(191, 212, 245, 0.75);
-  font-size: 0.85rem;
+  color: #ebf3ff;
+  font-size: 1.02rem;
+  font-weight: 800;
 }
 
 .upcoming-court {
-  color: #f0f6ff;
-  font-size: 0.92rem;
+  color: var(--text-dim);
+  font-size: 0.82rem;
   font-weight: 700;
   min-width: 0;
+  border: 1px solid rgba(179, 207, 255, 0.3);
+  border-radius: 999px;
+  padding: 0.16rem 0.5rem;
+  white-space: nowrap;
 }
 
 .upcoming-players {
@@ -1020,7 +1048,7 @@ body::before {
   align-items: center;
   gap: 0.3rem;
   border-radius: 999px;
-  padding: 0.18rem 0.48rem;
+  padding: 0.2rem 0.52rem;
   font-size: 0.74rem;
   font-weight: 700;
   color: #e7f1ff;
@@ -1205,6 +1233,24 @@ button.neutral {
   color: var(--text-dim);
   font-size: 1rem;
   font-weight: 500;
+}
+
+.reservation-status-pill {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.26rem 0.66rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.reservation-status-pill.cancelled {
+  color: #ffdfe4;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: rgba(248, 113, 113, 0.2);
 }
 
 .hero-stats-grid {
@@ -1427,6 +1473,23 @@ button.neutral {
   display: grid;
   gap: 8px;
   padding: 0 10px 10px;
+}
+
+.floating-toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(86px + env(safe-area-inset-bottom));
+  z-index: 3200;
+  background: rgba(5, 18, 45, 0.92);
+  color: #f3f8ff;
+  border: 1px solid rgba(179, 207, 255, 0.38);
+  border-radius: 999px;
+  padding: 0.52rem 0.86rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
 }
 
 .btn-outline-danger-elite {

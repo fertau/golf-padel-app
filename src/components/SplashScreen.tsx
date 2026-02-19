@@ -69,10 +69,9 @@ export default function SplashScreen({ visible }: Props) {
       const elapsed = now - start;
       const t = clamp(elapsed / duration, 0, 1);
       const dpr = window.devicePixelRatio || 1;
-      const viewport = window.visualViewport;
       const bounds = canvas.getBoundingClientRect();
-      const w = Math.max(1, Math.ceil(viewport?.width ?? bounds.width));
-      const h = Math.max(1, Math.ceil(viewport?.height ?? bounds.height));
+      const w = Math.max(1, Math.ceil(bounds.width), Math.ceil(window.innerWidth));
+      const h = Math.max(1, Math.ceil(bounds.height), Math.ceil(window.innerHeight));
       const pixelW = Math.floor(w * dpr);
       const pixelH = Math.floor(h * dpr);
 

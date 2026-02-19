@@ -145,6 +145,8 @@ export default function App() {
   const [nameDraft, setNameDraft] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [savingName, setSavingName] = useState(false);
+  const [contextNotice, setContextNotice] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const shareBaseUrl = getShareBaseUrl();
 
   // 1. Connectivity & Cleanup
@@ -239,6 +241,7 @@ export default function App() {
     if (reservationPathMatch) {
       setExpandedReservationId(reservationPathMatch[1]);
       setActiveTab("mis-partidos");
+      setContextNotice("Accediste desde un link directo a un partido.");
       return;
     }
 
@@ -246,6 +249,7 @@ export default function App() {
     if (invitePathMatch) {
       setPendingInviteToken(invitePathMatch[1]);
       setActiveTab("mis-partidos");
+      setContextNotice("Validando invitación...");
     }
   }, [setActiveTab, setExpandedReservationId]);
 
@@ -288,6 +292,11 @@ export default function App() {
             ? "Te uniste al grupo."
             : "Acceso puntual habilitado para este partido."
         );
+        setContextNotice(
+          accepted.type === "group"
+            ? "Invitación aceptada. Ya podés usar el grupo."
+            : "Invitación puntual aceptada."
+        );
         setActiveGroupScope(accepted.groupId);
         if (accepted.reservationId) {
           setExpandedReservationId(accepted.reservationId);
@@ -312,6 +321,12 @@ export default function App() {
     };
   }, [currentUser, pendingInviteToken, setExpandedReservationId]);
 
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = window.setTimeout(() => setToastMessage(null), 2200);
+    return () => window.clearTimeout(timer);
+  }, [toastMessage]);
+
   // 5. Derived State
   const defaultGroupId = groups[0]?.id ?? null;
   const groupNameById = useMemo(
@@ -326,6 +341,15 @@ export default function App() {
       })),
     [reservations, groupNameById]
   );
+
+  useEffect(() => {
+    if (!expandedReservationId || activeGroupScope !== "all") return;
+    const selected = reservationsWithGroupContext.find((reservation) => reservation.id === expandedReservationId);
+    if (selected?.groupId) {
+      setActiveGroupScope(selected.groupId);
+    }
+  }, [expandedReservationId, activeGroupScope, reservationsWithGroupContext]);
+
   const activeReservations = useMemo(
     () => reservationsWithGroupContext.filter((reservation) => reservation.status === "active"),
     [reservationsWithGroupContext]
@@ -674,6 +698,7 @@ export default function App() {
       triggerHaptic("medium");
       setBusy(true);
       await cancelReservation(reservationId, currentUser);
+      setToastMessage("Reserva cancelada.");
     } catch (error) {
       alert((error as Error).message || "No se pudo eliminar la reserva.");
     } finally {
@@ -690,6 +715,7 @@ export default function App() {
       setBusy(true);
       await updateReservationDetails(reservationId, updates, currentUser);
       triggerHaptic("medium");
+      setToastMessage("Reserva actualizada.");
     } catch (error) {
       alert((error as Error).message || "No se pudo modificar la reserva.");
     } finally {
@@ -817,6 +843,14 @@ export default function App() {
             ))}
           </div>
           {inviteFeedback ? <p className="private-hint">{inviteFeedback}</p> : null}
+          {contextNotice ? (
+            <div className="context-notice" role="status">
+              <span>{contextNotice}</span>
+              <button type="button" className="context-notice-close" onClick={() => setContextNotice(null)}>
+                OK
+              </button>
+            </div>
+          ) : null}
         </section>
 
         {activeTab === "mis-partidos" && (
@@ -861,7 +895,10 @@ export default function App() {
                           <button
                             type="button"
                             className={`upcoming-row ${isActive ? "active" : ""}`}
-                            onClick={() => setExpandedReservationId(isActive ? null : reservation.id)}
+                            onClick={() => {
+                              triggerHaptic("light");
+                              setExpandedReservationId(isActive ? null : reservation.id);
+                            }}
                           >
                             <div className="upcoming-date">
                               <span>{month}</span>
@@ -870,19 +907,16 @@ export default function App() {
                             <div className="upcoming-content">
                               <div className="upcoming-details-line">
                                 <span className="upcoming-time">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>
-                                <span>{time}</span>
-                              </span>
-                                <span className="upcoming-dot" aria-hidden="true">•</span>
+                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>
+                                  <span>{time}</span>
+                                </span>
                                 <span className="upcoming-court">{reservation.courtName}</span>
+                              </div>
+                              <div className="upcoming-meta-chips">
                                 {activeGroupScope === "all" && reservation.groupName ? (
-                                  <>
-                                    <span className="upcoming-dot" aria-hidden="true">•</span>
-                                    <span className="upcoming-players">{reservation.groupName}</span>
-                                  </>
+                                  <span className="upcoming-chip">{reservation.groupName}</span>
                                 ) : null}
-                                <span className="upcoming-dot" aria-hidden="true">•</span>
-                                <span className="upcoming-players">{confirmedCount}/4 jugando</span>
+                                <span className="upcoming-chip">{confirmedCount}/4 jugando</span>
                               </div>
                             </div>
                           </button>
@@ -1165,6 +1199,7 @@ export default function App() {
               onSetAttendanceStatus={(rid, s) => setAttendanceStatus(rid, currentUser, s)}
               onCancel={handleCancelReservation}
               onCreateGuestInvite={handleCreateGuestInviteLink}
+              onFeedback={setToastMessage}
               onUpdateReservation={handleUpdateReservation}
             />
           </section>
@@ -1195,6 +1230,12 @@ export default function App() {
           </section>
         </div>
       )}
+
+      {toastMessage ? (
+        <div className="floating-toast" role="status" aria-live="polite">
+          {toastMessage}
+        </div>
+      ) : null}
     </>
   );
 }

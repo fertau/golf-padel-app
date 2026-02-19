@@ -1,5 +1,5 @@
 import type { Reservation, User } from "../lib/types";
-import { getSignupsByStatus, getUserAttendance } from "../lib/utils";
+import { getSignupsByStatus, getUserAttendance, triggerHaptic } from "../lib/utils";
 
 type Props = {
   reservation: Reservation;
@@ -16,10 +16,15 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
   const day = startDate.toLocaleDateString("es-AR", { day: "2-digit" });
   const time = startDate.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false });
 
+  const visibleConfirmed = confirmed.slice(0, 3);
+
   return (
     <button
       className={`reservation-card ${isExpanded ? "expanded" : ""}`}
-      onClick={() => onOpen(reservation.id)}
+      onClick={() => {
+        triggerHaptic("light");
+        onOpen(reservation.id);
+      }}
     >
       <div className="card-date-column">
         <span className="card-date-month">{month}</span>
@@ -39,14 +44,14 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
         <div className="card-content-bottom">
           <div className="player-info-row">
             <div className="avatar-stack">
-              {confirmed.slice(0, 4).map((s, i) => (
+              {visibleConfirmed.map((s, i) => (
                 <div key={s.id} className="mini-avatar" style={{ zIndex: 4 - i }}>
                   {s.userName.charAt(0).toUpperCase()}
                 </div>
               ))}
-              {confirmed.length > 4 && (
+              {confirmed.length > visibleConfirmed.length && (
                 <div className="mini-avatar more">
-                  +{confirmed.length - 4}
+                  +{confirmed.length - visibleConfirmed.length}
                 </div>
               )}
             </div>
@@ -65,6 +70,9 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
                     : "No juego"}
               </span>
             )}
+            {reservation.status === "cancelled" ? (
+              <span className="badge badge-cancelled">Cancelada</span>
+            ) : null}
           </div>
         </div>
       </div>

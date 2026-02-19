@@ -21,6 +21,7 @@ type Props = {
     reservationId: string,
     channel?: "whatsapp" | "email" | "link"
   ) => Promise<string>;
+  onFeedback: (message: string) => void;
   onUpdateReservation: (
     reservationId: string,
     updates: { courtName: string; startDateTime: string; durationMinutes: number }
@@ -35,6 +36,7 @@ export default function ReservationDetail({
   onSetAttendanceStatus,
   onCancel,
   onCreateGuestInvite,
+  onFeedback,
   onUpdateReservation
 }: Props) {
   const toIcsDate = (date: Date): string => {
@@ -75,13 +77,14 @@ export default function ReservationDetail({
     if (navigator.share) {
       try {
         await navigator.share({ title: "Reserva de padel", text: message });
+        onFeedback("Compartido.");
         return;
       } catch (e) {
         // Fallback
       }
     }
     await navigator.clipboard.writeText(message);
-    alert("Mensaje copiado");
+    onFeedback("Mensaje copiado.");
   };
 
   const isCreator = isReservationCreator(reservation, currentUser.id);
@@ -129,18 +132,20 @@ export default function ReservationDetail({
       const encodedMessage = encodeURIComponent(guestMessage);
       if (channel === "whatsapp") {
         window.open(`https://wa.me/?text=${encodedMessage}`, "_blank", "noopener,noreferrer");
+        onFeedback("Abriendo WhatsApp...");
       } else if (channel === "email") {
         const emailTo = window.prompt("Email del invitado (opcional):", "")?.trim() ?? "";
         const subject = encodeURIComponent("Invitación a partido de pádel");
         const recipient = encodeURIComponent(emailTo);
         window.open(`mailto:${recipient}?subject=${subject}&body=${encodedMessage}`, "_self");
+        onFeedback("Abriendo email...");
       } else {
         await navigator.clipboard.writeText(inviteLink);
-        alert("Link copiado");
+        onFeedback("Link copiado.");
       }
       triggerHaptic("medium");
     } catch (error) {
-      alert((error as Error).message);
+      onFeedback((error as Error).message || "No se pudo compartir la invitación.");
     } finally {
       setGuestInviteBusy(false);
     }
@@ -192,6 +197,9 @@ export default function ReservationDetail({
         <div className="hero-badge">{reservation.durationMinutes} min</div>
         <h1>{reservation.courtName}</h1>
         <p className="hero-subtitle">{formatCompactDate(reservation.startDateTime)}</p>
+        {reservation.status === "cancelled" ? (
+          <p className="reservation-status-pill cancelled">Cancelada</p>
+        ) : null}
         {reservation.groupName ? <p className="private-hint">{reservation.groupName}</p> : null}
         {reservation.venueName ? (
           <p className="private-hint">
