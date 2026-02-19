@@ -335,15 +335,21 @@ export default function App() {
     () => Object.fromEntries(groups.map((group) => [group.id, group.name])) as Record<string, string>,
     [groups]
   );
+  const defaultGroupName = defaultGroupId ? (groupNameById[defaultGroupId] ?? null) : null;
   const reservationsWithGroupContext = useMemo(
     () =>
       reservations.map((reservation) => ({
         ...reservation,
-        groupName: reservation.groupId
-          ? (groupNameById[reservation.groupId] ?? reservation.groupName)
-          : reservation.groupName
+        groupName:
+          reservation.groupId && groupNameById[reservation.groupId]
+            ? groupNameById[reservation.groupId]
+            : !reservation.groupId || reservation.groupId === "default-group"
+              ? (defaultGroupName ?? reservation.groupName)
+              : reservation.groupName === "Mi grupo" && defaultGroupName
+                ? defaultGroupName
+                : reservation.groupName
       })),
-    [reservations, groupNameById]
+    [reservations, groupNameById, defaultGroupName]
   );
 
   useEffect(() => {
@@ -970,7 +976,7 @@ export default function App() {
             )}
             {renderReservationList(
               "Mis reservas",
-              reservations.filter(
+              reservationsWithGroupContext.filter(
                 (reservation) =>
                   reservation.status === "active" &&
                   isReservationCreator(reservation, currentUser.id) &&
