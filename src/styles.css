@@ -2125,6 +2125,15 @@ button.neutral {
   gap: 0.58rem;
 }
 
+.group-empty-state {
+  border: 1px dashed rgba(179, 207, 255, 0.34);
+  border-radius: 12px;
+  padding: 0.65rem;
+  display: grid;
+  gap: 0.45rem;
+  justify-items: start;
+}
+
 .group-card {
   border: 1px solid rgba(179, 207, 255, 0.2);
   border-radius: 14px;
@@ -2176,6 +2185,11 @@ button.neutral {
   gap: 0.4rem;
 }
 
+.member-empty-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
 .member-row-soft {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -2195,6 +2209,11 @@ button.neutral {
 .member-row-main small {
   color: var(--text-dim);
   font-size: 0.72rem;
+}
+
+.member-role-chip {
+  font-size: 0.66rem;
+  padding: 0.18rem 0.48rem;
 }
 
 @media (max-width: 640px) {

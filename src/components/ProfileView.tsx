@@ -246,6 +246,12 @@ export default function ProfileView({
             </p>
 
             <div className="groups-list">
+              {groupsWithRole.length === 0 ? (
+                <div className="group-empty-state">
+                  <span className="quick-chip">Sin grupos todavía</span>
+                  <p className="private-hint">Creá tu primer grupo para organizar partidos.</p>
+                </div>
+              ) : null}
               {groupsWithRole.map(({ group, role }) => (
                 <article key={group.id} className="group-card">
                   <header className="group-card-head">
@@ -256,7 +262,7 @@ export default function ProfileView({
                       </small>
                     </div>
                     <button
-                      className={`btn-elite btn-elite-outline btn-compact ${activeGroupScope === group.id ? "btn-elite-accent" : ""}`}
+                      className={`quick-chip ${activeGroupScope === group.id ? "active" : ""}`}
                       onClick={() => onSetActiveGroupScope(group.id)}
                     >
                       {activeGroupScope === group.id ? "Activo" : "Usar"}
@@ -266,14 +272,14 @@ export default function ProfileView({
                   {role !== "member" ? (
                     <div className="group-card-actions">
                       <button
-                        className="btn-elite btn-elite-outline btn-compact"
+                        className="quick-chip"
                         onClick={() => startRenameGroup(group.id, group.name)}
                         disabled={inviteBusyGroupId === group.id}
                       >
                         Renombrar
                       </button>
                       <button
-                        className="btn-elite btn-elite-accent btn-compact"
+                        className="quick-chip active"
                         onClick={() =>
                           setInviteMenuGroupId((current) => (current === group.id ? null : group.id))
                         }
@@ -287,21 +293,21 @@ export default function ProfileView({
                   {role !== "member" && inviteMenuGroupId === group.id ? (
                     <div className="group-invite-menu">
                       <button
-                        className="btn-elite btn-elite-outline btn-compact"
+                        className="quick-chip"
                         onClick={() => shareGroupInvite(group.id, "whatsapp")}
                         disabled={inviteBusyGroupId === group.id}
                       >
                         WhatsApp
                       </button>
                       <button
-                        className="btn-elite btn-elite-outline btn-compact"
+                        className="quick-chip"
                         onClick={() => shareGroupInvite(group.id, "email")}
                         disabled={inviteBusyGroupId === group.id}
                       >
                         Email
                       </button>
                       <button
-                        className="btn-elite btn-elite-outline btn-compact"
+                        className="quick-chip"
                         onClick={() => shareGroupInvite(group.id, "link")}
                         disabled={inviteBusyGroupId === group.id}
                       >
@@ -319,16 +325,21 @@ export default function ProfileView({
                         onChange={(event) => setGroupNameDraft(event.target.value)}
                         maxLength={48}
                       />
-                      <button className="btn-elite btn-elite-accent btn-compact" onClick={() => confirmRenameGroup(group.id)}>
+                      <button className="quick-chip active" onClick={() => confirmRenameGroup(group.id)}>
                         Guardar
                       </button>
-                      <button className="btn-elite btn-elite-outline btn-compact" onClick={() => setEditingGroupId(null)}>
+                      <button className="quick-chip" onClick={() => setEditingGroupId(null)}>
                         Cancelar
                       </button>
                     </div>
                   ) : null}
 
                   <div className="member-list">
+                    {group.memberAuthUids.length <= 1 ? (
+                      <div className="member-empty-row">
+                        <span className="quick-chip">Sin otros miembros aún</span>
+                      </div>
+                    ) : null}
                     {group.memberAuthUids.map((memberAuthUid) => {
                       const memberName =
                         group.memberNamesByAuthUid[memberAuthUid] ??
@@ -342,11 +353,15 @@ export default function ProfileView({
                         <div key={key} className="member-row-soft">
                           <div className="member-row-main">
                             <strong>{memberName}</strong>
-                            <small>{isOwner ? "Owner" : isAdmin ? "Admin" : "Miembro"}</small>
+                            <div>
+                              <span className={`quick-chip member-role-chip ${isOwner || isAdmin ? "active" : ""}`}>
+                                {isOwner ? "Owner" : isAdmin ? "Admin" : "Miembro"}
+                              </span>
+                            </div>
                           </div>
                           {canManage ? (
                             <button
-                              className={`btn-elite btn-compact ${isAdmin ? "btn-elite-accent" : "btn-elite-outline"}`}
+                              className={`quick-chip ${isAdmin ? "active" : ""}`}
                               onClick={() => toggleAdminRole(group.id, memberAuthUid, !isAdmin)}
                               disabled={roleBusyKey === key}
                             >
