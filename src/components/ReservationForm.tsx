@@ -17,7 +17,7 @@ type Props = {
     venueAddress?: string;
     venueMapsUrl?: string;
     courtId?: string;
-    courtName: string;
+    courtName?: string;
     startDateTime: string;
     durationMinutes: number;
   }) => void;
@@ -25,6 +25,7 @@ type Props = {
 };
 
 const SUGGESTED_TIMES = ["17:00", "18:30", "20:00"] as const;
+const NEW_BADGE = "Nuevo";
 
 const getTodayLocalDate = (): string => {
   const now = new Date();
@@ -41,6 +42,8 @@ const isHalfHourSlot = (time: string): boolean => {
   return minute === 0 || minute === 30;
 };
 
+const normalize = (value: string) => value.trim().toLowerCase();
+
 export default function ReservationForm({
   onCreate,
   onCancel,
@@ -51,17 +54,16 @@ export default function ReservationForm({
   defaultGroupId
 }: Props) {
   const [groupId, setGroupId] = useState(defaultGroupId ?? groups[0]?.id ?? "");
-  const [useNewVenue, setUseNewVenue] = useState(false);
+  const [venueQuery, setVenueQuery] = useState("");
   const [selectedVenueId, setSelectedVenueId] = useState("");
-  const [newVenueName, setNewVenueName] = useState("");
-  const [newVenueAddress, setNewVenueAddress] = useState("");
-  const [newVenueMapsUrl, setNewVenueMapsUrl] = useState("");
-  const [mapsQuery, setMapsQuery] = useState("");
+  const [venueAddress, setVenueAddress] = useState("");
+  const [venueMapsUrl, setVenueMapsUrl] = useState("");
   const [mapsResults, setMapsResults] = useState<GooglePlaceCandidate[]>([]);
   const [mapsLoading, setMapsLoading] = useState(false);
-  const [useNewCourt, setUseNewCourt] = useState(false);
+
+  const [courtQuery, setCourtQuery] = useState("");
   const [selectedCourtId, setSelectedCourtId] = useState("");
-  const [newCourtName, setNewCourtName] = useState("Cancha 1");
+
   const [reservationDate, setReservationDate] = useState(getTodayLocalDate());
   const [selectedTime, setSelectedTime] = useState<(typeof SUGGESTED_TIMES)[number]>("17:00");
   const [useCustomTime, setUseCustomTime] = useState(false);
@@ -80,20 +82,40 @@ export default function ReservationForm({
     return venues.filter((venue) => !selectedGroup.venueIds.includes(venue.id));
   }, [venues, selectedGroup]);
 
+  const venueSuggestions = useMemo(() => {
+    const source = [...availableVenues, ...globalVenues];
+    const query = normalize(venueQuery);
+    const ranked = source
+      .filter((venue) => (query.length === 0 ? true : normalize(venue.name).includes(query)))
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    return ranked.slice(0, 6);
+  }, [availableVenues, globalVenues, venueQuery]);
+
+  const recentVenues = useMemo(
+    () => availableVenues.slice().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 4),
+    [availableVenues]
+  );
+
   const selectedVenue = useMemo(
-    () => availableVenues.find((venue) => venue.id === selectedVenueId) ?? null,
-    [availableVenues, selectedVenueId]
+    () => venues.find((venue) => venue.id === selectedVenueId) ?? null,
+    [venues, selectedVenueId]
   );
 
   const availableCourts = useMemo(() => {
     if (!selectedVenue) return [];
-    return courts.filter((court) => court.venueId === selectedVenue.id);
+    return courts
+      .filter((court) => court.venueId === selectedVenue.id)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }, [courts, selectedVenue]);
 
-  const selectedCourt = useMemo(
-    () => availableCourts.find((court) => court.id === selectedCourtId) ?? null,
-    [availableCourts, selectedCourtId]
-  );
+  const courtSuggestions = useMemo(() => {
+    const query = normalize(courtQuery);
+    return availableCourts
+      .filter((court) => (query.length === 0 ? true : normalize(court.name).includes(query)))
+      .slice(0, 6);
+  }, [availableCourts, courtQuery]);
+
+  const recentCourts = useMemo(() => availableCourts.slice(0, 4), [availableCourts]);
 
   useEffect(() => {
     if (!groupId && groups.length > 0) {
@@ -102,55 +124,67 @@ export default function ReservationForm({
   }, [defaultGroupId, groupId, groups]);
 
   useEffect(() => {
-    if (!selectedGroup) {
-      setSelectedVenueId("");
-      return;
-    }
+    if (!selectedGroup) return;
     if (availableVenues.length === 0) {
-      setUseNewVenue(true);
       setSelectedVenueId("");
+      setVenueQuery("");
       return;
     }
-    if (!availableVenues.some((venue) => venue.id === selectedVenueId)) {
-      setSelectedVenueId(availableVenues[0].id);
+    if (!selectedVenueId) {
+      const first = availableVenues[0];
+      setSelectedVenueId(first.id);
+      setVenueQuery(first.name);
+      setVenueAddress(first.address ?? "");
+      setVenueMapsUrl(first.mapsUrl ?? "");
     }
   }, [availableVenues, selectedGroup, selectedVenueId]);
 
   useEffect(() => {
-    if (useNewVenue) {
-      setUseNewCourt(true);
-      setSelectedCourtId("");
-      return;
-    }
     if (!selectedVenue) {
       setSelectedCourtId("");
+      setCourtQuery("");
       return;
     }
     if (availableCourts.length === 0) {
-      setUseNewCourt(true);
       setSelectedCourtId("");
+      setCourtQuery("");
       return;
     }
-    if (!availableCourts.some((court) => court.id === selectedCourtId)) {
-      setSelectedCourtId(availableCourts[0].id);
-      setUseNewCourt(false);
+    if (!selectedCourtId) {
+      const first = availableCourts[0];
+      setSelectedCourtId(first.id);
+      setCourtQuery(first.name);
     }
-  }, [availableCourts, selectedCourtId, selectedVenue, useNewVenue]);
+  }, [availableCourts, selectedCourtId, selectedVenue]);
 
   const finalTime = useMemo(() => (useCustomTime ? customTime : selectedTime), [customTime, selectedTime, useCustomTime]);
   const hasValidTime = useMemo(() => isHalfHourSlot(finalTime), [finalTime]);
-  const hasValidVenue = useNewVenue ? newVenueName.trim().length >= 2 : Boolean(selectedVenueId);
-  const hasValidCourt = useNewCourt ? newCourtName.trim().length >= 2 : Boolean(selectedCourtId);
-  const canSubmit = Boolean(groupId && hasValidTime && hasValidVenue && hasValidCourt && durationMinutes > 0);
+
+  const matchedVenueByName = useMemo(
+    () => venues.find((venue) => normalize(venue.name) === normalize(venueQuery)),
+    [venues, venueQuery]
+  );
+
+  const matchedCourtByName = useMemo(
+    () => availableCourts.find((court) => normalize(court.name) === normalize(courtQuery)),
+    [availableCourts, courtQuery]
+  );
+
+  const creatingNewVenue = Boolean(venueQuery.trim()) && !matchedVenueByName;
+  const creatingNewCourt = Boolean(courtQuery.trim()) && !matchedCourtByName;
+
+  const hasValidVenue = Boolean(selectedVenueId || venueQuery.trim().length >= 2);
+  const canSubmit = Boolean(groupId && hasValidTime && hasValidVenue && durationMinutes > 0);
 
   const handleSearchMaps = async () => {
     if (!canSearchGooglePlaces()) {
       alert("Configurá VITE_GOOGLE_MAPS_API_KEY para usar búsqueda de complejos.");
       return;
     }
+    if (venueQuery.trim().length < 3) return;
     try {
       setMapsLoading(true);
-      const candidates = await searchGooglePlaces(mapsQuery);
+      const candidates = await searchGooglePlaces(venueQuery);
       setMapsResults(candidates);
     } catch (error) {
       alert((error as Error).message);
@@ -161,9 +195,31 @@ export default function ReservationForm({
   };
 
   const applyMapsCandidate = (candidate: GooglePlaceCandidate) => {
-    setNewVenueName(candidate.name);
-    setNewVenueAddress(candidate.address);
-    setNewVenueMapsUrl(candidate.mapsUrl ?? "");
+    setVenueQuery(candidate.name);
+    setVenueAddress(candidate.address);
+    setVenueMapsUrl(candidate.mapsUrl ?? "");
+    setSelectedVenueId("");
+    triggerHaptic("light");
+  };
+
+  const chooseVenueSuggestion = (venue: Venue) => {
+    setSelectedVenueId(venue.id);
+    setVenueQuery(venue.name);
+    setVenueAddress(venue.address ?? "");
+    setVenueMapsUrl(venue.mapsUrl ?? "");
+    setMapsResults([]);
+    triggerHaptic("light");
+  };
+
+  const chooseCourtSuggestion = (court: Court) => {
+    setSelectedCourtId(court.id);
+    setCourtQuery(court.name);
+    triggerHaptic("light");
+  };
+
+  const clearCourt = () => {
+    setSelectedCourtId("");
+    setCourtQuery("");
     triggerHaptic("light");
   };
 
@@ -171,19 +227,23 @@ export default function ReservationForm({
     event.preventDefault();
     if (!canSubmit || !selectedGroup) return;
 
-    const computedCourtName = useNewCourt
-      ? newCourtName.trim()
-      : selectedCourt?.name ?? "Cancha 1";
+    const venueId = selectedVenueId || matchedVenueByName?.id;
+    const finalVenueName = venueId ? matchedVenueByName?.name ?? selectedVenue?.name : venueQuery.trim();
+    const finalVenueAddress = venueId ? matchedVenueByName?.address ?? selectedVenue?.address : venueAddress.trim();
+    const finalVenueMapsUrl = venueId ? matchedVenueByName?.mapsUrl ?? selectedVenue?.mapsUrl : venueMapsUrl.trim();
+
+    const courtId = selectedCourtId || matchedCourtByName?.id;
+    const finalCourtName = courtId ? matchedCourtByName?.name ?? courtQuery.trim() : courtQuery.trim();
 
     onCreate({
       groupId: selectedGroup.id,
       groupName: selectedGroup.name,
-      venueId: useNewVenue ? undefined : selectedVenue?.id,
-      venueName: useNewVenue ? newVenueName.trim() : selectedVenue?.name,
-      venueAddress: useNewVenue ? newVenueAddress.trim() : selectedVenue?.address,
-      venueMapsUrl: useNewVenue ? newVenueMapsUrl.trim() : selectedVenue?.mapsUrl,
-      courtId: useNewCourt ? undefined : selectedCourt?.id,
-      courtName: computedCourtName,
+      venueId: venueId || undefined,
+      venueName: finalVenueName,
+      venueAddress: finalVenueAddress,
+      venueMapsUrl: finalVenueMapsUrl,
+      courtId: courtId || undefined,
+      courtName: finalCourtName || undefined,
       startDateTime: `${reservationDate}T${finalTime}`,
       durationMinutes
     });
@@ -204,12 +264,7 @@ export default function ReservationForm({
 
       <div className="elite-field-group">
         <label className="elite-field-label">Grupo</label>
-        <select
-          className="elite-select"
-          value={groupId}
-          onChange={(event) => setGroupId(event.target.value)}
-          required
-        >
+        <select className="elite-select" value={groupId} onChange={(event) => setGroupId(event.target.value)} required>
           {groups.length === 0 ? <option value="">Sin grupos</option> : null}
           {groups.map((group) => (
             <option key={group.id} value={group.id}>
@@ -221,56 +276,75 @@ export default function ReservationForm({
 
       <div className="elite-field-group">
         <label className="elite-field-label">Complejo</label>
-        <div className="quick-chip-row">
-          <button
-            type="button"
-            className={`quick-chip ${!useNewVenue ? "active" : ""}`}
-            onClick={() => handleChoiceHaptic(() => setUseNewVenue(false))}
-          >
-            Guardado
-          </button>
-          <button
-            type="button"
-            className={`quick-chip ${useNewVenue ? "active" : ""}`}
-            onClick={() => handleChoiceHaptic(() => setUseNewVenue(true))}
-          >
-            Nuevo complejo
-          </button>
+        {recentVenues.length > 0 ? (
+          <div className="quick-chip-row">
+            {recentVenues.map((venue) => (
+              <button
+                key={`recent-venue-${venue.id}`}
+                type="button"
+                className={`quick-chip ${selectedVenueId === venue.id ? "active" : ""}`}
+                onClick={() => chooseVenueSuggestion(venue)}
+              >
+                {venue.name}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="autocomplete-shell">
+          <input
+            type="text"
+            className="elite-input"
+            placeholder="Escribí el nombre del complejo"
+            value={venueQuery}
+            onChange={(event) => {
+              setVenueQuery(event.target.value);
+              setSelectedVenueId("");
+            }}
+            required
+          />
+          {creatingNewVenue ? <span className="quick-chip autocomplete-new">+ {NEW_BADGE}</span> : null}
         </div>
 
-        {useNewVenue ? (
+        {venueSuggestions.length > 0 ? (
+          <div className="autocomplete-list">
+            {venueSuggestions.map((venue) => (
+              <button
+                key={`venue-suggestion-${venue.id}`}
+                type="button"
+                className="autocomplete-row"
+                onClick={() => chooseVenueSuggestion(venue)}
+              >
+                <strong>{venue.name}</strong>
+                <small>{venue.address}</small>
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {creatingNewVenue ? (
           <div className="history-level">
             <div className="quick-chip-row">
-              <input
-                type="text"
-                className="elite-input"
-                placeholder="Buscar complejo en Google Maps"
-                value={mapsQuery}
-                onChange={(event) => setMapsQuery(event.target.value)}
-              />
               <button
                 type="button"
                 className="quick-chip active"
                 onClick={handleSearchMaps}
-                disabled={mapsLoading || mapsQuery.trim().length < 3}
+                disabled={mapsLoading || venueQuery.trim().length < 3}
               >
-                {mapsLoading ? "Buscando..." : "Buscar"}
+                {mapsLoading ? "Buscando..." : "Buscar en Maps"}
               </button>
             </div>
             {mapsResults.length > 0 ? (
-              <div className="history-list">
+              <div className="autocomplete-list">
                 {mapsResults.map((candidate) => (
                   <button
                     key={candidate.googlePlaceId}
                     type="button"
-                    className="history-row"
+                    className="autocomplete-row"
                     onClick={() => applyMapsCandidate(candidate)}
                   >
-                    <span className="history-main">
-                      <strong>{candidate.name}</strong>
-                      <small>{candidate.address}</small>
-                    </span>
-                    <span className="quick-chip">Usar</span>
+                    <strong>{candidate.name}</strong>
+                    <small>{candidate.address}</small>
                   </button>
                 ))}
               </div>
@@ -278,104 +352,69 @@ export default function ReservationForm({
             <input
               type="text"
               className="elite-input"
-              placeholder="Nombre del complejo"
-              value={newVenueName}
-              onChange={(event) => setNewVenueName(event.target.value)}
-              required
-            />
-            <input
-              type="text"
-              className="elite-input"
-              placeholder="Dirección"
-              value={newVenueAddress}
-              onChange={(event) => setNewVenueAddress(event.target.value)}
+              placeholder="Dirección (opcional)"
+              value={venueAddress}
+              onChange={(event) => setVenueAddress(event.target.value)}
             />
             <input
               type="url"
               className="elite-input"
               placeholder="Link de Google Maps (opcional)"
-              value={newVenueMapsUrl}
-              onChange={(event) => setNewVenueMapsUrl(event.target.value)}
+              value={venueMapsUrl}
+              onChange={(event) => setVenueMapsUrl(event.target.value)}
             />
           </div>
-        ) : (
-          <select
-            className="elite-select"
-            value={selectedVenueId}
-            onChange={(event) => setSelectedVenueId(event.target.value)}
-            required
-          >
-            {availableVenues.length === 0 ? <option value="">No hay complejos en el grupo</option> : null}
-            {availableVenues.length > 0 ? (
-              <optgroup label="Complejos del grupo">
-                {availableVenues.map((venue) => (
-                  <option key={venue.id} value={venue.id}>
-                    {venue.name}
-                  </option>
-                ))}
-              </optgroup>
-            ) : null}
-            {globalVenues.length > 0 ? (
-              <optgroup label="Complejos globales">
-                {globalVenues.map((venue) => (
-                  <option key={venue.id} value={venue.id}>
-                    {venue.name}
-                  </option>
-                ))}
-              </optgroup>
-            ) : null}
-          </select>
-        )}
-        {!useNewVenue && selectedVenue && selectedGroup && !selectedGroup.venueIds.includes(selectedVenue.id) ? (
-          <p className="private-hint">
-            Se agregará este complejo global a {selectedGroup.name} al confirmar.
-          </p>
         ) : null}
       </div>
 
       <div className="elite-field-group">
-        <label className="elite-field-label">Cancha</label>
-        <div className="quick-chip-row">
-          <button
-            type="button"
-            className={`quick-chip ${!useNewCourt ? "active" : ""}`}
-            onClick={() => handleChoiceHaptic(() => setUseNewCourt(false))}
-          >
-            Guardada
-          </button>
-          <button
-            type="button"
-            className={`quick-chip ${useNewCourt ? "active" : ""}`}
-            onClick={() => handleChoiceHaptic(() => setUseNewCourt(true))}
-          >
-            Nueva cancha
-          </button>
-        </div>
+        <label className="elite-field-label">Cancha (opcional)</label>
+        {recentCourts.length > 0 ? (
+          <div className="quick-chip-row">
+            {recentCourts.map((court) => (
+              <button
+                key={`recent-court-${court.id}`}
+                type="button"
+                className={`quick-chip ${selectedCourtId === court.id ? "active" : ""}`}
+                onClick={() => chooseCourtSuggestion(court)}
+              >
+                {court.name}
+              </button>
+            ))}
+            <button type="button" className="quick-chip" onClick={clearCourt}>
+              Sin cancha
+            </button>
+          </div>
+        ) : null}
 
-        {useNewCourt ? (
+        <div className="autocomplete-shell">
           <input
             type="text"
             className="elite-input"
-            value={newCourtName}
-            onChange={(event) => setNewCourtName(event.target.value)}
-            placeholder="Ej: Cancha 1"
-            required
+            placeholder="Escribí la cancha o dejalo vacío"
+            value={courtQuery}
+            onChange={(event) => {
+              setCourtQuery(event.target.value);
+              setSelectedCourtId("");
+            }}
           />
-        ) : (
-          <select
-            className="elite-select"
-            value={selectedCourtId}
-            onChange={(event) => setSelectedCourtId(event.target.value)}
-            required
-          >
-            {availableCourts.length === 0 ? <option value="">No hay canchas cargadas</option> : null}
-            {availableCourts.map((court) => (
-              <option key={court.id} value={court.id}>
-                {court.name}
-              </option>
+          {creatingNewCourt ? <span className="quick-chip autocomplete-new">+ {NEW_BADGE}</span> : null}
+        </div>
+
+        {courtSuggestions.length > 0 ? (
+          <div className="autocomplete-list">
+            {courtSuggestions.map((court) => (
+              <button
+                key={`court-suggestion-${court.id}`}
+                type="button"
+                className="autocomplete-row"
+                onClick={() => chooseCourtSuggestion(court)}
+              >
+                <strong>{court.name}</strong>
+              </button>
             ))}
-          </select>
-        )}
+          </div>
+        ) : null}
       </div>
 
       <div className="elite-field-group">
@@ -412,13 +451,13 @@ export default function ReservationForm({
         </div>
       </div>
 
-      {useCustomTime && (
+      {useCustomTime ? (
         <div className="elite-field-group animate-in">
           <label className="elite-field-label">Horario específico (00 o 30 min)</label>
           <input type="time" className="elite-input" value={customTime} onChange={(e) => setCustomTime(e.target.value)} step={1800} required />
-          {!hasValidTime && <p className="elite-error">El horario debe ser en bloques de 30 min.</p>}
+          {!hasValidTime ? <p className="elite-error">El horario debe ser en bloques de 30 min.</p> : null}
         </div>
-      )}
+      ) : null}
 
       <div className="elite-field-group">
         <label className="elite-field-label">Duración</label>

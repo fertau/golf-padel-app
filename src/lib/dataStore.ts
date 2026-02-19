@@ -727,7 +727,7 @@ export const createReservation = async (input: ReservationInput, currentUser: Us
         venueName: input.venueName ?? resolved.venue?.name,
         venueAddress: input.venueAddress ?? resolved.venue?.address,
         courtId: input.courtId ?? resolved.court?.id,
-        courtName: (input.courtName || resolved.court?.name || "Cancha 1").trim()
+        courtName: (input.courtName?.trim() || resolved.court?.name || "Cancha a definir").trim()
       },
       currentUser
     );
@@ -760,7 +760,7 @@ export const createReservation = async (input: ReservationInput, currentUser: Us
     venueName: input.venueName?.trim() || venue?.name,
     venueAddress: input.venueAddress?.trim() || venue?.address,
     courtId: input.courtId ?? court?.id,
-    courtName: (input.courtName || court?.name || "Cancha 1").trim(),
+    courtName: (input.courtName?.trim() || court?.name || "Cancha a definir").trim(),
     startDateTime: input.startDateTime,
     durationMinutes: input.durationMinutes,
     createdBy: currentUser,

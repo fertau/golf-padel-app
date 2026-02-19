@@ -49,7 +49,7 @@ export type ReservationInput = {
   venueAddress?: string;
   venueMapsUrl?: string;
   courtId?: string;
-  courtName: string;
+  courtName?: string;
   startDateTime: string;
   durationMinutes: number;
   rules?: Partial<ReservationRules>;
@@ -66,7 +66,7 @@ export const createReservationLocal = (input: ReservationInput, currentUser: Use
     venueName: input.venueName,
     venueAddress: input.venueAddress,
     courtId: input.courtId,
-    courtName: input.courtName.trim(),
+    courtName: input.courtName?.trim() || "Cancha a definir",
     startDateTime: input.startDateTime,
     durationMinutes: input.durationMinutes,
     createdBy: currentUser,

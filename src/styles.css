@@ -1895,6 +1895,48 @@ button.neutral {
   gap: 8px;
 }
 
+.autocomplete-shell {
+  position: relative;
+}
+
+.autocomplete-new {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 0.66rem;
+  padding: 0.2rem 0.44rem;
+}
+
+.autocomplete-list {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.autocomplete-row {
+  text-align: left;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(179, 207, 255, 0.26);
+  border-radius: 10px;
+  box-shadow: none;
+  padding: 0.5rem 0.62rem;
+  display: grid;
+  gap: 0.08rem;
+}
+
+.autocomplete-row strong {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #f5f9ff;
+}
+
+.autocomplete-row small {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
 .elite-field-label {
   font-size: 0.75rem;
   font-weight: 800;
