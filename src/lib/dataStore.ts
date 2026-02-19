@@ -320,6 +320,11 @@ export const subscribeReservations = (
     );
 
     subscribeReservationSlice(
+      `legacy-creator:${currentAuthUid}`,
+      query(collection(cloudDb, reservationCollection), where("createdBy.id", "==", currentAuthUid))
+    );
+
+    subscribeReservationSlice(
       `guest:${currentAuthUid}`,
       query(collection(cloudDb, reservationCollection), where("guestAccessUids", "array-contains", currentAuthUid))
     );
@@ -572,11 +577,20 @@ export const migrateLegacyReservationsForUser = async (
 
   const legacyByGroupQuery = query(collection(cloudDb, reservationCollection), where("groupId", "==", "default-group"));
   const legacyByCreatorQuery = query(collection(cloudDb, reservationCollection), where("createdByAuthUid", "==", actorAuthUid));
-  const [legacyByGroupSnapshot, legacyByCreatorSnapshot] = await Promise.all([
+  const legacyByLegacyCreatorIdQuery = query(
+    collection(cloudDb, reservationCollection),
+    where("createdBy.id", "==", actorAuthUid)
+  );
+  const [legacyByGroupSnapshot, legacyByCreatorSnapshot, legacyByLegacyCreatorIdSnapshot] = await Promise.all([
     getDocs(legacyByGroupQuery),
-    getDocs(legacyByCreatorQuery)
+    getDocs(legacyByCreatorQuery),
+    getDocs(legacyByLegacyCreatorIdQuery)
   ]);
-  const snapshots = [...legacyByGroupSnapshot.docs, ...legacyByCreatorSnapshot.docs];
+  const snapshots = [
+    ...legacyByGroupSnapshot.docs,
+    ...legacyByCreatorSnapshot.docs,
+    ...legacyByLegacyCreatorIdSnapshot.docs
+  ];
   if (snapshots.length === 0) return;
   const uniqueById = new Map<string, typeof snapshots[number]>();
   snapshots.forEach((snapshotDoc) => uniqueById.set(snapshotDoc.id, snapshotDoc));
@@ -584,6 +598,9 @@ export const migrateLegacyReservationsForUser = async (
   await runTransaction(cloudDb, async (transaction) => {
     for (const snapshotDoc of uniqueById.values()) {
       const reservation = normalizeReservation(snapshotDoc.id, snapshotDoc.data() as Omit<Reservation, "id">);
+      if (reservation.groupId && reservation.groupId !== "default-group") {
+        continue;
+      }
 
       const updates: Partial<Reservation> & { updatedAt: string } = {
         updatedAt: nowIso(),

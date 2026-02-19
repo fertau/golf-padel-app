@@ -398,7 +398,9 @@ export default function App() {
       return { playedCount: 0, latest: "-" };
     }
     const playedCount = historyBase.filter(
-      (reservation) => getUserAttendance(reservation, currentUser.id)?.attendanceStatus === "confirmed"
+      (reservation) =>
+        getUserAttendance(reservation, currentUser.id)?.attendanceStatus === "confirmed" ||
+        (!getUserAttendance(reservation, currentUser.id) && isReservationCreator(reservation, currentUser.id))
     ).length;
     const latest = historyBase[0]?.startDateTime
       ? `${new Date(historyBase[0].startDateTime).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" })} · ${new Date(historyBase[0].startDateTime).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })}`
@@ -448,7 +450,8 @@ export default function App() {
 
     return historyBase.filter((reservation) => {
       const attendanceStatus = getUserAttendance(reservation, currentUser.id)?.attendanceStatus;
-      if (!attendanceStatus || !historyStatuses.includes(attendanceStatus)) {
+      const effectiveStatus = attendanceStatus ?? (isReservationCreator(reservation, currentUser.id) ? "confirmed" : null);
+      if (!effectiveStatus || !historyStatuses.includes(effectiveStatus)) {
         return false;
       }
 
