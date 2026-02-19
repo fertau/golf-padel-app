@@ -825,37 +825,39 @@ export default function App() {
           </div>
         </header>
 
-        <section className="panel glass-panel-elite animate-fade-in">
-          <h2 className="section-title">Grupo activo</h2>
-          <div className="quick-chip-row">
-            <button
-              type="button"
-              className={`quick-chip ${activeGroupScope === "all" ? "active" : ""}`}
-              onClick={() => setActiveGroupScope("all")}
-            >
-              Todos mis grupos
-            </button>
-            {groups.map((group) => (
+        {activeTab !== "perfil" ? (
+          <section className="panel glass-panel-elite animate-fade-in">
+            <h2 className="section-title">Vista por grupo</h2>
+            <div className="quick-chip-row">
               <button
-                key={`scope-${group.id}`}
                 type="button"
-                className={`quick-chip ${activeGroupScope === group.id ? "active" : ""}`}
-                onClick={() => setActiveGroupScope(group.id)}
+                className={`quick-chip ${activeGroupScope === "all" ? "active" : ""}`}
+                onClick={() => setActiveGroupScope("all")}
               >
-                {group.name}
+                Todos mis grupos
               </button>
-            ))}
-          </div>
-          {inviteFeedback ? <p className="private-hint">{inviteFeedback}</p> : null}
-          {contextNotice ? (
-            <div className="context-notice animate-fade-in" role="status">
-              <span>{contextNotice}</span>
-              <button type="button" className="context-notice-close" onClick={() => setContextNotice(null)}>
-                OK
-              </button>
+              {groups.map((group) => (
+                <button
+                  key={`scope-${group.id}`}
+                  type="button"
+                  className={`quick-chip ${activeGroupScope === group.id ? "active" : ""}`}
+                  onClick={() => setActiveGroupScope(group.id)}
+                >
+                  {group.name}
+                </button>
+              ))}
             </div>
-          ) : null}
-        </section>
+            {inviteFeedback ? <p className="private-hint">{inviteFeedback}</p> : null}
+            {contextNotice ? (
+              <div className="context-notice animate-fade-in" role="status">
+                <span>{contextNotice}</span>
+                <button type="button" className="context-notice-close" onClick={() => setContextNotice(null)}>
+                  OK
+                </button>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         {activeTab === "mis-partidos" && (
           <>
