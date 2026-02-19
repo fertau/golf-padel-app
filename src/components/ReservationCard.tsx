@@ -31,6 +31,10 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
           <strong className="card-title-main">{time}</strong>
           <span className="card-court-pill">{reservation.courtName}</span>
         </div>
+        <div className="card-meta-line">
+          {reservation.groupName ? <span>{reservation.groupName}</span> : null}
+          {reservation.venueName ? <span>{reservation.venueName}</span> : null}
+        </div>
 
         <div className="card-content-bottom">
           <div className="player-info-row">

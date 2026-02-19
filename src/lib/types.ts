@@ -34,6 +34,65 @@ export type ReservationRules = {
 
 export type AttendanceStatus = "confirmed" | "maybe" | "cancelled";
 
+export type GroupRole = "owner" | "admin" | "member";
+
+export type Group = {
+  id: string;
+  name: string;
+  ownerAuthUid: string;
+  memberAuthUids: string[];
+  adminAuthUids: string[];
+  memberNamesByAuthUid: Record<string, string>;
+  venueIds: string[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Venue = {
+  id: string;
+  name: string;
+  address: string;
+  googlePlaceId?: string;
+  mapsUrl?: string;
+  createdByAuthUid: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Court = {
+  id: string;
+  venueId: string;
+  name: string;
+  createdByAuthUid: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type InviteTargetType = "group" | "reservation";
+export type InviteChannel = "whatsapp" | "email" | "link";
+export type InviteStatus = "active" | "revoked";
+
+export type InviteBase = {
+  token: string;
+  targetType: InviteTargetType;
+  createdByAuthUid: string;
+  createdAt: string;
+  expiresAt: string;
+  status: InviteStatus;
+  channel: InviteChannel;
+};
+
+export type GroupInvite = InviteBase & {
+  targetType: "group";
+  groupId: string;
+};
+
+export type ReservationInvite = InviteBase & {
+  targetType: "reservation";
+  groupId: string;
+  reservationId: string;
+};
+
 export type Signup = {
   id: string;
   reservationId: string;
@@ -47,11 +106,18 @@ export type Signup = {
 
 export type Reservation = {
   id: string;
+  groupId: string;
+  groupName?: string;
+  venueId?: string;
+  venueName?: string;
+  venueAddress?: string;
+  courtId?: string;
   courtName: string;
   startDateTime: string;
   durationMinutes: number;
   createdBy: User;
   createdByAuthUid?: string;
+  guestAccessUids?: string[];
   rules: ReservationRules;
   signups: Signup[];
   status: "active" | "cancelled";

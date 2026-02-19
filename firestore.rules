@@ -5,8 +5,37 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwnerByAuthUid(resourceData) {
-      return isSignedIn() && resourceData.createdByAuthUid == request.auth.uid;
+    function groupExists(groupId) {
+      return exists(/databases/$(database)/documents/groups/$(groupId));
+    }
+
+    function groupData(groupId) {
+      return get(/databases/$(database)/documents/groups/$(groupId)).data;
+    }
+
+    function isGroupMember(groupId) {
+      return isSignedIn() &&
+        groupExists(groupId) &&
+        request.auth.uid in groupData(groupId).memberAuthUids;
+    }
+
+    function isGroupAdmin(groupId) {
+      return isSignedIn() &&
+        groupExists(groupId) &&
+        (
+          groupData(groupId).ownerAuthUid == request.auth.uid ||
+          request.auth.uid in groupData(groupId).adminAuthUids
+        );
+    }
+
+    function canReadReservation(data) {
+      return isSignedIn() && (
+        !("groupId" in data) ||
+        data.groupId == "default-group" ||
+        isGroupMember(data.groupId) ||
+        data.createdByAuthUid == request.auth.uid ||
+        (("guestAccessUids" in data) && request.auth.uid in data.guestAccessUids)
+      );
     }
 
     function playerAllowedKeys(data) {
@@ -33,26 +62,62 @@ service cloud.firestore {
       ]);
     }
 
-    match /reservations/{reservationId} {
-      allow read: if isSignedIn();
+    match /groups/{groupId} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.memberAuthUids;
 
       allow create: if isSignedIn() &&
-        request.resource.data.createdByAuthUid == request.auth.uid;
+        request.resource.data.ownerAuthUid == request.auth.uid &&
+        request.auth.uid in request.resource.data.memberAuthUids &&
+        request.auth.uid in request.resource.data.adminAuthUids;
+
+      allow update: if isGroupAdmin(groupId);
+      allow delete: if false;
+    }
+
+    match /venues/{venueId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && request.resource.data.createdByAuthUid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /courts/{courtId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && request.resource.data.createdByAuthUid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /groupInvites/{token} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isGroupAdmin(request.resource.data.groupId);
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /reservationInvites/{token} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+        (
+          request.resource.data.createdByAuthUid == request.auth.uid ||
+          isGroupAdmin(request.resource.data.groupId)
+        );
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /reservations/{reservationId} {
+      allow read: if canReadReservation(resource.data);
+
+      allow create: if isSignedIn() &&
+        request.resource.data.createdByAuthUid == request.auth.uid &&
+        (
+          !("groupId" in request.resource.data) ||
+          request.resource.data.groupId == "default-group" ||
+          isGroupMember(request.resource.data.groupId)
+        );
 
       allow update: if isSignedIn() &&
         request.resource.data.createdByAuthUid == resource.data.createdByAuthUid &&
-        (
-          isOwnerByAuthUid(resource.data) ||
-          (
-            request.resource.data.courtName == resource.data.courtName &&
-            request.resource.data.startDateTime == resource.data.startDateTime &&
-            request.resource.data.durationMinutes == resource.data.durationMinutes &&
-            request.resource.data.createdBy == resource.data.createdBy &&
-            request.resource.data.rules == resource.data.rules &&
-            request.resource.data.status == resource.data.status &&
-            request.resource.data.createdAt == resource.data.createdAt
-          )
-        );
+        canReadReservation(resource.data);
 
       allow delete: if false;
     }

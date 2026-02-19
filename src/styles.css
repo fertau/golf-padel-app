@@ -546,6 +546,15 @@ body::before {
   text-overflow: ellipsis;
 }
 
+.card-meta-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.34rem;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
 .card-content-bottom {
   display: flex;
   justify-content: space-between;

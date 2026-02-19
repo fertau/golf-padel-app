@@ -27,15 +27,23 @@ import { useAuthStore } from "./stores/useAuthStore";
 import { useReservationStore } from "./stores/useReservationStore";
 import { useUIStore } from "./stores/useUIStore";
 import {
+  acceptInviteToken,
   cancelReservation,
+  createGroup,
+  createGroupInviteLink,
   createReservation,
+  createReservationInviteLink,
+  ensureUserDefaultGroup,
   isCloudDbEnabled,
   setAttendanceStatus,
+  subscribeCourts,
+  subscribeGroups,
   subscribeReservations,
+  subscribeVenues,
   updateReservationDetails
 } from "./lib/dataStore";
 import { registerPushToken } from "./lib/push";
-import type { Reservation } from "./lib/types";
+import type { Court, Group, Reservation, Venue } from "./lib/types";
 import {
   getUserAttendance,
   isGenericDisplayName,
@@ -124,7 +132,13 @@ export default function App() {
     return `${now.getFullYear()}-${`${now.getMonth() + 1}`.padStart(2, "0")}`;
   });
   const [historyPlayerFilter, setHistoryPlayerFilter] = useState("all");
-  const [historyCourtFilter, setHistoryCourtFilter] = useState<"all" | "Cancha 1" | "Cancha 2">("all");
+  const [historyCourtFilter, setHistoryCourtFilter] = useState("all");
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [courts, setCourts] = useState<Court[]>([]);
+  const [activeGroupScope, setActiveGroupScope] = useState<"all" | string>("all");
+  const [pendingInviteToken, setPendingInviteToken] = useState<string | null>(null);
+  const [inviteFeedback, setInviteFeedback] = useState<string | null>(null);
   const [nameDraft, setNameDraft] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [savingName, setSavingName] = useState(false);
@@ -195,26 +209,133 @@ export default function App() {
     };
   }, []);
 
-  // 3. Subscription
+  // 3. Subscriptions
   useEffect(() => {
     if (!firebaseUser) return;
-    return subscribeReservations(setReservations);
+    return subscribeReservations(firebaseUser.uid, setReservations);
+  }, [firebaseUser, setReservations]);
+
+  useEffect(() => {
+    if (!firebaseUser) return;
+    return subscribeGroups(firebaseUser.uid, setGroups);
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    if (!firebaseUser) return;
+    return subscribeVenues(setVenues);
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    if (!firebaseUser) return;
+    return subscribeCourts(setCourts);
   }, [firebaseUser]);
 
   // 4. Initial Path Detection
   useEffect(() => {
-    const pathMatch = window.location.pathname.match(/^\/r\/([a-zA-Z0-9-]+)$/);
-    if (pathMatch) {
-      setExpandedReservationId(pathMatch[1]);
+    const reservationPathMatch = window.location.pathname.match(/^\/r\/([a-zA-Z0-9-]+)$/);
+    if (reservationPathMatch) {
+      setExpandedReservationId(reservationPathMatch[1]);
+      setActiveTab("mis-partidos");
+      return;
+    }
+
+    const invitePathMatch = window.location.pathname.match(/^\/join\/([a-zA-Z0-9-]+)$/);
+    if (invitePathMatch) {
+      setPendingInviteToken(invitePathMatch[1]);
       setActiveTab("mis-partidos");
     }
-  }, []);
+  }, [setActiveTab, setExpandedReservationId]);
+
+  // 4.1 Ensure group bootstrapping
+  useEffect(() => {
+    if (!currentUser) return;
+    let cancelled = false;
+    ensureUserDefaultGroup(currentUser)
+      .catch(() => null)
+      .finally(() => {
+        if (!cancelled) {
+          // no-op, subscription catches created group
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser]);
+
+  // 4.2 Invite resolution
+  useEffect(() => {
+    if (!currentUser || !pendingInviteToken) return;
+    let cancelled = false;
+
+    const resolveInvite = async () => {
+      try {
+        const accepted = await acceptInviteToken(pendingInviteToken, currentUser);
+        if (cancelled) return;
+        setInviteFeedback(
+          accepted.type === "group"
+            ? "Te uniste al grupo."
+            : "Acceso puntual habilitado para este partido."
+        );
+        setActiveGroupScope(accepted.groupId);
+        if (accepted.reservationId) {
+          setExpandedReservationId(accepted.reservationId);
+        }
+        window.history.replaceState({}, "", "/");
+      } catch (error) {
+        if (!cancelled) {
+          setInviteFeedback((error as Error).message);
+          window.history.replaceState({}, "", "/");
+        }
+      } finally {
+        if (!cancelled) {
+          setPendingInviteToken(null);
+        }
+      }
+    };
+
+    resolveInvite();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, pendingInviteToken, setExpandedReservationId]);
 
   // 5. Derived State
-  const activeReservations = useMemo(() => reservations.filter(r => r.status === "active"), [reservations]);
+  const defaultGroupId = groups[0]?.id ?? null;
+  const groupNameById = useMemo(
+    () => Object.fromEntries(groups.map((group) => [group.id, group.name])) as Record<string, string>,
+    [groups]
+  );
+  const reservationsWithGroupContext = useMemo(
+    () =>
+      reservations.map((reservation) => ({
+        ...reservation,
+        groupName: reservation.groupName ?? (reservation.groupId ? groupNameById[reservation.groupId] : undefined)
+      })),
+    [reservations, groupNameById]
+  );
+  const activeReservations = useMemo(
+    () => reservationsWithGroupContext.filter((reservation) => reservation.status === "active"),
+    [reservationsWithGroupContext]
+  );
+  const matchesActiveScope = (reservation: Reservation) => {
+    if (activeGroupScope === "all") {
+      return true;
+    }
+    if (reservation.groupId === activeGroupScope) {
+      return true;
+    }
+    return !reservation.groupId && defaultGroupId === activeGroupScope;
+  };
+
+  const scopedActiveReservations = useMemo(
+    () => activeReservations.filter((reservation) => matchesActiveScope(reservation)),
+    [activeReservations, activeGroupScope, defaultGroupId]
+  );
+
   const activeUpcomingReservations = useMemo(
-    () => activeReservations.filter((reservation) => parseReservationDate(reservation.startDateTime).getTime() >= Date.now()),
-    [activeReservations]
+    () => scopedActiveReservations.filter((reservation) => parseReservationDate(reservation.startDateTime).getTime() >= Date.now()),
+    [scopedActiveReservations]
   );
 
   const myPendingResponseCount = activeUpcomingReservations.filter(r => !getUserAttendance(r, currentUser?.id ?? "")).length;
@@ -246,8 +367,11 @@ export default function App() {
     if (!currentUser) {
       return [];
     }
-    return reservations
+    return reservationsWithGroupContext
       .filter((reservation) => {
+        if (!matchesActiveScope(reservation)) {
+          return false;
+        }
         const isPast = parseReservationDate(reservation.startDateTime).getTime() < Date.now();
         if (!isPast) {
           return false;
@@ -255,7 +379,7 @@ export default function App() {
         return Boolean(getUserAttendance(reservation, currentUser.id)) || isReservationCreator(reservation, currentUser.id);
       })
       .sort((a, b) => parseReservationDate(b.startDateTime).getTime() - parseReservationDate(a.startDateTime).getTime());
-  }, [reservations, currentUser]);
+  }, [reservationsWithGroupContext, currentUser, activeGroupScope, defaultGroupId]);
 
   const historyStats = useMemo(() => {
     if (!currentUser) {
@@ -293,6 +417,16 @@ export default function App() {
     return Array.from(unique.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+  }, [historyBase]);
+
+  const historyCourtOptions = useMemo(() => {
+    const unique = new Set<string>();
+    for (const reservation of historyBase) {
+      if (reservation.courtName?.trim()) {
+        unique.add(reservation.courtName.trim());
+      }
+    }
+    return Array.from(unique).sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
   }, [historyBase]);
 
   const filteredHistory = useMemo(() => {
@@ -362,13 +496,14 @@ export default function App() {
     historyPlayerFilter
   ]);
 
-  const selectedReservation = expandedReservationId ? reservations.find(r => r.id === expandedReservationId) || null : null;
+  const selectedReservation = expandedReservationId ? reservationsWithGroupContext.find(r => r.id === expandedReservationId) || null : null;
+  const defaultCreateGroupId = activeGroupScope === "all" ? groups[0]?.id : activeGroupScope;
   const isSynchronized = Boolean(currentUser && isCloudDbEnabled() && isOnline);
   const requiresNameSetup = Boolean(currentUser && !isValidDisplayName(currentUser.name));
 
   const signupNameByAuthUid = useMemo(() => {
     const map = new Map<string, { name: string; updatedAt: number }>();
-    for (const reservation of reservations) {
+    for (const reservation of reservationsWithGroupContext) {
       if (reservation.createdByAuthUid && !isGenericDisplayName(reservation.createdBy.name)) {
         map.set(reservation.createdByAuthUid, {
           name: reservation.createdBy.name,
@@ -389,7 +524,7 @@ export default function App() {
     return Object.fromEntries(
       Array.from(map.entries()).map(([authUid, value]) => [authUid, value.name])
     ) as Record<string, string>;
-  }, [reservations]);
+  }, [reservationsWithGroupContext]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -401,6 +536,15 @@ export default function App() {
     setNameDraft(suggested);
     setNameError(null);
   }, [currentUser?.id, currentUser?.name]);
+
+  useEffect(() => {
+    if (activeGroupScope === "all") {
+      return;
+    }
+    if (!groups.some((group) => group.id === activeGroupScope)) {
+      setActiveGroupScope("all");
+    }
+  }, [activeGroupScope, groups]);
 
   // 6. Actions
   const loginGoogle = async () => {
@@ -449,6 +593,26 @@ export default function App() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleCreateGroup = async (name: string) => {
+    if (!currentUser) return;
+    const created = await createGroup(name, currentUser);
+    setActiveGroupScope(created.id);
+  };
+
+  const handleCreateGroupInviteLink = async (groupId: string) => {
+    if (!currentUser) {
+      throw new Error("Necesitás iniciar sesión.");
+    }
+    return createGroupInviteLink(groupId, currentUser, shareBaseUrl);
+  };
+
+  const handleCreateGuestInviteLink = async (reservationId: string) => {
+    if (!currentUser) {
+      throw new Error("Necesitás iniciar sesión.");
+    }
+    return createReservationInviteLink(reservationId, currentUser, shareBaseUrl);
   };
 
   const handleUpdateDisplayName = async (nextName: string) => {
@@ -564,6 +728,30 @@ export default function App() {
           </div>
         </header>
 
+        <section className="panel">
+          <h2 className="section-title">Grupo activo</h2>
+          <div className="quick-chip-row">
+            <button
+              type="button"
+              className={`quick-chip ${activeGroupScope === "all" ? "active" : ""}`}
+              onClick={() => setActiveGroupScope("all")}
+            >
+              Todos mis grupos
+            </button>
+            {groups.map((group) => (
+              <button
+                key={`scope-${group.id}`}
+                type="button"
+                className={`quick-chip ${activeGroupScope === group.id ? "active" : ""}`}
+                onClick={() => setActiveGroupScope(group.id)}
+              >
+                {group.name}
+              </button>
+            ))}
+          </div>
+          {inviteFeedback ? <p className="private-hint">{inviteFeedback}</p> : null}
+        </section>
+
         {activeTab === "mis-partidos" && (
           <>
             <section className="panel my-summary">
@@ -620,6 +808,12 @@ export default function App() {
                               </span>
                                 <span className="upcoming-dot" aria-hidden="true">•</span>
                                 <span className="upcoming-court">{reservation.courtName}</span>
+                                {activeGroupScope === "all" && reservation.groupName ? (
+                                  <>
+                                    <span className="upcoming-dot" aria-hidden="true">•</span>
+                                    <span className="upcoming-players">{reservation.groupName}</span>
+                                  </>
+                                ) : null}
                                 <span className="upcoming-dot" aria-hidden="true">•</span>
                                 <span className="upcoming-players">{confirmedCount}/4 jugando</span>
                               </div>
@@ -771,12 +965,12 @@ export default function App() {
                     <div>
                       <small className="private-hint">Cancha</small>
                       <div className="quick-chip-row">
-                        {["all", "Cancha 1", "Cancha 2"].map((court) => (
+                        {["all", ...historyCourtOptions].map((court) => (
                           <button
                             key={`history-court-${court}`}
                             type="button"
                             className={`quick-chip ${historyCourtFilter === court ? "active" : ""}`}
-                            onClick={() => setHistoryCourtFilter(court as "all" | "Cancha 1" | "Cancha 2")}
+                            onClick={() => setHistoryCourtFilter(court)}
                           >
                             {court === "all" ? "Todas" : court}
                           </button>
@@ -835,14 +1029,35 @@ export default function App() {
 
         {activeTab === "mis-reservas" && (
           <>
-            {!showCreateForm && <section className="panel"><button onClick={() => setShowCreateForm(true)} disabled={busy}>Reservá un partido</button></section>}
-            {renderReservationList("Mis reservas", reservations.filter(r => r.status === "active" && isReservationCreator(r, currentUser.id)), "Todavía no reservaste nada.")}
+            {!showCreateForm && (
+              <section className="panel">
+                <button onClick={() => setShowCreateForm(true)} disabled={busy || groups.length === 0}>
+                  Reservá un partido
+                </button>
+                {groups.length === 0 ? <p className="private-hint">Creá o uníte a un grupo para reservar.</p> : null}
+              </section>
+            )}
+            {renderReservationList(
+              "Mis reservas",
+              reservations.filter(
+                (reservation) =>
+                  reservation.status === "active" &&
+                  isReservationCreator(reservation, currentUser.id) &&
+                  matchesActiveScope(reservation)
+              ),
+              "Todavía no reservaste nada."
+            )}
           </>
         )}
 
         {activeTab === "perfil" && (
           <ProfileView
             user={currentUser}
+            groups={groups}
+            activeGroupScope={activeGroupScope}
+            onSetActiveGroupScope={setActiveGroupScope}
+            onCreateGroup={handleCreateGroup}
+            onCreateGroupInvite={handleCreateGroupInviteLink}
             onLogout={handleLogout}
             onRequestNotifications={registerPushToken}
             onUpdateDisplayName={handleUpdateDisplayName}
@@ -857,7 +1072,15 @@ export default function App() {
         <div className="sheet-backdrop" onClick={() => setShowCreateForm(false)}>
           <section className="sheet" onClick={e => e.stopPropagation()}>
             <div className="sheet-handle" /><div className="sheet-head"><h3>Nueva reserva</h3><button className="sheet-close" onClick={() => setShowCreateForm(false)}>Cerrar</button></div>
-            <ReservationForm currentUser={currentUser} onCreate={handleCreate} onCancel={() => setShowCreateForm(false)} />
+            <ReservationForm
+              currentUser={currentUser}
+              groups={groups}
+              venues={venues}
+              courts={courts}
+              defaultGroupId={defaultCreateGroupId}
+              onCreate={handleCreate}
+              onCancel={() => setShowCreateForm(false)}
+            />
           </section>
         </div>
       )}
@@ -871,6 +1094,7 @@ export default function App() {
               signupNameByAuthUid={signupNameByAuthUid}
               onSetAttendanceStatus={(rid, s) => setAttendanceStatus(rid, currentUser, s)}
               onCancel={id => cancelReservation(id, currentUser)}
+              onCreateGuestInvite={handleCreateGuestInviteLink}
               onUpdateReservation={(id, up) => updateReservationDetails(id, up, currentUser)}
             />
           </section>

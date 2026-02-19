@@ -1,114 +1,233 @@
-import { useEffect, useState } from "react";
-import type { User } from "../lib/types";
+import { useEffect, useMemo, useState } from "react";
+import type { Group, User } from "../lib/types";
 import { isValidDisplayName, normalizeDisplayName, triggerHaptic } from "../lib/utils";
 
 type Props = {
-    user: User;
-    onLogout: () => void;
-    onRequestNotifications: () => void;
-    onUpdateDisplayName: (nextName: string) => Promise<void>;
-    busy?: boolean;
+  user: User;
+  groups: Group[];
+  activeGroupScope: "all" | string;
+  onSetActiveGroupScope: (scope: "all" | string) => void;
+  onCreateGroup: (name: string) => Promise<void>;
+  onCreateGroupInvite: (groupId: string) => Promise<string>;
+  onLogout: () => void;
+  onRequestNotifications: () => void;
+  onUpdateDisplayName: (nextName: string) => Promise<void>;
+  busy?: boolean;
 };
 
-export default function ProfileView({ user, onLogout, onRequestNotifications, onUpdateDisplayName, busy }: Props) {
-    const [nameDraft, setNameDraft] = useState(user.name);
-    const [savingName, setSavingName] = useState(false);
+export default function ProfileView({
+  user,
+  groups,
+  activeGroupScope,
+  onSetActiveGroupScope,
+  onCreateGroup,
+  onCreateGroupInvite,
+  onLogout,
+  onRequestNotifications,
+  onUpdateDisplayName,
+  busy
+}: Props) {
+  const [nameDraft, setNameDraft] = useState(user.name);
+  const [savingName, setSavingName] = useState(false);
+  const [groupDraft, setGroupDraft] = useState("");
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [inviteBusyGroupId, setInviteBusyGroupId] = useState<string | null>(null);
 
-    useEffect(() => {
-        setNameDraft(user.name);
-    }, [user.name]);
+  useEffect(() => {
+    setNameDraft(user.name);
+  }, [user.name]);
 
-    const handleAction = (fn: () => void) => {
-        fn();
-        triggerHaptic("light");
-    };
+  const groupsWithRole = useMemo(() => {
+    return groups.map((group) => ({
+      group,
+      role: group.ownerAuthUid === user.id ? "owner" : group.adminAuthUids.includes(user.id) ? "admin" : "member"
+    }));
+  }, [groups, user.id]);
 
-    const saveDisplayName = async () => {
-        const normalized = normalizeDisplayName(nameDraft);
-        if (!isValidDisplayName(normalized)) {
-            alert("Ingresá un nombre válido (2-32 caracteres, no genérico).");
-            return;
-        }
-        try {
-            setSavingName(true);
-            await onUpdateDisplayName(normalized);
-            triggerHaptic("medium");
-            alert("Nombre actualizado.");
-        } catch (error) {
-            alert((error as Error).message);
-        } finally {
-            setSavingName(false);
-        }
-    };
+  const handleAction = (fn: () => void) => {
+    fn();
+    triggerHaptic("light");
+  };
 
-    return (
-        <div className="profile-view-elite">
-            <header className="profile-hero-elite">
-                <div className="profile-avatar-wrapper">
-                    {user.avatar ? (
-                        <img src={user.avatar} alt={user.name} />
-                    ) : (
-                        <div className="avatar-initials">{user.name.charAt(0).toUpperCase()}</div>
-                    )}
-                    <div className="avatar-status-badge" />
-                </div>
-                <h2>{user.name}</h2>
-                <div className="profile-level-badge">Perfil de jugador</div>
-            </header>
+  const saveDisplayName = async () => {
+    const normalized = normalizeDisplayName(nameDraft);
+    if (!isValidDisplayName(normalized)) {
+      alert("Ingresá un nombre válido (2-32 caracteres, no genérico).");
+      return;
+    }
+    try {
+      setSavingName(true);
+      await onUpdateDisplayName(normalized);
+      triggerHaptic("medium");
+      alert("Nombre actualizado.");
+    } catch (error) {
+      alert((error as Error).message);
+    } finally {
+      setSavingName(false);
+    }
+  };
 
-            <div className="profile-content-elite">
-                <section className="profile-section-elite glass-effect">
-                    <div className="section-icon">🪪</div>
-                    <div className="section-info">
-                        <h3>Nombre visible</h3>
-                        <p>Así te van a ver en reservas y asistencias.</p>
-                        <input
-                            className="elite-input"
-                            style={{ marginTop: '0.5rem' }}
-                            type="text"
-                            value={nameDraft}
-                            onChange={(event) => setNameDraft(event.target.value)}
-                            placeholder="Tu nombre en la app"
-                            maxLength={32}
-                        />
-                    </div>
-                    <button
-                        className="btn-action-elite btn-primary-elite"
-                        style={{ padding: '0.5rem 1rem', width: 'auto' }}
-                        onClick={saveDisplayName}
-                        disabled={busy || savingName || normalizeDisplayName(nameDraft) === user.name}
-                    >
-                        OK
-                    </button>
-                </section>
+  const createGroup = async () => {
+    if (groupDraft.trim().length < 2) {
+      alert("Ingresá un nombre de grupo.");
+      return;
+    }
+    try {
+      setCreatingGroup(true);
+      await onCreateGroup(groupDraft.trim());
+      setGroupDraft("");
+      triggerHaptic("medium");
+    } catch (error) {
+      alert((error as Error).message);
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
 
-                <section className="profile-section-elite glass-effect">
-                    <div className="section-icon">🔔</div>
-                    <div className="section-info">
-                        <h3>Notificaciones</h3>
-                        <p>Recibí alertas de nuevos partidos.</p>
-                    </div>
-                    <button className="btn-action-elite" onClick={() => handleAction(onRequestNotifications)} disabled={busy}>
-                        Configurar
-                    </button>
-                </section>
+  const shareGroupInvite = async (groupId: string) => {
+    try {
+      setInviteBusyGroupId(groupId);
+      const link = await onCreateGroupInvite(groupId);
+      const message = `🎾 Te invito a mi grupo de pádel.\n\nUnite desde este link (vence en 7 días):\n${link}`;
+      const encoded = encodeURIComponent(message);
 
-                <section className="profile-section-elite glass-effect">
-                    <div className="section-icon">🛡️</div>
-                    <div className="section-info">
-                        <h3>Privacidad</h3>
-                        <p>ID único de jugador.</p>
-                        <small>{user.id}</small>
-                    </div>
-                </section>
+      if (navigator.share) {
+        await navigator.share({ title: "Invitación a grupo", text: message });
+      } else {
+        await navigator.clipboard.writeText(link);
+        window.open(`https://wa.me/?text=${encoded}`, "_blank", "noopener,noreferrer");
+      }
+      triggerHaptic("medium");
+    } catch (error) {
+      alert((error as Error).message);
+    } finally {
+      setInviteBusyGroupId(null);
+    }
+  };
 
-                <footer className="profile-footer-elite">
-                    <button className="btn-danger-elite" onClick={() => handleAction(onLogout)} disabled={busy} style={{ width: '100%', padding: '1rem', borderRadius: '15px' }}>
-                        Cerrar Sesión
-                    </button>
-                    <p className="version-tag">Golf Padel App v2.5</p>
-                </footer>
-            </div>
+  return (
+    <div className="profile-view-elite">
+      <header className="profile-hero-elite">
+        <div className="profile-avatar-wrapper">
+          {user.avatar ? (
+            <img src={user.avatar} alt={user.name} />
+          ) : (
+            <div className="avatar-initials">{user.name.charAt(0).toUpperCase()}</div>
+          )}
+          <div className="avatar-status-badge" />
         </div>
-    );
+        <h2>{user.name}</h2>
+        <div className="profile-level-badge">Perfil de jugador</div>
+      </header>
+
+      <div className="profile-content-elite">
+        <section className="profile-section-elite glass-effect">
+          <div className="section-icon">🪪</div>
+          <div className="section-info">
+            <h3>Nombre visible</h3>
+            <p>Así te van a ver en reservas y asistencias.</p>
+            <input
+              className="elite-input"
+              style={{ marginTop: "0.5rem" }}
+              type="text"
+              value={nameDraft}
+              onChange={(event) => setNameDraft(event.target.value)}
+              placeholder="Tu nombre en la app"
+              maxLength={32}
+            />
+          </div>
+          <button
+            className="btn-action-elite btn-primary-elite"
+            style={{ padding: "0.5rem 1rem", width: "auto" }}
+            onClick={saveDisplayName}
+            disabled={busy || savingName || normalizeDisplayName(nameDraft) === user.name}
+          >
+            OK
+          </button>
+        </section>
+
+        <section className="profile-section-elite glass-effect">
+          <div className="section-icon">👥</div>
+          <div className="section-info">
+            <h3>Grupos</h3>
+            <p>Pertenecés a {groups.length} grupo(s).</p>
+            <select
+              className="elite-select"
+              value={activeGroupScope}
+              onChange={(event) => onSetActiveGroupScope(event.target.value === "all" ? "all" : event.target.value)}
+            >
+              <option value="all">Todos mis grupos</option>
+              {groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name}
+                </option>
+              ))}
+            </select>
+            <div className="history-level" style={{ marginTop: "0.5rem" }}>
+              <input
+                className="elite-input"
+                type="text"
+                value={groupDraft}
+                placeholder="Nuevo grupo"
+                onChange={(event) => setGroupDraft(event.target.value)}
+              />
+              <button
+                className="btn-action-elite"
+                onClick={createGroup}
+                disabled={creatingGroup}
+              >
+                {creatingGroup ? "Creando..." : "Crear grupo"}
+              </button>
+            </div>
+            <div className="history-level" style={{ marginTop: "0.5rem" }}>
+              {groupsWithRole.map(({ group, role }) => (
+                <div key={group.id} className="history-row">
+                  <div className="history-main">
+                    <strong>{group.name}</strong>
+                    <small>Rol: {role === "owner" ? "Owner" : role === "admin" ? "Admin" : "Miembro"}</small>
+                  </div>
+                  {role !== "member" ? (
+                    <button
+                      className="quick-chip active"
+                      onClick={() => shareGroupInvite(group.id)}
+                      disabled={inviteBusyGroupId === group.id}
+                    >
+                      {inviteBusyGroupId === group.id ? "..." : "Invitar"}
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="profile-section-elite glass-effect">
+          <div className="section-icon">🔔</div>
+          <div className="section-info">
+            <h3>Notificaciones</h3>
+            <p>Recibí alertas de nuevos partidos.</p>
+          </div>
+          <button className="btn-action-elite" onClick={() => handleAction(onRequestNotifications)} disabled={busy}>
+            Configurar
+          </button>
+        </section>
+
+        <section className="profile-section-elite glass-effect">
+          <div className="section-icon">🛡️</div>
+          <div className="section-info">
+            <h3>Privacidad</h3>
+            <p>ID único de jugador.</p>
+            <small>{user.id}</small>
+          </div>
+        </section>
+
+        <footer className="profile-footer-elite">
+          <button className="btn-danger-elite" onClick={() => handleAction(onLogout)} disabled={busy} style={{ width: "100%", padding: "1rem", borderRadius: "15px" }}>
+            Cerrar sesión
+          </button>
+          <p className="version-tag">Golf Padel App v3.0</p>
+        </footer>
+      </div>
+    </div>
+  );
 }

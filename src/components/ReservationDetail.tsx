@@ -17,6 +17,7 @@ type Props = {
   signupNameByAuthUid: Record<string, string>;
   onSetAttendanceStatus: (reservationId: string, status: AttendanceStatus) => void;
   onCancel: (reservationId: string) => void;
+  onCreateGuestInvite: (reservationId: string) => Promise<string>;
   onUpdateReservation: (
     reservationId: string,
     updates: { courtName: string; startDateTime: string; durationMinutes: number }
@@ -30,6 +31,7 @@ export default function ReservationDetail({
   signupNameByAuthUid,
   onSetAttendanceStatus,
   onCancel,
+  onCreateGuestInvite,
   onUpdateReservation
 }: Props) {
   const toIcsDate = (date: Date): string => {
@@ -53,6 +55,7 @@ export default function ReservationDetail({
       action: "TEMPLATE",
       text: `Pádel - ${reservation.courtName}`,
       dates: `${toIcsDate(startDate)}/${toIcsDate(endDate)}`,
+      location: reservation.venueAddress || reservation.venueName || reservation.courtName,
       details: `Reserva creada por ${reservation.createdBy.name}. ${reservationUrl}`
     });
     window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, "_blank", "noopener,noreferrer");
@@ -79,6 +82,7 @@ export default function ReservationDetail({
   };
 
   const isCreator = isReservationCreator(reservation, currentUser.id);
+  const [guestInviteBusy, setGuestInviteBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editCourtName, setEditCourtName] = useState(reservation.courtName);
   const [editStartDateTime, setEditStartDateTime] = useState(reservation.startDateTime.slice(0, 16));
@@ -108,6 +112,25 @@ export default function ReservationDetail({
     });
     setEditing(false);
     triggerHaptic("medium");
+  };
+
+  const inviteGuestByWhatsApp = async () => {
+    try {
+      setGuestInviteBusy(true);
+      const inviteLink = await onCreateGuestInvite(reservation.id);
+      const guestMessage = [
+        "🎾 Invitación puntual a partido",
+        buildWhatsAppMessage(reservation, appUrl, inviteLink),
+        "Este acceso es solo para este partido (sin unirte al grupo)."
+      ].join("\n\n");
+      const encodedMessage = encodeURIComponent(guestMessage);
+      window.open(`https://wa.me/?text=${encodedMessage}`, "_blank", "noopener,noreferrer");
+      triggerHaptic("medium");
+    } catch (error) {
+      alert((error as Error).message);
+    } finally {
+      setGuestInviteBusy(false);
+    }
   };
 
   const renderPlayerList = (list: Signup[], label: string, isOpen = false) => (
@@ -148,6 +171,13 @@ export default function ReservationDetail({
         <div className="hero-badge">{reservation.durationMinutes} min</div>
         <h1>{reservation.courtName}</h1>
         <p className="hero-subtitle">{formatCompactDate(reservation.startDateTime)}</p>
+        {reservation.groupName ? <p className="private-hint">{reservation.groupName}</p> : null}
+        {reservation.venueName ? (
+          <p className="private-hint">
+            {reservation.venueName}
+            {reservation.venueAddress ? ` · ${reservation.venueAddress}` : ""}
+          </p>
+        ) : null}
       </header>
 
       <div className="hero-stats-grid">
@@ -202,6 +232,13 @@ export default function ReservationDetail({
         {isCreator && (
           <div className="creator-actions-elite">
             <button className="btn-secondary-elite" onClick={openWhatsApp}>WhatsApp</button>
+            <button
+              className="btn-secondary-elite"
+              onClick={inviteGuestByWhatsApp}
+              disabled={guestInviteBusy}
+            >
+              {guestInviteBusy ? "Generando..." : "Invitar externo"}
+            </button>
             <button className="btn-secondary-elite" onClick={share}>Compartir</button>
             <button className="btn-outline-danger-elite" onClick={() => setEditing(!editing)}>
               {editing ? "Cerrar edición" : "Modificar reserva"}

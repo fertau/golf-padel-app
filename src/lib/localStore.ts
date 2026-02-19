@@ -42,6 +42,13 @@ const saveReservations = (reservations: Reservation[]) => {
 };
 
 export type ReservationInput = {
+  groupId?: string;
+  groupName?: string;
+  venueId?: string;
+  venueName?: string;
+  venueAddress?: string;
+  venueMapsUrl?: string;
+  courtId?: string;
   courtName: string;
   startDateTime: string;
   durationMinutes: number;
@@ -53,6 +60,12 @@ export const createReservationLocal = (input: ReservationInput, currentUser: Use
 
   const reservation: Reservation = {
     id: crypto.randomUUID(),
+    groupId: input.groupId ?? "default-group",
+    groupName: input.groupName ?? "Mi grupo",
+    venueId: input.venueId,
+    venueName: input.venueName,
+    venueAddress: input.venueAddress,
+    courtId: input.courtId,
     courtName: input.courtName.trim(),
     startDateTime: input.startDateTime,
     durationMinutes: input.durationMinutes,
@@ -63,6 +76,7 @@ export const createReservationLocal = (input: ReservationInput, currentUser: Use
       priorityUserIds: input.rules?.priorityUserIds ?? [],
       allowWaitlist: true
     },
+    guestAccessUids: [],
     signups: [],
     status: "active",
     createdAt: nowIso(),
@@ -150,7 +164,15 @@ export const cancelReservationLocal = (reservationId: string): Reservation[] =>
 
 export const updateReservationDetailsLocal = (
   reservationId: string,
-  updates: { courtName: string; startDateTime: string; durationMinutes: number },
+  updates: {
+    courtName: string;
+    courtId?: string;
+    venueId?: string;
+    venueName?: string;
+    venueAddress?: string;
+    startDateTime: string;
+    durationMinutes: number;
+  },
   currentUser: User
 ): Reservation[] =>
   updateReservationLocal(reservationId, (reservation) => {
@@ -161,6 +183,10 @@ export const updateReservationDetailsLocal = (
     return {
       ...reservation,
       courtName: updates.courtName.trim(),
+      courtId: updates.courtId,
+      venueId: updates.venueId,
+      venueName: updates.venueName,
+      venueAddress: updates.venueAddress,
       startDateTime: updates.startDateTime,
       durationMinutes: updates.durationMinutes
     };

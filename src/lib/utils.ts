@@ -118,14 +118,26 @@ export const canJoinReservation = (
   return { ok: true };
 };
 
-export const buildWhatsAppMessage = (reservation: Reservation, appUrl: string): string => {
+export const buildWhatsAppMessage = (
+  reservation: Reservation,
+  appUrl: string,
+  overrideLink?: string
+): string => {
   const normalizedAppUrl = appUrl.replace(/\/+$/, "");
-  const link = `${normalizedAppUrl}/r/${reservation.id}`;
+  const link = overrideLink ?? `${normalizedAppUrl}/r/${reservation.id}`;
+  const locationLine = reservation.venueName
+    ? `📍 ${reservation.venueName}${reservation.venueAddress ? ` · ${reservation.venueAddress}` : ""}`
+    : null;
+  const groupLine = reservation.groupName ? `👥 ${reservation.groupName}` : null;
   return [
     `🎾 Pádel - ${reservation.courtName}`,
     `📅 ${formatDateTimeForMessage(reservation.startDateTime)} (${reservation.durationMinutes}m)`,
+    groupLine,
+    locationLine,
     `👤 Reserva creada por: ${reservation.createdBy.name}`,
     "👉 Abrí este link para anotarte:",
     link
-  ].join("\n\n");
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 };
