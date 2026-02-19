@@ -1363,11 +1363,6 @@ button.neutral {
   gap: 0.5rem;
 }
 
-.member-row-soft {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
 .soft-opacity {
   opacity: 0.5;
 }
@@ -2078,6 +2073,13 @@ button.neutral {
   border-radius: 14px;
 }
 
+.section-icon-svg svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+  color: #a8c7ff;
+}
+
 .section-info h3 {
   font-size: 0.95rem;
   margin: 0;
@@ -2087,6 +2089,106 @@ button.neutral {
   font-size: 0.75rem;
   color: var(--text-dim);
   margin: 2px 0 0;
+}
+
+.profile-groups-section {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+}
+
+.profile-groups-content {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.groups-controls {
+  display: grid;
+  gap: 0.58rem;
+}
+
+.groups-create-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.group-admin-actions {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  opacity: 0.88;
+}
+
+.groups-list {
+  display: grid;
+  gap: 0.58rem;
+}
+
+.group-card {
+  border: 1px solid rgba(179, 207, 255, 0.2);
+  border-radius: 14px;
+  padding: 0.72rem;
+  background: rgba(255, 255, 255, 0.03);
+  display: grid;
+  gap: 0.55rem;
+}
+
+.group-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.group-card-name {
+  display: block;
+  font-size: 1rem;
+}
+
+.group-card-role {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.group-card-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.42rem;
+}
+
+.group-rename-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.42rem;
+}
+
+.member-list {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.member-row-soft {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 0.52rem 0.58rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.48rem;
+}
+
+.member-row-main {
+  display: grid;
+  gap: 0.08rem;
+}
+
+.member-row-main small {
+  color: var(--text-dim);
+  font-size: 0.72rem;
 }
 
 .section-info small {

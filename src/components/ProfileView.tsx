@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Group, User } from "../lib/types";
 import { isValidDisplayName, normalizeDisplayName, triggerHaptic } from "../lib/utils";
 
@@ -16,6 +16,10 @@ type Props = {
   onUpdateDisplayName: (nextName: string) => Promise<void>;
   busy?: boolean;
 };
+
+const CardIcon = ({ children }: { children: ReactNode }) => (
+  <div className="section-icon section-icon-svg">{children}</div>
+);
 
 export default function ProfileView({
   user,
@@ -44,12 +48,14 @@ export default function ProfileView({
     setNameDraft(user.name);
   }, [user.name]);
 
-  const groupsWithRole = useMemo(() => {
-    return groups.map((group) => ({
-      group,
-      role: group.ownerAuthUid === user.id ? "owner" : group.adminAuthUids.includes(user.id) ? "admin" : "member"
-    }));
-  }, [groups, user.id]);
+  const groupsWithRole = useMemo(
+    () =>
+      groups.map((group) => ({
+        group,
+        role: group.ownerAuthUid === user.id ? "owner" : group.adminAuthUids.includes(user.id) ? "admin" : "member"
+      })),
+    [groups, user.id]
+  );
 
   const handleAction = (fn: () => void) => {
     fn();
@@ -165,7 +171,11 @@ export default function ProfileView({
 
       <div className="profile-content-elite animate-fade-in">
         <section className="profile-section-elite glass-panel-elite">
-          <div className="section-icon">🪪</div>
+          <CardIcon>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5Z" />
+            </svg>
+          </CardIcon>
           <div className="section-info">
             <h3>Nombre visible</h3>
             <p>Así te van a ver en reservas y asistencias.</p>
@@ -183,89 +193,108 @@ export default function ProfileView({
             onClick={saveDisplayName}
             disabled={busy || savingName || normalizeDisplayName(nameDraft) === user.name}
           >
-            OK
+            Guardar
           </button>
         </section>
 
-        <section className="profile-section-elite glass-panel-elite">
-          <div className="section-icon">👥</div>
-          <div className="section-info">
+        <section className="profile-section-elite profile-groups-section glass-panel-elite">
+          <CardIcon>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M16 11a4 4 0 1 0-3.6-5.8A4 4 0 0 0 16 11ZM8 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm8 1c-2.7 0-8 1.4-8 4v2h12v-2c0-2.6-1.3-4-4-4ZM8 13c-2.7 0-6 1.4-6 4v2h6v-2a4.8 4.8 0 0 1 2.2-4.1A8.6 8.6 0 0 0 8 13Z" />
+            </svg>
+          </CardIcon>
+          <div className="section-info profile-groups-content">
             <h3>Grupos</h3>
             <p>Pertenecés a {groups.length} grupo(s).</p>
-            <select
-              className="select-elite"
-              value={activeGroupScope}
-              onChange={(event) => onSetActiveGroupScope(event.target.value === "all" ? "all" : event.target.value)}
-            >
-              <option value="all">Todos mis grupos</option>
-              {groups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </select>
-            <div className="history-level top-gap-sm">
-              <input
-                className="input-elite"
-                type="text"
-                value={groupDraft}
-                placeholder="Nuevo grupo"
-                onChange={(event) => setGroupDraft(event.target.value)}
-              />
-              <button
-                className="btn-elite btn-block top-gap-sm"
-                onClick={createGroup}
-                disabled={creatingGroup}
+
+            <div className="groups-controls">
+              <select
+                className="select-elite"
+                value={activeGroupScope}
+                onChange={(event) =>
+                  onSetActiveGroupScope(event.target.value === "all" ? "all" : event.target.value)
+                }
               >
-                {creatingGroup ? "Creando..." : "Crear grupo"}
-              </button>
+                <option value="all">Todos mis grupos</option>
+                {groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+
+              <div className="groups-create-row">
+                <input
+                  className="input-elite"
+                  type="text"
+                  value={groupDraft}
+                  placeholder="Nuevo grupo"
+                  onChange={(event) => setGroupDraft(event.target.value)}
+                />
+                <button className="btn-elite btn-elite-outline" onClick={createGroup} disabled={creatingGroup}>
+                  {creatingGroup ? "Creando..." : "Crear grupo"}
+                </button>
+              </div>
             </div>
-            <div className="history-level top-gap-md">
+
+            <p className="group-admin-actions">
+              Admins pueden: renombrar grupo, invitar miembros, asignar/quitar admins (solo miembros),
+              editar y cancelar reservas del grupo.
+            </p>
+
+            <div className="groups-list">
               {groupsWithRole.map(({ group, role }) => (
-                <details key={group.id} className="history-row glass-panel-elite group-details-row" open={activeGroupScope === group.id}>
-                  <summary className="history-main history-summary-plain">
-                    <strong>{group.name}</strong>
-                    <div className="history-summary-meta">
-                      <small>Rol: {role === "owner" ? "Owner" : role === "admin" ? "Admin" : "Miembro"}</small>
-                      <span className="history-summary-arrow">{activeGroupScope === group.id ? '▲' : '▼'}</span>
+                <article key={group.id} className="group-card">
+                  <header className="group-card-head">
+                    <div>
+                      <strong className="group-card-name">{group.name}</strong>
+                      <small className="group-card-role">
+                        Rol: {role === "owner" ? "Owner" : role === "admin" ? "Admin" : "Miembro"}
+                      </small>
                     </div>
-                  </summary>
-                  <div className="quick-chip-row top-gap-sm">
-                    {role !== "member" ? (
-                      <>
-                        <button
-                          className="quick-chip"
-                          onClick={() => startRenameGroup(group.id, group.name)}
-                          disabled={inviteBusyGroupId === group.id}
-                        >
-                          Renombrar
-                        </button>
-                        <button
-                          className="quick-chip active"
-                          onClick={() => shareGroupInvite(group.id, "whatsapp")}
-                          disabled={inviteBusyGroupId === group.id}
-                        >
-                          {inviteBusyGroupId === group.id ? "..." : "Invitar WA"}
-                        </button>
-                        <button
-                          className="quick-chip"
-                          onClick={() => shareGroupInvite(group.id, "email")}
-                          disabled={inviteBusyGroupId === group.id}
-                        >
-                          Email
-                        </button>
-                        <button
-                          className="quick-chip"
-                          onClick={() => shareGroupInvite(group.id, "link")}
-                          disabled={inviteBusyGroupId === group.id}
-                        >
-                          Link
-                        </button>
-                      </>
-                    ) : null}
-                  </div>
+                    <button
+                      className={`btn-elite btn-elite-outline btn-compact ${activeGroupScope === group.id ? "btn-elite-accent" : ""}`}
+                      onClick={() => onSetActiveGroupScope(group.id)}
+                    >
+                      {activeGroupScope === group.id ? "Activo" : "Usar"}
+                    </button>
+                  </header>
+
+                  {role !== "member" ? (
+                    <div className="group-card-actions">
+                      <button
+                        className="btn-elite btn-elite-outline btn-compact"
+                        onClick={() => startRenameGroup(group.id, group.name)}
+                        disabled={inviteBusyGroupId === group.id}
+                      >
+                        Renombrar
+                      </button>
+                      <button
+                        className="btn-elite btn-elite-accent btn-compact"
+                        onClick={() => shareGroupInvite(group.id, "whatsapp")}
+                        disabled={inviteBusyGroupId === group.id}
+                      >
+                        {inviteBusyGroupId === group.id ? "..." : "Invitar WA"}
+                      </button>
+                      <button
+                        className="btn-elite btn-elite-outline btn-compact"
+                        onClick={() => shareGroupInvite(group.id, "email")}
+                        disabled={inviteBusyGroupId === group.id}
+                      >
+                        Email
+                      </button>
+                      <button
+                        className="btn-elite btn-elite-outline btn-compact"
+                        onClick={() => shareGroupInvite(group.id, "link")}
+                        disabled={inviteBusyGroupId === group.id}
+                      >
+                        Link
+                      </button>
+                    </div>
+                  ) : null}
+
                   {editingGroupId === group.id ? (
-                    <div className="quick-chip-row top-gap-sm">
+                    <div className="group-rename-row">
                       <input
                         className="input-elite"
                         type="text"
@@ -277,27 +306,26 @@ export default function ProfileView({
                         Guardar
                       </button>
                       <button className="btn-elite btn-elite-outline btn-compact" onClick={() => setEditingGroupId(null)}>
-                        X
+                        Cancelar
                       </button>
                     </div>
                   ) : null}
-                  <div className="history-level top-gap-sm gap-sm">
+
+                  <div className="member-list">
                     {Object.entries(group.memberNamesByAuthUid).map(([memberAuthUid, memberName]) => {
                       const isOwner = group.ownerAuthUid === memberAuthUid;
                       const isAdmin = group.adminAuthUids.includes(memberAuthUid);
                       const canManage = role !== "member" && !isOwner && memberAuthUid !== user.id;
                       const key = `${group.id}:${memberAuthUid}`;
                       return (
-                        <div key={key} className="history-row member-row-soft">
-                          <div className="history-main">
+                        <div key={key} className="member-row-soft">
+                          <div className="member-row-main">
                             <strong>{memberName}</strong>
-                            <small>
-                              {isOwner ? "Owner" : isAdmin ? "Admin" : "Miembro"}
-                            </small>
+                            <small>{isOwner ? "Owner" : isAdmin ? "Admin" : "Miembro"}</small>
                           </div>
                           {canManage ? (
                             <button
-                              className={`quick-chip ${isAdmin ? "active" : ""}`}
+                              className={`btn-elite btn-compact ${isAdmin ? "btn-elite-accent" : "btn-elite-outline"}`}
                               onClick={() => toggleAdminRole(group.id, memberAuthUid, !isAdmin)}
                               disabled={roleBusyKey === key}
                             >
@@ -308,14 +336,18 @@ export default function ProfileView({
                       );
                     })}
                   </div>
-                </details>
+                </article>
               ))}
             </div>
           </div>
         </section>
 
         <section className="profile-section-elite glass-panel-elite">
-          <div className="section-icon">🔔</div>
+          <CardIcon>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2a7 7 0 0 0-7 7v2.3A3.8 3.8 0 0 0 3 15v1a3.9 3.9 0 0 0 4 4h1.2a3 3 0 0 0 5.6 0H17a3.9 3.9 0 0 0 4-4v-1a3.8 3.8 0 0 0-2-3.4V9a7 7 0 0 0-7-7Zm0 19a1 1 0 0 1-.9-.6h1.8a1 1 0 0 1-.9.6Z" />
+            </svg>
+          </CardIcon>
           <div className="section-info">
             <h3>Notificaciones</h3>
             <p>Recibí alertas de nuevos partidos.</p>
@@ -325,20 +357,11 @@ export default function ProfileView({
           </button>
         </section>
 
-        <section className="profile-section-elite glass-panel-elite">
-          <div className="section-icon">🛡️</div>
-          <div className="section-info">
-            <h3>Privacidad</h3>
-            <p>ID único de jugador.</p>
-            <small className="soft-opacity">{user.id}</small>
-          </div>
-        </section>
-
         <footer className="profile-footer-elite animate-fade-in">
           <button className="btn-elite btn-link-danger-elite btn-block btn-logout" onClick={() => handleAction(onLogout)} disabled={busy}>
             Cerrar sesión
           </button>
-          <p className="version-tag">Golf Padel App v3.1</p>
+          <p className="version-tag">Golf Padel App v3.2</p>
         </footer>
       </div>
     </div>

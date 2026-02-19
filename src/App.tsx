@@ -339,7 +339,9 @@ export default function App() {
     () =>
       reservations.map((reservation) => ({
         ...reservation,
-        groupName: reservation.groupName ?? (reservation.groupId ? groupNameById[reservation.groupId] : undefined)
+        groupName: reservation.groupId
+          ? (groupNameById[reservation.groupId] ?? reservation.groupName)
+          : reservation.groupName
       })),
     [reservations, groupNameById]
   );

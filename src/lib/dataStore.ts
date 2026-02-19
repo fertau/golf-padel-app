@@ -506,6 +506,14 @@ export const renameGroup = async (
     if (!updated) {
       throw new Error("No se pudo renombrar el grupo.");
     }
+    const reservations = getReservations();
+    const next = reservations.map((reservation) =>
+      reservation.groupId === groupId
+        ? { ...reservation, groupName: trimmedName, updatedAt: nowIso() }
+        : reservation
+    );
+    localStorage.setItem("golf-padel-reservations", JSON.stringify(next));
+    window.dispatchEvent(new Event("golf-padel-store-updated"));
     return updated;
   }
 
@@ -529,6 +537,22 @@ export const renameGroup = async (
       updatedAt: nowIso()
     });
   });
+
+  const reservationsSnapshot = await getDocs(
+    query(collection(cloudDb, reservationCollection), where("groupId", "==", groupId))
+  );
+  await Promise.all(
+    reservationsSnapshot.docs.map((reservationDoc) =>
+      setDoc(
+        doc(cloudDb, reservationCollection, reservationDoc.id),
+        {
+          groupName: trimmedName,
+          updatedAt: nowIso()
+        },
+        { merge: true }
+      )
+    )
+  );
 
   return {
     id: groupId,
