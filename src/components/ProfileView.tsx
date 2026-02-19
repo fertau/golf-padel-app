@@ -43,6 +43,7 @@ export default function ProfileView({
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [inviteBusyGroupId, setInviteBusyGroupId] = useState<string | null>(null);
   const [inviteMenuGroupId, setInviteMenuGroupId] = useState<string | null>(null);
+  const [shareMenuGroupId, setShareMenuGroupId] = useState<string | null>(null);
   const [roleBusyKey, setRoleBusyKey] = useState<string | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [groupNameDraft, setGroupNameDraft] = useState("");
@@ -100,11 +101,18 @@ export default function ProfileView({
     }
   };
 
-  const shareGroupInvite = async (groupId: string, channel: "whatsapp" | "email" | "link") => {
+  const shareGroupInvite = async (
+    groupId: string,
+    channel: "whatsapp" | "email" | "link",
+    mode: "share" | "invite"
+  ) => {
     try {
       setInviteBusyGroupId(groupId);
       const link = await onCreateGroupInvite(groupId, channel);
-      const message = `🎾 Te invito a mi grupo de pádel.\n\nUnite desde este link (vence en 7 días):\n${link}`;
+      const message =
+        mode === "invite"
+          ? `🎾 Te invito a mi grupo de pádel.\n\nUnite desde este link (vence en 7 días):\n${link}`
+          : `🎾 Te comparto nuestro grupo de pádel.\n\nPodés verlo/unirte desde este link (vence en 7 días):\n${link}`;
       const encoded = encodeURIComponent(message);
 
       if (channel === "whatsapp") {
@@ -211,20 +219,25 @@ export default function ProfileView({
             <p>Pertenecés a {groups.length} grupo(s).</p>
 
             <div className="groups-controls">
-              <select
-                className="select-elite"
-                value={activeGroupScope}
-                onChange={(event) =>
-                  onSetActiveGroupScope(event.target.value === "all" ? "all" : event.target.value)
-                }
-              >
-                <option value="all">Todos mis grupos</option>
+              <div className="quick-chip-row profile-group-scope-row">
+                <button
+                  type="button"
+                  className={`quick-chip ${activeGroupScope === "all" ? "active" : ""}`}
+                  onClick={() => onSetActiveGroupScope("all")}
+                >
+                  Todos
+                </button>
                 {groups.map((group) => (
-                  <option key={group.id} value={group.id}>
+                  <button
+                    key={`scope-${group.id}`}
+                    type="button"
+                    className={`quick-chip ${activeGroupScope === group.id ? "active" : ""}`}
+                    onClick={() => onSetActiveGroupScope(group.id)}
+                  >
                     {group.name}
-                  </option>
+                  </button>
                 ))}
-              </select>
+              </div>
 
               <div className="groups-create-row">
                 <input
@@ -261,12 +274,7 @@ export default function ProfileView({
                         Rol: {role === "owner" ? "Owner" : role === "admin" ? "Admin" : "Miembro"}
                       </small>
                     </div>
-                    <button
-                      className={`quick-chip ${activeGroupScope === group.id ? "active" : ""}`}
-                      onClick={() => onSetActiveGroupScope(group.id)}
-                    >
-                      {activeGroupScope === group.id ? "Activo" : "Usar"}
-                    </button>
+                    {activeGroupScope === group.id ? <span className="quick-chip active">Activo</span> : null}
                   </header>
 
                   {role !== "member" ? (
@@ -279,7 +287,19 @@ export default function ProfileView({
                         Renombrar
                       </button>
                       <button
-                        className="quick-chip active"
+                        className={`quick-chip ${shareMenuGroupId === group.id ? "active" : ""}`}
+                        onClick={() => {
+                          setShareMenuGroupId((current) => (current === group.id ? null : group.id));
+                          if (inviteMenuGroupId && inviteMenuGroupId !== group.id) {
+                            setInviteMenuGroupId(null);
+                          }
+                        }}
+                        disabled={inviteBusyGroupId === group.id}
+                      >
+                        {inviteBusyGroupId === group.id ? "..." : "Compartir"}
+                      </button>
+                      <button
+                        className={`quick-chip ${inviteMenuGroupId === group.id ? "active" : ""}`}
                         onClick={() =>
                           setInviteMenuGroupId((current) => (current === group.id ? null : group.id))
                         }
@@ -290,28 +310,75 @@ export default function ProfileView({
                     </div>
                   ) : null}
 
-                  {role !== "member" && inviteMenuGroupId === group.id ? (
-                    <div className="group-invite-menu">
+                  {role !== "member" && shareMenuGroupId === group.id ? (
+                    <div className="group-invite-menu group-action-menu">
                       <button
-                        className="quick-chip"
-                        onClick={() => shareGroupInvite(group.id, "whatsapp")}
+                        className="quick-chip quick-chip-icon"
+                        onClick={() => shareGroupInvite(group.id, "whatsapp", "share")}
                         disabled={inviteBusyGroupId === group.id}
+                        title="Compartir por WhatsApp"
                       >
-                        WhatsApp
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M12 2a10 10 0 0 0-8.7 14.9L2 22l5.3-1.4A10 10 0 1 0 12 2Zm5.8 14.4c-.2.6-1.2 1.1-1.8 1.2s-1.2.2-4-.9a13.4 13.4 0 0 1-4.4-3.9 5 5 0 0 1-1.1-2.7c0-1.2.7-1.8 1-2.1.2-.2.5-.3.8-.3h.6c.2 0 .5-.1.7.5.2.7.8 2.4.9 2.6.1.2.1.4 0 .6s-.2.4-.4.6-.3.4-.5.6c-.2.2-.3.4-.1.7.2.3 1 1.7 2.2 2.8 1.5 1.3 2.7 1.7 3.1 1.9.3.2.5.1.7-.1.2-.2.8-.9 1-1.2.2-.4.4-.3.7-.2.3.1 2 .9 2.3 1 .3.2.6.2.7.4.1.3.1 1.3-.1 1.9Z" />
+                        </svg>
+                        WA
                       </button>
                       <button
-                        className="quick-chip"
-                        onClick={() => shareGroupInvite(group.id, "email")}
+                        className="quick-chip quick-chip-icon"
+                        onClick={() => shareGroupInvite(group.id, "email", "share")}
                         disabled={inviteBusyGroupId === group.id}
+                        title="Compartir por email"
                       >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M4 5h16a2 2 0 0 1 2 2v.4l-10 6.3L2 7.4V7a2 2 0 0 1 2-2Zm18 4.6V17a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9.6l9.5 6a1 1 0 0 0 1 0L22 9.6Z" />
+                        </svg>
                         Email
                       </button>
                       <button
-                        className="quick-chip"
-                        onClick={() => shareGroupInvite(group.id, "link")}
+                        className="quick-chip quick-chip-icon"
+                        onClick={() => shareGroupInvite(group.id, "link", "share")}
+                        disabled={inviteBusyGroupId === group.id}
+                        title="Copiar link"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M10.6 13.4a1 1 0 0 0 1.4 1.4l4.2-4.2a3 3 0 1 0-4.2-4.2L9.9 8.5a1 1 0 1 0 1.4 1.4l2.1-2.1a1 1 0 1 1 1.4 1.4L10.6 13.4ZM13.4 10.6a1 1 0 0 0-1.4-1.4l-4.2 4.2a3 3 0 1 0 4.2 4.2l2.1-2.1a1 1 0 1 0-1.4-1.4l-2.1 2.1a1 1 0 1 1-1.4-1.4l4.2-4.2Z" />
+                        </svg>
+                        Copiar
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {role !== "member" && inviteMenuGroupId === group.id ? (
+                    <div className="group-invite-menu group-action-menu">
+                      <button
+                        className="quick-chip quick-chip-icon"
+                        onClick={() => shareGroupInvite(group.id, "whatsapp", "invite")}
                         disabled={inviteBusyGroupId === group.id}
                       >
-                        Link
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M12 2a10 10 0 0 0-8.7 14.9L2 22l5.3-1.4A10 10 0 1 0 12 2Zm5.8 14.4c-.2.6-1.2 1.1-1.8 1.2s-1.2.2-4-.9a13.4 13.4 0 0 1-4.4-3.9 5 5 0 0 1-1.1-2.7c0-1.2.7-1.8 1-2.1.2-.2.5-.3.8-.3h.6c.2 0 .5-.1.7.5.2.7.8 2.4.9 2.6.1.2.1.4 0 .6s-.2.4-.4.6-.3.4-.5.6c-.2.2-.3.4-.1.7.2.3 1 1.7 2.2 2.8 1.5 1.3 2.7 1.7 3.1 1.9.3.2.5.1.7-.1.2-.2.8-.9 1-1.2.2-.4.4-.3.7-.2.3.1 2 .9 2.3 1 .3.2.6.2.7.4.1.3.1 1.3-.1 1.9Z" />
+                        </svg>
+                        WA
+                      </button>
+                      <button
+                        className="quick-chip quick-chip-icon"
+                        onClick={() => shareGroupInvite(group.id, "email", "invite")}
+                        disabled={inviteBusyGroupId === group.id}
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M4 5h16a2 2 0 0 1 2 2v.4l-10 6.3L2 7.4V7a2 2 0 0 1 2-2Zm18 4.6V17a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9.6l9.5 6a1 1 0 0 0 1 0L22 9.6Z" />
+                        </svg>
+                        Email
+                      </button>
+                      <button
+                        className="quick-chip quick-chip-icon"
+                        onClick={() => shareGroupInvite(group.id, "link", "invite")}
+                        disabled={inviteBusyGroupId === group.id}
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M10.6 13.4a1 1 0 0 0 1.4 1.4l4.2-4.2a3 3 0 1 0-4.2-4.2L9.9 8.5a1 1 0 1 0 1.4 1.4l2.1-2.1a1 1 0 1 1 1.4 1.4L10.6 13.4ZM13.4 10.6a1 1 0 0 0-1.4-1.4l-4.2 4.2a3 3 0 1 0 4.2 4.2l2.1-2.1a1 1 0 1 0-1.4-1.4l-2.1 2.1a1 1 0 1 1-1.4-1.4l4.2-4.2Z" />
+                        </svg>
+                        Copiar
                       </button>
                     </div>
                   ) : null}
@@ -334,7 +401,11 @@ export default function ProfileView({
                     </div>
                   ) : null}
 
-                  <div className="member-list">
+                  <details className="group-members-collapse">
+                    <summary>
+                      Miembros ({group.memberAuthUids.length})
+                    </summary>
+                    <div className="member-list">
                     {group.memberAuthUids.length <= 1 ? (
                       <div className="member-empty-row">
                         <span className="quick-chip">Sin otros miembros aún</span>
@@ -371,7 +442,8 @@ export default function ProfileView({
                         </div>
                       );
                     })}
-                  </div>
+                    </div>
+                  </details>
                 </article>
               ))}
             </div>
