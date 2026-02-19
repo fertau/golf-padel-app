@@ -274,7 +274,7 @@ export default function ProfileView({
                         Rol: {role === "owner" ? "Owner" : role === "admin" ? "Admin" : "Miembro"}
                       </small>
                     </div>
-                    {activeGroupScope === group.id ? <span className="quick-chip active">Activo</span> : null}
+                    <span className="quick-chip">{role === "owner" ? "Owner" : role === "admin" ? "Admin" : "Miembro"}</span>
                   </header>
 
                   {role !== "member" ? (
