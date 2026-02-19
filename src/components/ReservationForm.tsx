@@ -24,7 +24,7 @@ type Props = {
   onCancel: () => void;
 };
 
-const SUGGESTED_TIMES = ["17:00", "18:30", "20:00"] as const;
+const SUGGESTED_TIMES = ["17:00", "18:30", "20:00", "21:30"] as const;
 const NEW_BADGE = "Nuevo";
 
 const getTodayLocalDate = (): string => {
@@ -125,17 +125,15 @@ export default function ReservationForm({
 
   useEffect(() => {
     if (!selectedGroup) return;
-    if (availableVenues.length === 0) {
+    if (!selectedVenueId) return;
+    const existsInGroup = availableVenues.some((venue) => venue.id === selectedVenueId);
+    if (!existsInGroup) {
       setSelectedVenueId("");
       setVenueQuery("");
-      return;
-    }
-    if (!selectedVenueId) {
-      const first = availableVenues[0];
-      setSelectedVenueId(first.id);
-      setVenueQuery(first.name);
-      setVenueAddress(first.address ?? "");
-      setVenueMapsUrl(first.mapsUrl ?? "");
+      setVenueAddress("");
+      setVenueMapsUrl("");
+      setSelectedCourtId("");
+      setCourtQuery("");
     }
   }, [availableVenues, selectedGroup, selectedVenueId]);
 
@@ -145,15 +143,11 @@ export default function ReservationForm({
       setCourtQuery("");
       return;
     }
-    if (availableCourts.length === 0) {
+    if (!selectedCourtId) return;
+    const existsInVenue = availableCourts.some((court) => court.id === selectedCourtId);
+    if (!existsInVenue) {
       setSelectedCourtId("");
       setCourtQuery("");
-      return;
-    }
-    if (!selectedCourtId) {
-      const first = availableCourts[0];
-      setSelectedCourtId(first.id);
-      setCourtQuery(first.name);
     }
   }, [availableCourts, selectedCourtId, selectedVenue]);
 
@@ -172,6 +166,8 @@ export default function ReservationForm({
 
   const creatingNewVenue = Boolean(venueQuery.trim()) && !matchedVenueByName;
   const creatingNewCourt = Boolean(courtQuery.trim()) && !matchedCourtByName;
+  const showVenueSuggestions = Boolean(venueQuery.trim()) && !selectedVenueId;
+  const showCourtSuggestions = Boolean(courtQuery.trim()) && !selectedCourtId;
 
   const hasValidVenue = Boolean(selectedVenueId || venueQuery.trim().length >= 2);
   const canSubmit = Boolean(groupId && hasValidTime && hasValidVenue && durationMinutes > 0);
@@ -277,18 +273,21 @@ export default function ReservationForm({
       <div className="elite-field-group">
         <label className="elite-field-label">Complejo</label>
         {recentVenues.length > 0 ? (
-          <div className="quick-chip-row">
-            {recentVenues.map((venue) => (
-              <button
-                key={`recent-venue-${venue.id}`}
-                type="button"
-                className={`quick-chip ${selectedVenueId === venue.id ? "active" : ""}`}
-                onClick={() => chooseVenueSuggestion(venue)}
-              >
-                {venue.name}
-              </button>
-            ))}
-          </div>
+          <>
+            <span className="elite-field-subtitle">Frecuentes</span>
+            <div className="quick-chip-row">
+              {recentVenues.map((venue) => (
+                <button
+                  key={`recent-venue-${venue.id}`}
+                  type="button"
+                  className={`quick-chip ${selectedVenueId === venue.id ? "active" : ""}`}
+                  onClick={() => chooseVenueSuggestion(venue)}
+                >
+                  {venue.name}
+                </button>
+              ))}
+            </div>
+          </>
         ) : null}
 
         <div className="autocomplete-shell">
@@ -301,12 +300,11 @@ export default function ReservationForm({
               setVenueQuery(event.target.value);
               setSelectedVenueId("");
             }}
-            required
           />
           {creatingNewVenue ? <span className="quick-chip autocomplete-new">+ {NEW_BADGE}</span> : null}
         </div>
 
-        {venueSuggestions.length > 0 ? (
+        {showVenueSuggestions && venueSuggestions.length > 0 ? (
           <div className="autocomplete-list">
             {venueSuggestions.map((venue) => (
               <button
@@ -370,21 +368,24 @@ export default function ReservationForm({
       <div className="elite-field-group">
         <label className="elite-field-label">Cancha (opcional)</label>
         {recentCourts.length > 0 ? (
-          <div className="quick-chip-row">
-            {recentCourts.map((court) => (
-              <button
-                key={`recent-court-${court.id}`}
-                type="button"
-                className={`quick-chip ${selectedCourtId === court.id ? "active" : ""}`}
-                onClick={() => chooseCourtSuggestion(court)}
-              >
-                {court.name}
+          <>
+            <span className="elite-field-subtitle">Frecuentes</span>
+            <div className="quick-chip-row">
+              {recentCourts.map((court) => (
+                <button
+                  key={`recent-court-${court.id}`}
+                  type="button"
+                  className={`quick-chip ${selectedCourtId === court.id ? "active" : ""}`}
+                  onClick={() => chooseCourtSuggestion(court)}
+                >
+                  {court.name}
+                </button>
+              ))}
+              <button type="button" className="quick-chip" onClick={clearCourt}>
+                Sin cancha
               </button>
-            ))}
-            <button type="button" className="quick-chip" onClick={clearCourt}>
-              Sin cancha
-            </button>
-          </div>
+            </div>
+          </>
         ) : null}
 
         <div className="autocomplete-shell">
@@ -401,7 +402,7 @@ export default function ReservationForm({
           {creatingNewCourt ? <span className="quick-chip autocomplete-new">+ {NEW_BADGE}</span> : null}
         </div>
 
-        {courtSuggestions.length > 0 ? (
+        {showCourtSuggestions && courtSuggestions.length > 0 ? (
           <div className="autocomplete-list">
             {courtSuggestions.map((court) => (
               <button
@@ -424,12 +425,12 @@ export default function ReservationForm({
 
       <div className="elite-field-group">
         <label className="elite-field-label">Horario</label>
-        <div className="elite-choice-grid times">
+        <div className="quick-chip-row quick-chip-row-tight">
           {SUGGESTED_TIMES.map((time) => (
             <button
               key={time}
               type="button"
-              className={`elite-btn-choice ${selectedTime === time && !useCustomTime ? "active" : ""}`}
+              className={`quick-chip ${selectedTime === time && !useCustomTime ? "active" : ""}`}
               onClick={() =>
                 handleChoiceHaptic(() => {
                   setUseCustomTime(false);
@@ -442,10 +443,9 @@ export default function ReservationForm({
           ))}
           <button
             type="button"
-            className={`elite-btn-choice icon-btn ${useCustomTime ? "active" : ""}`}
+            className={`quick-chip ${useCustomTime ? "active" : ""}`}
             onClick={() => handleChoiceHaptic(() => setUseCustomTime(!useCustomTime))}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
             Otro
           </button>
         </div>
