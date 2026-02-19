@@ -7,6 +7,9 @@ PWA para gestionar reservas de pádel y anotados (titulares/suplentes) para grup
 - Registro de perfil con unicidad case-insensitive de username.
 - PIN hasheado con PBKDF2-SHA256 + salt aleatoria (backend).
 - Reserva manual mobile-first: fecha, cancha y horario sugerido/custom.
+- Soporte multi-grupo y alcance por grupo o “Todos mis grupos”.
+- Complejos/canchas reutilizables entre grupos con confirmación por grupo.
+- Invitaciones por WhatsApp/email/link (grupo y partido puntual).
 - Confirmar / Quizás / Cancelar asistencia.
 - Secciones: `Mis partidos`, `Mis reservas`, `Perfil`.
 - Compartir por WhatsApp con mensaje estructurado.
@@ -59,9 +62,12 @@ VITE_FIREBASE_APP_ID=...
 VITE_FIREBASE_VAPID_KEY=...
 VITE_USE_FIREBASE_DB=true
 VITE_SHARE_BASE_URL=https://tu-dominio-corto.com
+VITE_GOOGLE_MAPS_API_KEY=...
 ```
 
 `VITE_SHARE_BASE_URL` es opcional. Si lo definís, los links compartidos por WhatsApp usan ese dominio (por ejemplo uno más corto) en lugar del `origin` actual.
+
+`VITE_GOOGLE_MAPS_API_KEY` es opcional. Si lo definís, se habilita la búsqueda de complejos desde Google Maps al crear reservas.
 
 Variables server-side para Vercel API (`/api/auth/*`):
 ```bash

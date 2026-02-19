@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { Court, Group, User, Venue } from "../lib/types";
+import { canSearchGooglePlaces, searchGooglePlaces, type GooglePlaceCandidate } from "../lib/places";
 import { triggerHaptic } from "../lib/utils";
 
 type Props = {
@@ -55,6 +56,9 @@ export default function ReservationForm({
   const [newVenueName, setNewVenueName] = useState("");
   const [newVenueAddress, setNewVenueAddress] = useState("");
   const [newVenueMapsUrl, setNewVenueMapsUrl] = useState("");
+  const [mapsQuery, setMapsQuery] = useState("");
+  const [mapsResults, setMapsResults] = useState<GooglePlaceCandidate[]>([]);
+  const [mapsLoading, setMapsLoading] = useState(false);
   const [useNewCourt, setUseNewCourt] = useState(false);
   const [selectedCourtId, setSelectedCourtId] = useState("");
   const [newCourtName, setNewCourtName] = useState("Cancha 1");
@@ -139,6 +143,30 @@ export default function ReservationForm({
   const hasValidCourt = useNewCourt ? newCourtName.trim().length >= 2 : Boolean(selectedCourtId);
   const canSubmit = Boolean(groupId && hasValidTime && hasValidVenue && hasValidCourt && durationMinutes > 0);
 
+  const handleSearchMaps = async () => {
+    if (!canSearchGooglePlaces()) {
+      alert("Configurá VITE_GOOGLE_MAPS_API_KEY para usar búsqueda de complejos.");
+      return;
+    }
+    try {
+      setMapsLoading(true);
+      const candidates = await searchGooglePlaces(mapsQuery);
+      setMapsResults(candidates);
+    } catch (error) {
+      alert((error as Error).message);
+      setMapsResults([]);
+    } finally {
+      setMapsLoading(false);
+    }
+  };
+
+  const applyMapsCandidate = (candidate: GooglePlaceCandidate) => {
+    setNewVenueName(candidate.name);
+    setNewVenueAddress(candidate.address);
+    setNewVenueMapsUrl(candidate.mapsUrl ?? "");
+    triggerHaptic("light");
+  };
+
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!canSubmit || !selectedGroup) return;
@@ -212,6 +240,41 @@ export default function ReservationForm({
 
         {useNewVenue ? (
           <div className="history-level">
+            <div className="quick-chip-row">
+              <input
+                type="text"
+                className="elite-input"
+                placeholder="Buscar complejo en Google Maps"
+                value={mapsQuery}
+                onChange={(event) => setMapsQuery(event.target.value)}
+              />
+              <button
+                type="button"
+                className="quick-chip active"
+                onClick={handleSearchMaps}
+                disabled={mapsLoading || mapsQuery.trim().length < 3}
+              >
+                {mapsLoading ? "Buscando..." : "Buscar"}
+              </button>
+            </div>
+            {mapsResults.length > 0 ? (
+              <div className="history-list">
+                {mapsResults.map((candidate) => (
+                  <button
+                    key={candidate.googlePlaceId}
+                    type="button"
+                    className="history-row"
+                    onClick={() => applyMapsCandidate(candidate)}
+                  >
+                    <span className="history-main">
+                      <strong>{candidate.name}</strong>
+                      <small>{candidate.address}</small>
+                    </span>
+                    <span className="quick-chip">Usar</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <input
               type="text"
               className="elite-input"

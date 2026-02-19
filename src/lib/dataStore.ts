@@ -911,59 +911,34 @@ export const acceptInviteToken = async (
     return { type: "reservation", groupId: invite.groupId, reservationId: invite.reservationId };
   }
 
-  const groupInviteSnapshot = await getDoc(doc(cloudDb, groupInviteCollection, token));
-  if (groupInviteSnapshot.exists()) {
-    const invite = groupInviteSnapshot.data() as GroupInvite;
-    if (invite.status !== "active" || new Date(invite.expiresAt).getTime() < Date.now()) {
-      throw new Error("Invitación vencida.");
-    }
-    await runTransaction(cloudDb, async (transaction) => {
-      const groupRef = doc(cloudDb, groupCollection, invite.groupId);
-      const groupSnapshot = await transaction.get(groupRef);
-      if (!groupSnapshot.exists()) {
-        throw new Error("Grupo no encontrado.");
-      }
-      const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
-      if (!group.memberAuthUids.includes(currentUser.id)) {
-        transaction.update(groupRef, {
-          memberAuthUids: [...group.memberAuthUids, currentUser.id],
-          memberNamesByAuthUid: {
-            ...group.memberNamesByAuthUid,
-            [currentUser.id]: currentUser.name
-          },
-          updatedAt: nowIso()
-        });
-      }
-    });
-    return { type: "group", groupId: invite.groupId };
+  const idToken = await auth?.currentUser?.getIdToken();
+  if (!idToken) {
+    throw new Error("Necesitás iniciar sesión.");
   }
 
-  const reservationInviteSnapshot = await getDoc(doc(cloudDb, reservationInviteCollection, token));
-  if (!reservationInviteSnapshot.exists()) {
-    throw new Error("Invitación no encontrada.");
-  }
-  const invite = reservationInviteSnapshot.data() as ReservationInvite;
-  if (invite.status !== "active" || new Date(invite.expiresAt).getTime() < Date.now()) {
-    throw new Error("Invitación vencida.");
-  }
-
-  await runTransaction(cloudDb, async (transaction) => {
-    const reservationRef = doc(cloudDb, reservationCollection, invite.reservationId);
-    const reservationSnapshot = await transaction.get(reservationRef);
-    if (!reservationSnapshot.exists()) {
-      throw new Error("Reserva no encontrada.");
-    }
-    const reservation = normalizeReservation(
-      reservationSnapshot.id,
-      reservationSnapshot.data() as Omit<Reservation, "id">
-    );
-    if (!reservation.guestAccessUids?.includes(currentUser.id)) {
-      transaction.update(reservationRef, {
-        guestAccessUids: [...(reservation.guestAccessUids ?? []), currentUser.id],
-        updatedAt: nowIso()
-      });
-    }
+  const response = await fetch("/api/invites/accept", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${idToken}`
+    },
+    body: JSON.stringify({
+      token,
+      displayName: currentUser.name
+    })
   });
 
-  return { type: "reservation", groupId: invite.groupId, reservationId: invite.reservationId };
+  const payload = (await response.json().catch(() => null)) as
+    | { error?: string; type?: "group" | "reservation"; groupId?: string; reservationId?: string }
+    | null;
+
+  if (!response.ok || !payload?.type || !payload.groupId) {
+    throw new Error(payload?.error ?? "No se pudo aceptar la invitación.");
+  }
+
+  return {
+    type: payload.type,
+    groupId: payload.groupId,
+    reservationId: payload.reservationId
+  };
 };
