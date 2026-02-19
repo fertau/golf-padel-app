@@ -2166,11 +2166,9 @@ button.neutral {
   margin-bottom: 0.1rem;
 }
 
-.groups-create-row {
+.groups-create-panel {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.5rem;
-  align-items: center;
+  gap: 0.48rem;
 }
 
 .group-admin-actions {
@@ -2206,13 +2204,48 @@ button.neutral {
 .group-card-head {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.6rem;
 }
 
 .group-card-name {
   display: block;
   font-size: 1rem;
+}
+
+.group-name-edit-inline {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.group-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.role-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.26rem 0.56rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  border: 1px solid rgba(179, 207, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  color: #dbe9ff;
+}
+
+.role-tag-owner {
+  background: linear-gradient(145deg, rgba(232, 255, 61, 0.28), rgba(232, 255, 61, 0.14));
+  border-color: rgba(232, 255, 61, 0.6);
+  color: #e8ff3d;
+}
+
+.role-tag-admin {
+  background: linear-gradient(145deg, rgba(44, 129, 255, 0.6), rgba(16, 74, 191, 0.7));
+  border-color: rgba(224, 238, 255, 0.65);
+  color: #fff;
 }
 
 .group-card-role {
@@ -2223,8 +2256,7 @@ button.neutral {
 }
 
 .group-card-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
   gap: 0.42rem;
 }
 
@@ -2236,12 +2268,6 @@ button.neutral {
 
 .group-action-menu {
   margin-top: -0.1rem;
-}
-
-.group-rename-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 0.42rem;
 }
 
 .quick-chip-icon {
@@ -2290,11 +2316,6 @@ button.neutral {
   gap: 0.4rem;
 }
 
-.member-empty-row {
-  display: flex;
-  justify-content: flex-start;
-}
-
 .member-row-soft {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -2311,30 +2332,42 @@ button.neutral {
   gap: 0.08rem;
 }
 
+.member-row-main strong {
+  font-size: 1.15rem;
+  line-height: 1.15;
+}
+
 .member-row-main small {
   color: var(--text-dim);
   font-size: 0.72rem;
 }
 
 .member-role-chip {
-  font-size: 0.66rem;
-  padding: 0.18rem 0.48rem;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.67rem;
+  font-weight: 800;
+  border: 1px solid rgba(179, 207, 255, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  color: #dbe9ff;
+}
+
+.member-role-chip.owner {
+  background: linear-gradient(145deg, rgba(232, 255, 61, 0.28), rgba(232, 255, 61, 0.14));
+  border-color: rgba(232, 255, 61, 0.62);
+  color: #e8ff3d;
+}
+
+.member-role-chip.admin {
+  background: linear-gradient(145deg, rgba(44, 129, 255, 0.6), rgba(16, 74, 191, 0.72));
+  border-color: rgba(224, 238, 255, 0.65);
+  color: #fff;
 }
 
 @media (max-width: 640px) {
-  .groups-create-row {
-    grid-template-columns: 1fr;
-  }
-
-  .group-card-actions {
-    grid-template-columns: 1fr 1fr;
-  }
-
   .group-invite-menu {
-    grid-template-columns: 1fr;
-  }
-
-  .group-rename-row {
     grid-template-columns: 1fr;
   }
 }
