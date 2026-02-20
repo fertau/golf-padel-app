@@ -3,10 +3,9 @@ import { requireAuthUid } from "../_lib/auth.js";
 import { parseBody, type VercelRequestLike, type VercelResponseLike } from "../_lib/http.js";
 import { recordGroupAuditEvent, resolveMemberName } from "../_lib/groupAudit.js";
 
-type SetAdminBody = {
+type RenameGroupBody = {
   groupId?: string;
-  targetAuthUid?: string;
-  makeAdmin?: boolean;
+  name?: string;
 };
 
 const nowIso = () => new Date().toISOString();
@@ -22,18 +21,17 @@ export default async function handler(
 
   try {
     const actorAuthUid = await requireAuthUid(req);
-    const body = parseBody<SetAdminBody>(req.body);
+    const body = parseBody<RenameGroupBody>(req.body);
     const groupId = body.groupId?.trim();
-    const targetAuthUid = body.targetAuthUid?.trim();
-    const makeAdmin = body.makeAdmin === true;
+    const name = body.name?.trim();
 
-    if (!groupId || !targetAuthUid) {
-      res.status(400).json({ error: "Faltan datos para actualizar rol." });
+    if (!groupId || !name) {
+      res.status(400).json({ error: "Faltan datos para renombrar grupo." });
       return;
     }
 
+    let previousName = "";
     let actorName = "Admin";
-    let targetName = "Miembro";
 
     await adminDb.runTransaction(async (transaction) => {
       const groupRef = adminDb.collection("groups").doc(groupId);
@@ -41,66 +39,62 @@ export default async function handler(
       if (!groupSnapshot.exists) {
         throw new Error("Grupo no encontrado.");
       }
-
       const group = groupSnapshot.data() as {
+        name?: string;
         ownerAuthUid?: string;
         adminAuthUids?: string[];
-        memberAuthUids?: string[];
         memberNamesByAuthUid?: Record<string, string>;
         isDeleted?: boolean;
       };
-
       if (group.isDeleted === true) {
         throw new Error("El grupo ya no está disponible.");
       }
-
-      const ownerAuthUid = group.ownerAuthUid ?? "";
       const adminAuthUids = Array.isArray(group.adminAuthUids) ? group.adminAuthUids : [];
-      const memberAuthUids = Array.isArray(group.memberAuthUids) ? group.memberAuthUids : [];
-
-      const actorIsAdmin = ownerAuthUid === actorAuthUid || adminAuthUids.includes(actorAuthUid);
+      const actorIsAdmin = group.ownerAuthUid === actorAuthUid || adminAuthUids.includes(actorAuthUid);
       if (!actorIsAdmin) {
-        throw new Error("Solo administradores pueden gestionar roles.");
-      }
-      if (!memberAuthUids.includes(targetAuthUid)) {
-        throw new Error("El usuario no es miembro del grupo.");
+        throw new Error("Solo administradores pueden renombrar el grupo.");
       }
 
+      previousName = group.name?.trim() || "";
       actorName = resolveMemberName(group.memberNamesByAuthUid, actorAuthUid, "Admin");
-      targetName = resolveMemberName(group.memberNamesByAuthUid, targetAuthUid, "Miembro");
-      if (ownerAuthUid === targetAuthUid) {
-        throw new Error("El admin principal siempre mantiene permisos.");
-      }
-
-      const nextAdmins = makeAdmin
-        ? Array.from(new Set([...adminAuthUids, targetAuthUid, ownerAuthUid]))
-        : Array.from(new Set(adminAuthUids.filter((authUid) => authUid !== targetAuthUid).concat(ownerAuthUid)));
-      if (nextAdmins.length === 0) {
-        throw new Error("El grupo debe tener al menos un admin.");
-      }
 
       transaction.update(groupRef, {
-        adminAuthUids: nextAdmins,
+        name,
         updatedAt: nowIso()
       });
     });
 
+    const reservationsSnapshot = await adminDb.collection("reservations").where("groupId", "==", groupId).get();
+    if (!reservationsSnapshot.empty) {
+      const CHUNK_SIZE = 400;
+      for (let i = 0; i < reservationsSnapshot.docs.length; i += CHUNK_SIZE) {
+        const batch = adminDb.batch();
+        reservationsSnapshot.docs.slice(i, i + CHUNK_SIZE).forEach((snapshotDoc) => {
+          batch.update(snapshotDoc.ref, {
+            groupName: name,
+            updatedAt: nowIso()
+          });
+        });
+        await batch.commit();
+      }
+    }
+
     await recordGroupAuditEvent({
       groupId,
-      type: makeAdmin ? "admin_granted" : "admin_revoked",
+      type: "group_renamed",
       actorAuthUid,
       actorName,
-      targetAuthUid,
-      targetName
+      metadata: {
+        previousName,
+        newName: name
+      }
     }).catch(() => null);
 
     res.status(200).json({ ok: true });
   } catch (error) {
-    const message = (error as Error).message || "No se pudo actualizar el rol.";
+    const message = (error as Error).message || "No se pudo renombrar el grupo.";
     const isValidationError =
       message.includes("administradores") ||
-      message.includes("principal") ||
-      message.includes("no es miembro") ||
       message.includes("no encontrado") ||
       message.includes("disponible");
     res.status(isValidationError ? 400 : 500).json({ error: message });

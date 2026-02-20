@@ -205,6 +205,13 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /groupAuditEvents/{eventId} {
+      allow read: if isSignedIn() &&
+        ("groupId" in resource.data) &&
+        isGroupMember(resource.data.groupId);
+      allow create, update, delete: if false;
+    }
+
     match /reservations/{reservationId} {
       allow read: if canReadReservation(resource.data);
 

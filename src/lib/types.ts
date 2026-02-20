@@ -52,6 +52,26 @@ export type Group = {
   updatedAt: string;
 };
 
+export type GroupAuditEventType =
+  | "member_joined"
+  | "member_removed"
+  | "admin_granted"
+  | "admin_revoked"
+  | "group_renamed"
+  | "reservation_owner_reassigned";
+
+export type GroupAuditEvent = {
+  id: string;
+  groupId: string;
+  type: GroupAuditEventType;
+  actorAuthUid: string;
+  actorName: string;
+  targetAuthUid?: string;
+  targetName?: string;
+  metadata?: Record<string, string>;
+  createdAt: string;
+};
+
 export type Venue = {
   id: string;
   name: string;

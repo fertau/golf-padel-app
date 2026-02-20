@@ -1,6 +1,7 @@
 import { adminDb } from "../_lib/firebaseAdmin.js";
 import { parseBody, type VercelRequestLike, type VercelResponseLike } from "../_lib/http.js";
 import { requireAuthUid } from "../_lib/auth.js";
+import { recordGroupAuditEvent, resolveMemberName } from "../_lib/groupAudit.js";
 
 type AcceptInviteBody = {
   token?: string;
@@ -44,6 +45,8 @@ export default async function handler(
         return;
       }
 
+      let joinedGroup = false;
+      let actorName = displayName;
       await adminDb.runTransaction(async (transaction) => {
         const groupRef = adminDb.collection("groups").doc(invite.groupId);
         const groupSnapshot = await transaction.get(groupRef);
@@ -65,6 +68,8 @@ export default async function handler(
         const memberAuthUids = baseMemberAuthUids.includes(authUid)
           ? baseMemberAuthUids
           : [...baseMemberAuthUids, authUid];
+        joinedGroup = !baseMemberAuthUids.includes(authUid);
+        actorName = resolveMemberName(group.memberNamesByAuthUid, authUid, displayName);
 
         transaction.update(groupRef, {
           memberAuthUids,
@@ -72,6 +77,20 @@ export default async function handler(
           updatedAt: nowIso()
         });
       });
+
+      if (joinedGroup) {
+        await recordGroupAuditEvent({
+          groupId: invite.groupId,
+          type: "member_joined",
+          actorAuthUid: authUid,
+          actorName,
+          targetAuthUid: authUid,
+          targetName: displayName,
+          metadata: {
+            source: "invite"
+          }
+        }).catch(() => null);
+      }
 
       res.status(200).json({ type: "group", groupId: invite.groupId });
       return;

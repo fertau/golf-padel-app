@@ -38,6 +38,7 @@ import {
   deleteGroup,
   isCloudDbEnabled,
   leaveGroup,
+  listGroupAuditEvents,
   migrateLegacyReservationsForUser,
   removeGroupMember,
   reassignReservationCreator,
@@ -813,6 +814,8 @@ export default function App() {
     }
   };
 
+  const handleLoadGroupAudit = async (groupId: string, limit = 30) => listGroupAuditEvents(groupId, limit);
+
   const handleReassignReservationCreator = async (
     reservationId: string,
     targetAuthUid: string,
@@ -1091,6 +1094,7 @@ export default function App() {
             onRemoveGroupMember={handleRemoveGroupMember}
             onLeaveGroup={handleLeaveGroup}
             onDeleteGroup={handleDeleteGroup}
+            onLoadGroupAudit={handleLoadGroupAudit}
             onLogout={handleLogout}
             onRequestNotifications={registerPushToken}
             onUpdateDisplayName={handleUpdateDisplayName}

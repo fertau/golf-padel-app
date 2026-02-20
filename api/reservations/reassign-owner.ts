@@ -1,6 +1,7 @@
 import { adminDb } from "../_lib/firebaseAdmin.js";
 import { requireAuthUid } from "../_lib/auth.js";
 import { parseBody, type VercelRequestLike, type VercelResponseLike } from "../_lib/http.js";
+import { recordGroupAuditEvent, resolveMemberName } from "../_lib/groupAudit.js";
 
 type ReassignOwnerBody = {
   reservationId?: string;
@@ -31,6 +32,10 @@ export default async function handler(
       return;
     }
 
+    let actorName = "Admin";
+    let nextOwnerName = targetName;
+    let groupIdForAudit = "";
+
     await adminDb.runTransaction(async (transaction) => {
       const reservationRef = adminDb.collection("reservations").doc(reservationId);
       const reservationSnapshot = await transaction.get(reservationRef);
@@ -45,6 +50,7 @@ export default async function handler(
       if (!groupId || groupId === "default-group") {
         throw new Error("Solo se puede reasignar creador en reservas de grupo.");
       }
+      groupIdForAudit = groupId;
 
       const groupRef = adminDb.collection("groups").doc(groupId);
       const groupSnapshot = await transaction.get(groupRef);
@@ -56,6 +62,7 @@ export default async function handler(
         ownerAuthUid?: string;
         adminAuthUids?: string[];
         memberAuthUids?: string[];
+        memberNamesByAuthUid?: Record<string, string>;
         isDeleted?: boolean;
       };
 
@@ -75,6 +82,9 @@ export default async function handler(
         throw new Error("El nuevo creador debe ser miembro activo del grupo.");
       }
 
+      actorName = resolveMemberName(group.memberNamesByAuthUid, actorAuthUid, "Admin");
+      nextOwnerName = resolveMemberName(group.memberNamesByAuthUid, targetAuthUid, targetName);
+
       transaction.update(reservationRef, {
         createdByAuthUid: targetAuthUid,
         createdBy: {
@@ -84,6 +94,18 @@ export default async function handler(
         updatedAt: nowIso()
       });
     });
+
+    await recordGroupAuditEvent({
+      groupId: groupIdForAudit,
+      type: "reservation_owner_reassigned",
+      actorAuthUid,
+      actorName,
+      targetAuthUid,
+      targetName: nextOwnerName,
+      metadata: {
+        reservationId
+      }
+    }).catch(() => null);
 
     res.status(200).json({ ok: true });
   } catch (error) {

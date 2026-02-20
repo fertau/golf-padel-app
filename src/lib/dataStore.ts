@@ -46,6 +46,7 @@ import type {
   AttendanceStatus,
   Court,
   Group,
+  GroupAuditEvent,
   GroupInvite,
   Reservation,
   ReservationInvite,
@@ -197,14 +198,31 @@ const fetchReservationsCloudFallback = async (): Promise<Reservation[]> => {
   );
 };
 
-const isPermissionDeniedError = (error: unknown) => {
-  const message = (error as Error)?.message?.toLowerCase?.() ?? "";
-  const code = (error as { code?: string })?.code ?? "";
-  return (
-    code === "permission-denied" ||
-    message.includes("missing or insufficient permissions") ||
-    message.includes("insufficient permissions")
-  );
+export const listGroupAuditEvents = async (groupId: string, limit = 30): Promise<GroupAuditEvent[]> => {
+  const normalizedGroupId = groupId.trim();
+  if (!normalizedGroupId) {
+    return [];
+  }
+
+  const cloudDb = db;
+  if (!isCloudDbEnabled() || !cloudDb) {
+    return [];
+  }
+
+  const headers = await buildAuthHeader();
+  const params = new URLSearchParams({
+    groupId: normalizedGroupId,
+    limit: String(Math.min(Math.max(limit, 1), 100))
+  });
+  const response = await fetch(`/api/groups/audit?${params.toString()}`, {
+    method: "GET",
+    headers
+  });
+  const payload = (await response.json().catch(() => null)) as { events?: GroupAuditEvent[]; error?: string } | null;
+  if (!response.ok) {
+    throw new Error(payload?.error ?? "No se pudo cargar la actividad del grupo.");
+  }
+  return (payload?.events ?? []) as GroupAuditEvent[];
 };
 
 const removeGroupMemberCloudFallback = async (groupId: string, targetAuthUid: string) => {
@@ -260,6 +278,22 @@ const reassignReservationCreatorCloudFallback = async (
   const payload = (await response.json().catch(() => null)) as { error?: string } | null;
   if (!response.ok) {
     throw new Error(payload?.error ?? "No se pudo reasignar el creador de la reserva.");
+  }
+};
+
+const renameGroupCloudFallback = async (groupId: string, name: string) => {
+  const headers = await buildAuthHeader();
+  const response = await fetch("/api/groups/rename", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...headers
+    },
+    body: JSON.stringify({ groupId, name })
+  });
+  const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+  if (!response.ok) {
+    throw new Error(payload?.error ?? "No se pudo renombrar el grupo.");
   }
 };
 
@@ -819,45 +853,12 @@ export const renameGroup = async (
     return updated;
   }
 
-  const actorAuthUid = auth?.currentUser?.uid;
-  if (!actorAuthUid) {
+  if (!auth?.currentUser?.uid) {
     throw new Error("Necesitás iniciar sesión.");
   }
 
-  await runTransaction(cloudDb, async (transaction) => {
-    const groupRef = doc(cloudDb, groupCollection, groupId);
-    const groupSnapshot = await transaction.get(groupRef);
-    if (!groupSnapshot.exists()) {
-      throw new Error("Grupo no encontrado.");
-    }
-    const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
-    if (group.isDeleted) {
-      throw new Error("El grupo ya no está disponible.");
-    }
-    if (!isGroupAdmin(group, actorAuthUid)) {
-      throw new Error("Solo administradores pueden renombrar el grupo.");
-    }
-    transaction.update(groupRef, {
-      name: trimmedName,
-      updatedAt: nowIso()
-    });
-  });
-
-  const reservationsSnapshot = await getDocs(
-    query(collection(cloudDb, reservationCollection), where("groupId", "==", groupId))
-  );
-  await Promise.all(
-    reservationsSnapshot.docs.map((reservationDoc) =>
-      setDoc(
-        doc(cloudDb, reservationCollection, reservationDoc.id),
-        {
-          groupName: trimmedName,
-          updatedAt: nowIso()
-        },
-        { merge: true }
-      )
-    )
-  );
+  await renameGroupCloudFallback(groupId, trimmedName);
+  dispatchGroupsRefresh();
 
   return {
     id: groupId,
@@ -997,59 +998,12 @@ export const setGroupMemberAdmin = async (
     return;
   }
 
-  const actorAuthUid = auth?.currentUser?.uid;
-  if (!actorAuthUid) {
+  if (!auth?.currentUser?.uid) {
     throw new Error("Necesitás iniciar sesión.");
   }
 
-  try {
-    await runTransaction(cloudDb, async (transaction) => {
-      const groupRef = doc(cloudDb, groupCollection, groupId);
-      const groupSnapshot = await transaction.get(groupRef);
-      if (!groupSnapshot.exists()) {
-        throw new Error("Grupo no encontrado.");
-      }
-      const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
-      if (group.isDeleted) {
-        throw new Error("El grupo ya no está disponible.");
-      }
-      if (!isGroupAdmin(group, actorAuthUid)) {
-        throw new Error("Solo administradores pueden gestionar roles.");
-      }
-      if (!group.memberAuthUids.includes(targetAuthUid)) {
-        throw new Error("El usuario no es miembro del grupo.");
-      }
-      if (group.ownerAuthUid === targetAuthUid) {
-        throw new Error("El owner siempre mantiene permisos de admin.");
-      }
-
-      const adminAuthUidsBase = makeAdmin
-        ? Array.from(new Set([...group.adminAuthUids, targetAuthUid]))
-        : group.adminAuthUids.filter((authUid) => authUid !== targetAuthUid);
-      const adminAuthUids = Array.from(new Set([...adminAuthUidsBase, group.ownerAuthUid]));
-
-      if (adminAuthUids.length === 0) {
-        throw new Error("El grupo debe tener al menos un admin.");
-      }
-
-      transaction.update(groupRef, {
-        adminAuthUids,
-        updatedAt: nowIso()
-      });
-    });
-    dispatchGroupsRefresh();
-  } catch (error) {
-    try {
-      await setGroupMemberAdminCloudFallback(groupId, targetAuthUid, makeAdmin);
-      dispatchGroupsRefresh();
-      return;
-    } catch (fallbackError) {
-      if (isPermissionDeniedError(error)) {
-        throw fallbackError;
-      }
-      throw error;
-    }
-  }
+  await setGroupMemberAdminCloudFallback(groupId, targetAuthUid, makeAdmin);
+  dispatchGroupsRefresh();
 };
 
 export const removeGroupMember = async (
@@ -1076,61 +1030,12 @@ export const removeGroupMember = async (
     return;
   }
 
-  const actorAuthUid = auth?.currentUser?.uid;
-  if (!actorAuthUid) {
+  if (!auth?.currentUser?.uid) {
     throw new Error("Necesitás iniciar sesión.");
   }
 
-  try {
-    await runTransaction(cloudDb, async (transaction) => {
-      const groupRef = doc(cloudDb, groupCollection, groupId);
-      const groupSnapshot = await transaction.get(groupRef);
-      if (!groupSnapshot.exists()) {
-        throw new Error("Grupo no encontrado.");
-      }
-      const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
-      if (group.isDeleted) {
-        throw new Error("El grupo ya no está disponible.");
-      }
-      if (!isGroupAdmin(group, actorAuthUid)) {
-        throw new Error("Solo administradores pueden quitar miembros.");
-      }
-      if (!group.memberAuthUids.includes(targetAuthUid)) {
-        throw new Error("El usuario no es miembro del grupo.");
-      }
-      if (group.ownerAuthUid === targetAuthUid) {
-        throw new Error("No podés quitar al admin principal.");
-      }
-
-      const memberAuthUids = group.memberAuthUids.filter((authUid) => authUid !== targetAuthUid);
-      const adminAuthUids = Array.from(
-        new Set(group.adminAuthUids.filter((authUid) => authUid !== targetAuthUid).concat(group.ownerAuthUid))
-      );
-
-      if (adminAuthUids.length === 0) {
-        throw new Error("El grupo debe tener al menos un admin.");
-      }
-
-      transaction.update(groupRef, {
-        memberAuthUids,
-        adminAuthUids,
-        [`memberNamesByAuthUid.${targetAuthUid}`]: deleteField(),
-        updatedAt: nowIso()
-      });
-    });
-    dispatchGroupsRefresh();
-  } catch (error) {
-    try {
-      await removeGroupMemberCloudFallback(groupId, targetAuthUid);
-      dispatchGroupsRefresh();
-      return;
-    } catch (fallbackError) {
-      if (isPermissionDeniedError(error)) {
-        throw fallbackError;
-      }
-      throw error;
-    }
-  }
+  await removeGroupMemberCloudFallback(groupId, targetAuthUid);
+  dispatchGroupsRefresh();
 };
 
 export const leaveGroup = async (groupId: string, currentUser: User) => {
@@ -1150,10 +1055,10 @@ export const leaveGroup = async (groupId: string, currentUser: User) => {
     return;
   }
 
-  const actorAuthUid = auth?.currentUser?.uid;
-  if (!actorAuthUid) {
+  if (!auth?.currentUser?.uid) {
     throw new Error("Necesitás iniciar sesión.");
   }
+  const actorAuthUid = auth.currentUser.uid;
 
   await runTransaction(cloudDb, async (transaction) => {
     const groupRef = doc(cloudDb, groupCollection, groupId);
@@ -1770,53 +1675,7 @@ export const reassignReservationCreator = async (
     throw new Error("Necesitás iniciar sesión.");
   }
 
-  try {
-    await runTransaction(cloudDb, async (transaction) => {
-      const reservationRef = doc(cloudDb, reservationCollection, reservationId);
-      const reservationSnapshot = await transaction.get(reservationRef);
-      if (!reservationSnapshot.exists()) {
-        throw new Error("Reserva no encontrada.");
-      }
-      const reservation = normalizeReservation(
-        reservationSnapshot.id,
-        reservationSnapshot.data() as Omit<Reservation, "id">
-      );
-      if (!reservation.groupId || reservation.groupId === "default-group") {
-        throw new Error("Solo se puede reasignar creador en reservas de grupo.");
-      }
-
-      const groupRef = doc(cloudDb, groupCollection, reservation.groupId);
-      const groupSnapshot = await transaction.get(groupRef);
-      if (!groupSnapshot.exists()) {
-        throw new Error("Grupo no encontrado.");
-      }
-      const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
-      if (!isGroupAdmin(group, actorAuthUid)) {
-        throw new Error("Solo administradores del grupo pueden reasignar el creador.");
-      }
-      if (!group.memberAuthUids.includes(targetAuthUid)) {
-        throw new Error("El nuevo creador debe ser miembro activo del grupo.");
-      }
-
-      transaction.update(
-        reservationRef,
-        stripUndefinedDeep({
-          createdByAuthUid: targetAuthUid,
-          createdBy: {
-            id: targetAuthUid,
-            name: nextName
-          },
-          updatedAt: nowIso()
-        })
-      );
-    });
-  } catch (error) {
-    if (isPermissionDeniedError(error)) {
-      await reassignReservationCreatorCloudFallback(reservationId, targetAuthUid, nextName);
-      return;
-    }
-    throw error;
-  }
+  await reassignReservationCreatorCloudFallback(reservationId, targetAuthUid, nextName);
 };
 
 const acceptInviteTokenCloudFallback = async (

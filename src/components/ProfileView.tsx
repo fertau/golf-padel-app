@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import type { Group, User } from "../lib/types";
+import type { Group, GroupAuditEvent, User } from "../lib/types";
 import { copyTextWithFallback, isValidDisplayName, normalizeDisplayName, triggerHaptic } from "../lib/utils";
 
 type Props = {
@@ -13,6 +13,7 @@ type Props = {
   onRemoveGroupMember: (groupId: string, targetAuthUid: string) => Promise<void>;
   onLeaveGroup: (groupId: string) => Promise<void>;
   onDeleteGroup: (groupId: string) => Promise<void>;
+  onLoadGroupAudit: (groupId: string, limit?: number) => Promise<GroupAuditEvent[]>;
   onLogout: () => void;
   onRequestNotifications: () => void;
   onUpdateDisplayName: (nextName: string) => Promise<void>;
@@ -34,6 +35,7 @@ export default function ProfileView({
   onRemoveGroupMember,
   onLeaveGroup,
   onDeleteGroup,
+  onLoadGroupAudit,
   onLogout,
   onRequestNotifications,
   onUpdateDisplayName,
@@ -49,6 +51,9 @@ export default function ProfileView({
   const [groupActionBusyId, setGroupActionBusyId] = useState<string | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [groupNameDraft, setGroupNameDraft] = useState("");
+  const [auditByGroupId, setAuditByGroupId] = useState<Record<string, GroupAuditEvent[]>>({});
+  const [auditLoadedByGroupId, setAuditLoadedByGroupId] = useState<Record<string, boolean>>({});
+  const [auditLoadingGroupId, setAuditLoadingGroupId] = useState<string | null>(null);
 
   useEffect(() => {
     setNameDraft(user.name);
@@ -66,6 +71,56 @@ export default function ProfileView({
   const handleAction = (fn: () => void) => {
     fn();
     triggerHaptic("light");
+  };
+
+  const formatAuditMessage = (event: GroupAuditEvent) => {
+    const actor = event.actorName || "Alguien";
+    const target = event.targetName || "miembro";
+    switch (event.type) {
+      case "member_joined":
+        return `${target} se unió al grupo`;
+      case "member_removed":
+        return `${actor} quitó a ${target}`;
+      case "admin_granted":
+        return `${actor} dio admin a ${target}`;
+      case "admin_revoked":
+        return `${actor} quitó admin a ${target}`;
+      case "group_renamed":
+        return `${actor} renombró el grupo`;
+      case "reservation_owner_reassigned":
+        return `${actor} reasignó creador a ${target}`;
+      default:
+        return `${actor} hizo un cambio`;
+    }
+  };
+
+  const formatAuditDate = (iso: string) =>
+    new Date(iso).toLocaleString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    });
+
+  const loadGroupAudit = async (groupId: string, force = false) => {
+    if (auditLoadingGroupId === groupId) {
+      return;
+    }
+    if (!force && auditLoadedByGroupId[groupId]) {
+      return;
+    }
+    try {
+      setAuditLoadingGroupId(groupId);
+      const events = await onLoadGroupAudit(groupId, 40);
+      setAuditByGroupId((prev) => ({ ...prev, [groupId]: events }));
+      setAuditLoadedByGroupId((prev) => ({ ...prev, [groupId]: true }));
+    } catch (error) {
+      alert((error as Error).message);
+    } finally {
+      setAuditLoadingGroupId(null);
+    }
   };
 
   const saveDisplayName = async () => {
@@ -308,7 +363,16 @@ export default function ProfileView({
                   </div>
                 ) : null}
                 {groupsWithRole.map(({ group, role }) => (
-                  <details key={group.id} className="group-item-collapse">
+                  <details
+                    key={group.id}
+                    className="group-item-collapse"
+                    onToggle={(event) => {
+                      const details = event.currentTarget;
+                      if (details.open) {
+                        void loadGroupAudit(group.id);
+                      }
+                    }}
+                  >
                     <summary>
                       {editingGroupId === group.id ? (
                         <div className="group-summary-edit" onClick={(event) => event.preventDefault()}>
@@ -458,6 +522,38 @@ export default function ProfileView({
                           </div>
                         </div>
                       ) : null}
+                      <details className="player-collapse-elite">
+                        <summary>
+                          <div className="summary-content">
+                            <span>Actividad del grupo</span>
+                            <div className="summary-badge">{(auditByGroupId[group.id] ?? []).length}</div>
+                          </div>
+                        </summary>
+                        <div className="player-list-elite">
+                          {auditLoadingGroupId === group.id ? <p className="empty-state-list">Cargando actividad...</p> : null}
+                          {auditLoadingGroupId !== group.id && (auditByGroupId[group.id] ?? []).length === 0 ? (
+                            <p className="empty-state-list">Sin actividad reciente.</p>
+                          ) : null}
+                          {(auditByGroupId[group.id] ?? []).map((event) => (
+                            <div key={event.id} className="player-row-elite">
+                              <div className="player-avatar-mini">•</div>
+                              <span className="player-name">{formatAuditMessage(event)}</span>
+                              <span className="host-label">{formatAuditDate(event.createdAt)}</span>
+                            </div>
+                          ))}
+                          {(auditByGroupId[group.id] ?? []).length > 0 ? (
+                            <button
+                              type="button"
+                              className="quick-chip action-chip"
+                              onClick={() => {
+                                void loadGroupAudit(group.id, true);
+                              }}
+                            >
+                              Actualizar actividad
+                            </button>
+                          ) : null}
+                        </div>
+                      </details>
                       <div className="quick-chip-row">
                         {role === "member" ? (
                           <button
