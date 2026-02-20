@@ -1,6 +1,6 @@
-import { adminDb } from "../_lib/firebaseAdmin";
-import { parseBody, type VercelRequestLike, type VercelResponseLike } from "../_lib/http";
-import { requireAuthUid } from "../_lib/auth";
+import { adminDb } from "../_lib/firebaseAdmin.js";
+import { parseBody, type VercelRequestLike, type VercelResponseLike } from "../_lib/http.js";
+import { requireAuthUid } from "../_lib/auth.js";
 
 type AcceptInviteBody = {
   token?: string;

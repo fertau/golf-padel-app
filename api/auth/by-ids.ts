@@ -1,5 +1,5 @@
-import { adminDb } from "../_lib/firebaseAdmin";
-import { parseBody, type VercelRequestLike, type VercelResponseLike } from "../_lib/http";
+import { adminDb } from "../_lib/firebaseAdmin.js";
+import { parseBody, type VercelRequestLike, type VercelResponseLike } from "../_lib/http.js";
 
 type Body = { ids?: string[] };
 

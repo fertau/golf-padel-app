@@ -1,5 +1,5 @@
-import { adminAuth } from "./firebaseAdmin";
-import type { VercelRequestLike } from "./http";
+import { adminAuth } from "./firebaseAdmin.js";
+import type { VercelRequestLike } from "./http.js";
 
 export const getBearerToken = (req: VercelRequestLike & { headers?: Record<string, string | string[] | undefined> }) => {
   const rawHeader = req.headers?.authorization ?? req.headers?.Authorization;

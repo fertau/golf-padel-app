@@ -1,6 +1,6 @@
-import { adminDb } from "../_lib/firebaseAdmin";
-import { normalizeUsername } from "../_lib/authShared";
-import type { VercelRequestLike, VercelResponseLike } from "../_lib/http";
+import { adminDb } from "../_lib/firebaseAdmin.js";
+import { normalizeUsername } from "../_lib/authShared.js";
+import type { VercelRequestLike, VercelResponseLike } from "../_lib/http.js";
 
 export default async function handler(req: VercelRequestLike, res: VercelResponseLike) {
   if (req.method !== "GET") {

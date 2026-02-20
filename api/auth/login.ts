@@ -1,7 +1,7 @@
-import { adminAuth, adminDb } from "../_lib/firebaseAdmin";
-import { assertPinFormat } from "../_lib/authShared";
-import { hashPin, verifyPin } from "../_lib/pinSecurity";
-import { parseBody, type VercelRequestLike, type VercelResponseLike } from "../_lib/http";
+import { adminAuth, adminDb } from "../_lib/firebaseAdmin.js";
+import { assertPinFormat } from "../_lib/authShared.js";
+import { hashPin, verifyPin } from "../_lib/pinSecurity.js";
+import { parseBody, type VercelRequestLike, type VercelResponseLike } from "../_lib/http.js";
 
 type LoginBody = {
   playerId?: string;

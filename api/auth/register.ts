@@ -1,9 +1,9 @@
 import { Timestamp } from "firebase-admin/firestore";
 import { randomUUID } from "crypto";
-import { adminAuth, adminDb } from "../_lib/firebaseAdmin";
-import { normalizeUsername, assertPinFormat } from "../_lib/authShared";
-import { hashPin } from "../_lib/pinSecurity";
-import { parseBody, type VercelRequestLike, type VercelResponseLike } from "../_lib/http";
+import { adminAuth, adminDb } from "../_lib/firebaseAdmin.js";
+import { normalizeUsername, assertPinFormat } from "../_lib/authShared.js";
+import { hashPin } from "../_lib/pinSecurity.js";
+import { parseBody, type VercelRequestLike, type VercelResponseLike } from "../_lib/http.js";
 
 type RegisterBody = {
   name?: string;
