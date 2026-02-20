@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   browserLocalPersistence,
   getRedirectResult,
@@ -35,7 +35,6 @@ import {
   createGroupInviteLink,
   createReservation,
   createReservationInviteLink,
-  ensureUserDefaultGroup,
   isCloudDbEnabled,
   migrateLegacyReservationsForUser,
   renameGroup,
@@ -149,6 +148,8 @@ export default function App() {
   const [savingName, setSavingName] = useState(false);
   const [contextNotice, setContextNotice] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const processedInviteTokensRef = useRef<Set<string>>(new Set());
+  const inFlightInviteTokenRef = useRef<string | null>(null);
   const shareBaseUrl = getShareBaseUrl();
 
   // 1. Connectivity & Cleanup
@@ -262,22 +263,6 @@ export default function App() {
     }
   }, [setActiveTab, setExpandedReservationId]);
 
-  // 4.1 Ensure group bootstrapping
-  useEffect(() => {
-    if (!currentUser) return;
-    let cancelled = false;
-    ensureUserDefaultGroup(currentUser)
-      .catch(() => null)
-      .finally(() => {
-        if (!cancelled) {
-          // no-op, subscription catches created group
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [currentUser]);
-
   useEffect(() => {
     if (!currentUser || groups.length === 0) return;
     const fallbackGroup =
@@ -290,12 +275,22 @@ export default function App() {
   // 4.2 Invite resolution
   useEffect(() => {
     if (!currentUser || !pendingInviteToken) return;
+    if (processedInviteTokensRef.current.has(pendingInviteToken)) {
+      setPendingInviteToken(null);
+      return;
+    }
+    if (inFlightInviteTokenRef.current === pendingInviteToken) {
+      return;
+    }
     let cancelled = false;
+    const token = pendingInviteToken;
+    inFlightInviteTokenRef.current = token;
 
     const resolveInvite = async () => {
       try {
-        const accepted = await acceptInviteToken(pendingInviteToken, currentUser);
+        const accepted = await acceptInviteToken(token, currentUser);
         if (cancelled) return;
+        processedInviteTokensRef.current.add(token);
         setInviteFeedback(
           accepted.type === "group"
             ? "Te uniste al grupo."
@@ -313,6 +308,9 @@ export default function App() {
         window.history.replaceState({}, "", "/");
       } catch (error) {
         if (!cancelled) {
+          if (processedInviteTokensRef.current.has(token)) {
+            return;
+          }
           const rawMessage = (error as Error).message;
           const normalizedMessage = rawMessage?.toLowerCase() ?? "";
           const inviteErrorMessage =
@@ -325,6 +323,9 @@ export default function App() {
         }
       } finally {
         if (!cancelled) {
+          if (inFlightInviteTokenRef.current === token) {
+            inFlightInviteTokenRef.current = null;
+          }
           setPendingInviteToken(null);
         }
       }
