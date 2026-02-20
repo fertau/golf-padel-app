@@ -15,6 +15,8 @@ PWA para gestionar reservas de pádel y anotados (titulares/suplentes) para grup
 - Compartir por WhatsApp con mensaje estructurado.
 - Splash animation estilo cancha azul de pádel.
 - UI modernizada con estética padel.
+- Gestión de ciclo de vida de grupos: salir del grupo, quitar miembros y soft-delete de grupo.
+- Al eliminar grupo: reservas quedan en modo `link_only` (no se borran).
 
 ## Stack
 - React + TypeScript + Vite
@@ -136,6 +138,22 @@ Resultado esperado:
 - Reservas con grupo válido => `visibilityScope: "group"`.
 - Reservas sin grupo legacy => se asignan al grupo del creador (si existe) y quedan `group`.
 - Si no hay grupo asignable => quedan `link_only`.
+
+## Limpieza one-time de grupos "Mi grupo" forzados
+Elimina grupos `Mi grupo` que cumplan todos estos criterios de seguridad:
+- no están borrados,
+- tienen solo owner como único miembro/admin,
+- no tienen reservas asociadas.
+
+Primero simulá:
+```bash
+npm run cleanup:forced-mi-grupo
+```
+
+Luego aplicá:
+```bash
+npm run cleanup:forced-mi-grupo -- --apply
+```
 
 ## Seguridad
 - Firestore bloquea writes anónimas.

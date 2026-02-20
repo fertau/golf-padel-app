@@ -47,6 +47,9 @@ const run = async () => {
 
   groupsSnapshot.docs.forEach((doc) => {
     const group = { id: doc.id, ...doc.data() };
+    if (group.isDeleted === true) {
+      return;
+    }
     groupsById.set(group.id, group);
     const members = Array.isArray(group.memberAuthUids) ? group.memberAuthUids : [];
     members.forEach((authUid) => {

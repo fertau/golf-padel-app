@@ -10,6 +10,9 @@ type Props = {
   onRenameGroup: (groupId: string, name: string) => Promise<void>;
   onCreateGroupInvite: (groupId: string, channel?: "whatsapp" | "email" | "link") => Promise<string>;
   onSetGroupMemberAdmin: (groupId: string, targetAuthUid: string, makeAdmin: boolean) => Promise<void>;
+  onRemoveGroupMember: (groupId: string, targetAuthUid: string) => Promise<void>;
+  onLeaveGroup: (groupId: string) => Promise<void>;
+  onDeleteGroup: (groupId: string) => Promise<void>;
   onLogout: () => void;
   onRequestNotifications: () => void;
   onUpdateDisplayName: (nextName: string) => Promise<void>;
@@ -28,6 +31,9 @@ export default function ProfileView({
   onRenameGroup,
   onCreateGroupInvite,
   onSetGroupMemberAdmin,
+  onRemoveGroupMember,
+  onLeaveGroup,
+  onDeleteGroup,
   onLogout,
   onRequestNotifications,
   onUpdateDisplayName,
@@ -40,6 +46,7 @@ export default function ProfileView({
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [inviteBusyGroupId, setInviteBusyGroupId] = useState<string | null>(null);
   const [roleBusyKey, setRoleBusyKey] = useState<string | null>(null);
+  const [groupActionBusyId, setGroupActionBusyId] = useState<string | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [groupNameDraft, setGroupNameDraft] = useState("");
 
@@ -140,6 +147,49 @@ export default function ProfileView({
       alert((error as Error).message);
     } finally {
       setRoleBusyKey(null);
+    }
+  };
+
+  const removeMember = async (groupId: string, targetAuthUid: string) => {
+    const key = `${groupId}:${targetAuthUid}:remove`;
+    try {
+      setRoleBusyKey(key);
+      await onRemoveGroupMember(groupId, targetAuthUid);
+      triggerHaptic("medium");
+    } catch (error) {
+      alert((error as Error).message);
+    } finally {
+      setRoleBusyKey(null);
+    }
+  };
+
+  const leaveCurrentGroup = async (groupId: string) => {
+    if (!window.confirm("¿Salir de este grupo?")) {
+      return;
+    }
+    try {
+      setGroupActionBusyId(groupId);
+      await onLeaveGroup(groupId);
+      triggerHaptic("medium");
+    } catch (error) {
+      alert((error as Error).message);
+    } finally {
+      setGroupActionBusyId(null);
+    }
+  };
+
+  const deleteCurrentGroup = async (groupId: string) => {
+    if (!window.confirm("¿Eliminar este grupo? Las reservas quedarán en modo link.")) {
+      return;
+    }
+    try {
+      setGroupActionBusyId(groupId);
+      await onDeleteGroup(groupId);
+      triggerHaptic("heavy");
+    } catch (error) {
+      alert((error as Error).message);
+    } finally {
+      setGroupActionBusyId(null);
     }
   };
 
@@ -343,13 +393,22 @@ export default function ProfileView({
                                   </span>
                                 </div>
                                 {canManage ? (
-                                  <button
-                                    className={`btn-elite btn-elite-outline btn-compact ${isAdmin ? "active" : ""}`}
-                                    onClick={() => toggleAdminRole(group.id, memberAuthUid, !isAdmin)}
-                                    disabled={roleBusyKey === key}
-                                  >
-                                    {roleBusyKey === key ? "..." : isAdmin ? "Quitar admin" : "Hacer admin"}
-                                  </button>
+                                  <div className="quick-chip-row">
+                                    <button
+                                      className={`btn-elite btn-elite-outline btn-compact ${isAdmin ? "active" : ""}`}
+                                      onClick={() => toggleAdminRole(group.id, memberAuthUid, !isAdmin)}
+                                      disabled={roleBusyKey === key}
+                                    >
+                                      {roleBusyKey === key ? "..." : isAdmin ? "Quitar admin" : "Hacer admin"}
+                                    </button>
+                                    <button
+                                      className="btn-elite btn-elite-outline btn-compact"
+                                      onClick={() => removeMember(group.id, memberAuthUid)}
+                                      disabled={roleBusyKey === `${group.id}:${memberAuthUid}:remove`}
+                                    >
+                                      {roleBusyKey === `${group.id}:${memberAuthUid}:remove` ? "..." : "Quitar"}
+                                    </button>
+                                  </div>
                                 ) : null}
                               </div>
                             );
@@ -399,6 +458,27 @@ export default function ProfileView({
                           </div>
                         </div>
                       ) : null}
+                      <div className="quick-chip-row">
+                        {role === "member" ? (
+                          <button
+                            className="quick-chip action-chip"
+                            type="button"
+                            onClick={() => leaveCurrentGroup(group.id)}
+                            disabled={groupActionBusyId === group.id}
+                          >
+                            {groupActionBusyId === group.id ? "..." : "Salir del grupo"}
+                          </button>
+                        ) : (
+                          <button
+                            className="quick-chip action-chip"
+                            type="button"
+                            onClick={() => deleteCurrentGroup(group.id)}
+                            disabled={groupActionBusyId === group.id}
+                          >
+                            {groupActionBusyId === group.id ? "..." : "Eliminar grupo"}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </details>
                 ))}

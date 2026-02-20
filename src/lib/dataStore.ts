@@ -1,6 +1,8 @@
 import {
   collection,
+  deleteField,
   doc,
+  type DocumentReference,
   getDoc,
   getDocs,
   limit,
@@ -9,6 +11,7 @@ import {
   query,
   runTransaction,
   setDoc,
+  writeBatch,
   where
 } from "firebase/firestore";
 import { auth, db, firebaseEnabled } from "./firebase";
@@ -26,11 +29,14 @@ import {
   createCourtLocal,
   createGroupLocal,
   createVenueLocal,
+  deleteGroupLocal,
   ensureDefaultGroupLocal,
   getInviteByTokenLocal,
   getLocalGroups,
   getLocalVenues,
+  leaveGroupLocal,
   linkVenueToGroupLocal,
+  removeGroupMemberLocal,
   renameGroupLocal,
   setGroupMemberAdminLocal,
   subscribeLocalCourts,
@@ -78,7 +84,8 @@ const normalizeGroup = (id: string, data: Omit<Group, "id">): Group => ({
   memberAuthUids: data.memberAuthUids ?? [],
   adminAuthUids: data.adminAuthUids ?? [],
   memberNamesByAuthUid: data.memberNamesByAuthUid ?? {},
-  venueIds: data.venueIds ?? []
+  venueIds: data.venueIds ?? [],
+  isDeleted: data.isDeleted ?? false
 });
 
 const normalizeVenue = (id: string, data: Omit<Venue, "id">): Venue => ({
@@ -118,7 +125,7 @@ const groupInviteCollection = "groupInvites";
 const reservationInviteCollection = "reservationInvites";
 
 const isGroupAdmin = (group: Group, authUid: string) =>
-  group.ownerAuthUid === authUid || group.adminAuthUids.includes(authUid);
+  !group.isDeleted && (group.ownerAuthUid === authUid || group.adminAuthUids.includes(authUid));
 
 const isReservationRelatedToUser = (reservation: Reservation, authUid: string) =>
   reservation.createdByAuthUid === authUid ||
@@ -138,6 +145,9 @@ const canAccessReservation = (reservation: Reservation, authUid: string, allowed
 };
 
 const ensureGroupMembership = (group: Group, authUid: string) => {
+  if (group.isDeleted) {
+    throw new Error("El grupo ya no está disponible.");
+  }
   if (!group.memberAuthUids.includes(authUid)) {
     throw new Error("No tenés acceso a este grupo.");
   }
@@ -230,6 +240,25 @@ const linkVenueInCloudGroup = async (groupId: string, venueId: string) => {
       updatedAt: nowIso()
     });
   });
+};
+
+const runBatchedDocUpdates = async (
+  refs: DocumentReference[],
+  buildData: () => Record<string, unknown>
+) => {
+  const cloudDb = db;
+  if (!cloudDb || refs.length === 0) {
+    return;
+  }
+  const BATCH_SIZE = 400;
+  for (let i = 0; i < refs.length; i += BATCH_SIZE) {
+    const slice = refs.slice(i, i + BATCH_SIZE);
+    const batch = writeBatch(cloudDb);
+    slice.forEach((docRef) => {
+      batch.update(docRef, buildData());
+    });
+    await batch.commit();
+  }
 };
 
 const resolveLocalVenueAndCourt = (
@@ -352,7 +381,10 @@ export const subscribeReservations = (
   );
 
   const unsubscribeGroups = onSnapshot(groupsQuery, (snapshot) => {
-    const groupIds = snapshot.docs.map((snapshotDoc) => snapshotDoc.id);
+    const groupIds = snapshot.docs
+      .map((snapshotDoc) => normalizeGroup(snapshotDoc.id, snapshotDoc.data() as Omit<Group, "id">))
+      .filter((group) => !group.isDeleted)
+      .map((group) => group.id);
     allowedGroupIds = new Set(groupIds);
     rebuildReservationSubscriptions(groupIds);
     emit();
@@ -374,6 +406,7 @@ export const subscribeGroups = (currentAuthUid: string, onChange: (groups: Group
   return onSnapshot(q, (snapshot) => {
     const groups = snapshot.docs
       .map((snapshotDoc) => normalizeGroup(snapshotDoc.id, snapshotDoc.data() as Omit<Group, "id">))
+      .filter((group) => !group.isDeleted)
       .sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
     onChange(groups);
   });
@@ -454,6 +487,7 @@ export const ensureUserDefaultGroup = async (currentUser: User): Promise<Group> 
       [currentUser.id]: currentUser.name
     },
     venueIds: [],
+    isDeleted: false,
     createdAt: timestamp,
     updatedAt: timestamp
   };
@@ -484,6 +518,7 @@ export const createGroup = async (name: string, currentUser: User): Promise<Grou
       [currentUser.id]: currentUser.name
     },
     venueIds: [],
+    isDeleted: false,
     createdAt: timestamp,
     updatedAt: timestamp
   };
@@ -530,6 +565,9 @@ export const renameGroup = async (
       throw new Error("Grupo no encontrado.");
     }
     const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
+    if (group.isDeleted) {
+      throw new Error("El grupo ya no está disponible.");
+    }
     if (!isGroupAdmin(group, actorAuthUid)) {
       throw new Error("Solo administradores pueden renombrar el grupo.");
     }
@@ -680,6 +718,9 @@ export const setGroupMemberAdmin = async (
     if (!localGroup) {
       throw new Error("Grupo no encontrado.");
     }
+    if (localGroup.isDeleted) {
+      throw new Error("El grupo ya no está disponible.");
+    }
     if (!isGroupAdmin(localGroup, currentUser.id)) {
       throw new Error("Solo administradores pueden gestionar roles.");
     }
@@ -702,6 +743,9 @@ export const setGroupMemberAdmin = async (
       throw new Error("Grupo no encontrado.");
     }
     const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
+    if (group.isDeleted) {
+      throw new Error("El grupo ya no está disponible.");
+    }
     if (!isGroupAdmin(group, actorAuthUid)) {
       throw new Error("Solo administradores pueden gestionar roles.");
     }
@@ -712,15 +756,226 @@ export const setGroupMemberAdmin = async (
       throw new Error("El owner siempre mantiene permisos de admin.");
     }
 
-    const adminAuthUids = makeAdmin
+    const adminAuthUidsBase = makeAdmin
       ? Array.from(new Set([...group.adminAuthUids, targetAuthUid]))
       : group.adminAuthUids.filter((authUid) => authUid !== targetAuthUid);
+    const adminAuthUids = Array.from(new Set([...adminAuthUidsBase, group.ownerAuthUid]));
+
+    if (adminAuthUids.length === 0) {
+      throw new Error("El grupo debe tener al menos un admin.");
+    }
 
     transaction.update(groupRef, {
       adminAuthUids,
       updatedAt: nowIso()
     });
   });
+};
+
+export const removeGroupMember = async (
+  groupId: string,
+  targetAuthUid: string,
+  currentUser: User
+) => {
+  const cloudDb = db;
+  if (!isCloudDbEnabled() || !cloudDb) {
+    const localGroup = getLocalGroups().find((group) => group.id === groupId);
+    if (!localGroup) {
+      throw new Error("Grupo no encontrado.");
+    }
+    if (!isGroupAdmin(localGroup, currentUser.id)) {
+      throw new Error("Solo administradores pueden quitar miembros.");
+    }
+    if (localGroup.ownerAuthUid === targetAuthUid) {
+      throw new Error("No podés quitar al admin principal.");
+    }
+    const updated = removeGroupMemberLocal(groupId, targetAuthUid);
+    if (!updated) {
+      throw new Error("No se pudo quitar al miembro.");
+    }
+    return;
+  }
+
+  const actorAuthUid = auth?.currentUser?.uid;
+  if (!actorAuthUid) {
+    throw new Error("Necesitás iniciar sesión.");
+  }
+
+  await runTransaction(cloudDb, async (transaction) => {
+    const groupRef = doc(cloudDb, groupCollection, groupId);
+    const groupSnapshot = await transaction.get(groupRef);
+    if (!groupSnapshot.exists()) {
+      throw new Error("Grupo no encontrado.");
+    }
+    const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
+    if (group.isDeleted) {
+      throw new Error("El grupo ya no está disponible.");
+    }
+    if (!isGroupAdmin(group, actorAuthUid)) {
+      throw new Error("Solo administradores pueden quitar miembros.");
+    }
+    if (!group.memberAuthUids.includes(targetAuthUid)) {
+      throw new Error("El usuario no es miembro del grupo.");
+    }
+    if (group.ownerAuthUid === targetAuthUid) {
+      throw new Error("No podés quitar al admin principal.");
+    }
+
+    const memberAuthUids = group.memberAuthUids.filter((authUid) => authUid !== targetAuthUid);
+    const adminAuthUids = Array.from(
+      new Set(group.adminAuthUids.filter((authUid) => authUid !== targetAuthUid).concat(group.ownerAuthUid))
+    );
+
+    if (adminAuthUids.length === 0) {
+      throw new Error("El grupo debe tener al menos un admin.");
+    }
+
+    transaction.update(groupRef, {
+      memberAuthUids,
+      adminAuthUids,
+      [`memberNamesByAuthUid.${targetAuthUid}`]: deleteField(),
+      updatedAt: nowIso()
+    });
+  });
+};
+
+export const leaveGroup = async (groupId: string, currentUser: User) => {
+  const cloudDb = db;
+  if (!isCloudDbEnabled() || !cloudDb) {
+    const localGroup = getLocalGroups().find((group) => group.id === groupId);
+    if (!localGroup) {
+      throw new Error("Grupo no encontrado.");
+    }
+    if (localGroup.ownerAuthUid === currentUser.id) {
+      throw new Error("El admin principal no puede salir del grupo.");
+    }
+    const updated = leaveGroupLocal(groupId, currentUser.id);
+    if (!updated) {
+      throw new Error("No se pudo salir del grupo.");
+    }
+    return;
+  }
+
+  const actorAuthUid = auth?.currentUser?.uid;
+  if (!actorAuthUid) {
+    throw new Error("Necesitás iniciar sesión.");
+  }
+
+  await runTransaction(cloudDb, async (transaction) => {
+    const groupRef = doc(cloudDb, groupCollection, groupId);
+    const groupSnapshot = await transaction.get(groupRef);
+    if (!groupSnapshot.exists()) {
+      throw new Error("Grupo no encontrado.");
+    }
+    const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
+    if (group.isDeleted) {
+      throw new Error("El grupo ya no está disponible.");
+    }
+    if (group.ownerAuthUid === actorAuthUid) {
+      throw new Error("El admin principal no puede salir del grupo.");
+    }
+    if (!group.memberAuthUids.includes(actorAuthUid)) {
+      throw new Error("No pertenecés a este grupo.");
+    }
+
+    const memberAuthUids = group.memberAuthUids.filter((authUid) => authUid !== actorAuthUid);
+    const adminAuthUids = group.adminAuthUids.filter((authUid) => authUid !== actorAuthUid);
+
+    if (adminAuthUids.length === 0) {
+      throw new Error("El grupo debe tener al menos un admin.");
+    }
+
+    transaction.update(groupRef, {
+      memberAuthUids,
+      adminAuthUids,
+      [`memberNamesByAuthUid.${actorAuthUid}`]: deleteField(),
+      updatedAt: nowIso()
+    });
+  });
+};
+
+export const deleteGroup = async (groupId: string, currentUser: User) => {
+  const cloudDb = db;
+  if (!isCloudDbEnabled() || !cloudDb) {
+    const localGroup = getLocalGroups().find((group) => group.id === groupId);
+    if (!localGroup) {
+      throw new Error("Grupo no encontrado.");
+    }
+    if (!isGroupAdmin(localGroup, currentUser.id)) {
+      throw new Error("Solo administradores pueden eliminar el grupo.");
+    }
+    const deleted = deleteGroupLocal(groupId, currentUser.id);
+    if (!deleted) {
+      throw new Error("No se pudo eliminar el grupo.");
+    }
+
+    const reservations = getReservations();
+    const next = reservations.map((reservation) =>
+      reservation.groupId === groupId
+        ? {
+            ...reservation,
+            groupId: "default-group",
+            groupName: undefined,
+            visibilityScope: "link_only" as const,
+            updatedAt: nowIso()
+          }
+        : reservation
+    );
+    localStorage.setItem("golf-padel-reservations", JSON.stringify(next));
+    window.dispatchEvent(new Event("golf-padel-store-updated"));
+    return;
+  }
+
+  const actorAuthUid = auth?.currentUser?.uid;
+  if (!actorAuthUid) {
+    throw new Error("Necesitás iniciar sesión.");
+  }
+
+  const groupRef = doc(cloudDb, groupCollection, groupId);
+  const groupSnapshot = await getDoc(groupRef);
+  if (!groupSnapshot.exists()) {
+    throw new Error("Grupo no encontrado.");
+  }
+  const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
+  if (group.isDeleted) {
+    return;
+  }
+  if (!isGroupAdmin(group, actorAuthUid)) {
+    throw new Error("Solo administradores pueden eliminar el grupo.");
+  }
+
+  await setDoc(
+    groupRef,
+    stripUndefinedDeep({
+      isDeleted: true,
+      deletedAt: nowIso(),
+      deletedByAuthUid: actorAuthUid,
+      updatedAt: nowIso()
+    }),
+    { merge: true }
+  );
+
+  const reservationsSnapshot = await getDocs(
+    query(collection(cloudDb, reservationCollection), where("groupId", "==", groupId))
+  );
+  const reservationUpdates = reservationsSnapshot.docs.map((snapshotDoc) => snapshotDoc.ref);
+  await runBatchedDocUpdates(reservationUpdates, () => ({
+    groupId: "default-group",
+    groupName: deleteField(),
+    visibilityScope: "link_only",
+    updatedAt: nowIso()
+  }));
+
+  const groupInvitesSnapshot = await getDocs(
+    query(collection(cloudDb, groupInviteCollection), where("groupId", "==", groupId))
+  );
+  const groupInviteRefs = groupInvitesSnapshot.docs
+    .filter((snapshotDoc) => (snapshotDoc.data() as GroupInvite).status === "active")
+    .map((snapshotDoc) => snapshotDoc.ref);
+  await runBatchedDocUpdates(groupInviteRefs, () => ({
+    status: "revoked",
+    updatedAt: nowIso()
+  }));
 };
 
 export const createReservation = async (input: ReservationInput, currentUser: User) => {
@@ -1067,6 +1322,9 @@ export const createGroupInviteLink = async (
     throw new Error("Grupo no encontrado.");
   }
   const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
+  if (group.isDeleted) {
+    throw new Error("El grupo ya no está disponible.");
+  }
   if (!isGroupAdmin(group, actorAuthUid)) {
     throw new Error("Solo administradores del grupo pueden invitar.");
   }
@@ -1158,6 +1416,9 @@ const acceptInviteTokenCloudFallback = async (
         throw new Error("Grupo no encontrado.");
       }
       const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
+      if (group.isDeleted) {
+        throw new Error("Este grupo ya no está disponible.");
+      }
       if (!group.memberAuthUids.includes(currentUser.id)) {
         transaction.update(groupRef, {
           memberAuthUids: [...group.memberAuthUids, currentUser.id],

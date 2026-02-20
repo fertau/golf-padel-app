@@ -11,7 +11,8 @@
     "auth:delete-anonymous": "node scripts/deleteAnonymousAuthUsers.mjs",
     "migrate:mi-grupo": "node scripts/migrateReservationsToMiGrupo.mjs",
     "repair:mi-grupo": "node scripts/repairMiGrupoData.mjs",
-    "backfill:reservation-visibility": "node scripts/backfillReservationVisibilityScope.mjs"
+    "backfill:reservation-visibility": "node scripts/backfillReservationVisibilityScope.mjs",
+    "cleanup:forced-mi-grupo": "node scripts/cleanupForcedMiGrupo.mjs"
   },
   "dependencies": {
     "date-fns": "^4.1.0",

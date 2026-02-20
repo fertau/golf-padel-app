@@ -13,15 +13,19 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/groups/$(groupId)).data;
     }
 
+    function isActiveGroup(groupId) {
+      return groupExists(groupId) && groupData(groupId).isDeleted != true;
+    }
+
     function isGroupMember(groupId) {
       return isSignedIn() &&
-        groupExists(groupId) &&
+        isActiveGroup(groupId) &&
         request.auth.uid in groupData(groupId).memberAuthUids;
     }
 
     function isGroupAdmin(groupId) {
       return isSignedIn() &&
-        groupExists(groupId) &&
+        isActiveGroup(groupId) &&
         (
           groupData(groupId).ownerAuthUid == request.auth.uid ||
           request.auth.uid in groupData(groupId).adminAuthUids
@@ -30,13 +34,21 @@ service cloud.firestore {
 
     function canReadReservation(data) {
       return isSignedIn() && (
-        data.createdByAuthUid == request.auth.uid ||
+        isReservationCreator(data) ||
         (("guestAccessUids" in data) && request.auth.uid in data.guestAccessUids) ||
         (
           isGroupScopedReservation(data) &&
           isGroupMember(data.groupId)
         )
       );
+    }
+
+    function isReservationCreator(data) {
+      return data.createdByAuthUid == request.auth.uid ||
+        (
+          ("createdBy" in data) &&
+          data.createdBy.id == request.auth.uid
+        );
     }
 
     function reservationScope(data) {
@@ -60,7 +72,7 @@ service cloud.firestore {
 
     function isReservationManager(data) {
       return isSignedIn() && (
-        data.createdByAuthUid == request.auth.uid ||
+        isReservationCreator(data) ||
         (isGroupScopedReservation(data) && isGroupAdmin(data.groupId))
       );
     }
@@ -118,14 +130,18 @@ service cloud.firestore {
     }
 
     match /groups/{groupId} {
-      allow read: if isSignedIn() && request.auth.uid in resource.data.memberAuthUids;
+      allow read: if isSignedIn() &&
+        resource.data.isDeleted != true &&
+        request.auth.uid in resource.data.memberAuthUids;
 
       allow create: if isSignedIn() &&
         request.resource.data.ownerAuthUid == request.auth.uid &&
         request.auth.uid in request.resource.data.memberAuthUids &&
         request.auth.uid in request.resource.data.adminAuthUids;
 
-      allow update: if isGroupAdmin(groupId);
+      allow update: if isGroupAdmin(groupId) &&
+        resource.data.isDeleted != true &&
+        request.resource.data.ownerAuthUid == resource.data.ownerAuthUid;
       allow delete: if false;
     }
 

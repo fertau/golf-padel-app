@@ -45,6 +45,9 @@ export type Group = {
   adminAuthUids: string[];
   memberNamesByAuthUid: Record<string, string>;
   venueIds: string[];
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedByAuthUid?: string;
   createdAt: string;
   updatedAt: string;
 };

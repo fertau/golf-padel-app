@@ -56,6 +56,7 @@ const run = async () => {
       adminAuthUids: [ownerAuthUid],
       memberNamesByAuthUid: {},
       venueIds: [],
+      isDeleted: false,
       createdAt: nowIso(),
       updatedAt: nowIso()
     });

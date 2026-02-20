@@ -36,7 +36,16 @@ const write = <T>(key: string, value: T) => {
 
 const getInviteStore = (): Record<string, InviteRecord> => read<Record<string, InviteRecord>>(INVITES_KEY, {});
 
-export const getLocalGroups = (): Group[] => read<Group[]>(GROUPS_KEY, []);
+const normalizeLocalGroup = (group: Group): Group => ({
+  ...group,
+  memberAuthUids: group.memberAuthUids ?? [],
+  adminAuthUids: group.adminAuthUids ?? [],
+  memberNamesByAuthUid: group.memberNamesByAuthUid ?? {},
+  venueIds: group.venueIds ?? [],
+  isDeleted: group.isDeleted ?? false
+});
+
+export const getLocalGroups = (): Group[] => read<Group[]>(GROUPS_KEY, []).map(normalizeLocalGroup);
 export const getLocalVenues = (): Venue[] => read<Venue[]>(VENUES_KEY, []);
 export const getLocalCourts = (): Court[] => read<Court[]>(COURTS_KEY, []);
 
@@ -46,7 +55,7 @@ export const subscribeLocalGroupsForUser = (
 ) => {
   const handler = () => {
     const groups = getLocalGroups()
-      .filter((group) => group.memberAuthUids.includes(authUid))
+      .filter((group) => !group.isDeleted && group.memberAuthUids.includes(authUid))
       .sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
     onChange(groups);
   };
@@ -98,6 +107,7 @@ export const createGroupLocal = (name: string, user: User): Group => {
     adminAuthUids: [user.id],
     memberNamesByAuthUid: { [user.id]: user.name },
     venueIds: [],
+    isDeleted: false,
     createdAt: timestamp,
     updatedAt: timestamp
   };
@@ -117,6 +127,9 @@ export const renameGroupLocal = (groupId: string, name: string): Group | null =>
     if (group.id !== groupId) {
       return group;
     }
+    if (group.isDeleted) {
+      return group;
+    }
     nextGroup = {
       ...group,
       name: trimmed,
@@ -130,7 +143,7 @@ export const renameGroupLocal = (groupId: string, name: string): Group | null =>
 
 export const ensureDefaultGroupLocal = (user: User): Group => {
   const groups = getLocalGroups();
-  const existing = groups.find((group) => group.memberAuthUids.includes(user.id));
+  const existing = groups.find((group) => !group.isDeleted && group.memberAuthUids.includes(user.id));
   if (existing) {
     if (existing.adminAuthUids.includes(user.id)) {
       return existing;
@@ -158,6 +171,7 @@ export const addGroupMemberLocal = (
   let nextGroup: Group | null = null;
   const next = groups.map((group) => {
     if (group.id !== groupId) return group;
+    if (group.isDeleted) return group;
     const memberAuthUids = group.memberAuthUids.includes(user.id)
       ? group.memberAuthUids
       : [...group.memberAuthUids, user.id];
@@ -192,6 +206,9 @@ export const setGroupMemberAdminLocal = (
     if (group.id !== groupId) {
       return group;
     }
+    if (group.isDeleted) {
+      return group;
+    }
     if (!group.memberAuthUids.includes(targetAuthUid)) {
       return group;
     }
@@ -206,6 +223,89 @@ export const setGroupMemberAdminLocal = (
     nextGroup = {
       ...group,
       adminAuthUids,
+      updatedAt: nowIso()
+    };
+    return nextGroup;
+  });
+  write(GROUPS_KEY, next);
+  return nextGroup;
+};
+
+export const removeGroupMemberLocal = (groupId: string, targetAuthUid: string): Group | null => {
+  const groups = getLocalGroups();
+  let nextGroup: Group | null = null;
+  const next = groups.map((group) => {
+    if (group.id !== groupId) return group;
+    if (group.isDeleted) return group;
+    if (group.ownerAuthUid === targetAuthUid) return group;
+    if (!group.memberAuthUids.includes(targetAuthUid)) return group;
+
+    const memberAuthUids = group.memberAuthUids.filter((authUid) => authUid !== targetAuthUid);
+    const adminAuthUids = group.adminAuthUids.filter((authUid) => authUid !== targetAuthUid);
+
+    if (adminAuthUids.length === 0) {
+      return group;
+    }
+
+    const memberNamesByAuthUid = { ...group.memberNamesByAuthUid };
+    delete memberNamesByAuthUid[targetAuthUid];
+
+    nextGroup = {
+      ...group,
+      memberAuthUids,
+      adminAuthUids,
+      memberNamesByAuthUid,
+      updatedAt: nowIso()
+    };
+    return nextGroup;
+  });
+  write(GROUPS_KEY, next);
+  return nextGroup;
+};
+
+export const leaveGroupLocal = (groupId: string, authUid: string): Group | null => {
+  const groups = getLocalGroups();
+  let nextGroup: Group | null = null;
+  const next = groups.map((group) => {
+    if (group.id !== groupId) return group;
+    if (group.isDeleted) return group;
+    if (group.ownerAuthUid === authUid) return group;
+    if (!group.memberAuthUids.includes(authUid)) return group;
+
+    const memberAuthUids = group.memberAuthUids.filter((uid) => uid !== authUid);
+    const adminAuthUids = group.adminAuthUids.filter((uid) => uid !== authUid);
+
+    if (adminAuthUids.length === 0) {
+      return group;
+    }
+
+    const memberNamesByAuthUid = { ...group.memberNamesByAuthUid };
+    delete memberNamesByAuthUid[authUid];
+
+    nextGroup = {
+      ...group,
+      memberAuthUids,
+      adminAuthUids,
+      memberNamesByAuthUid,
+      updatedAt: nowIso()
+    };
+    return nextGroup;
+  });
+  write(GROUPS_KEY, next);
+  return nextGroup;
+};
+
+export const deleteGroupLocal = (groupId: string, deletedByAuthUid: string): Group | null => {
+  const groups = getLocalGroups();
+  let nextGroup: Group | null = null;
+  const next = groups.map((group) => {
+    if (group.id !== groupId) return group;
+    if (group.isDeleted) return group;
+    nextGroup = {
+      ...group,
+      isDeleted: true,
+      deletedAt: nowIso(),
+      deletedByAuthUid,
       updatedAt: nowIso()
     };
     return nextGroup;

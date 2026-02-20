@@ -35,8 +35,11 @@ import {
   createGroupInviteLink,
   createReservation,
   createReservationInviteLink,
+  deleteGroup,
   isCloudDbEnabled,
+  leaveGroup,
   migrateLegacyReservationsForUser,
+  removeGroupMember,
   renameGroup,
   setGroupMemberAdmin,
   setAttendanceStatus,
@@ -729,6 +732,29 @@ export default function App() {
     await setGroupMemberAdmin(groupId, targetAuthUid, makeAdmin, currentUser);
   };
 
+  const handleRemoveGroupMember = async (groupId: string, targetAuthUid: string) => {
+    if (!currentUser) {
+      throw new Error("Necesitás iniciar sesión.");
+    }
+    await removeGroupMember(groupId, targetAuthUid, currentUser);
+  };
+
+  const handleLeaveGroup = async (groupId: string) => {
+    if (!currentUser) {
+      throw new Error("Necesitás iniciar sesión.");
+    }
+    await leaveGroup(groupId, currentUser);
+    setActiveGroupScope("all");
+  };
+
+  const handleDeleteGroup = async (groupId: string) => {
+    if (!currentUser) {
+      throw new Error("Necesitás iniciar sesión.");
+    }
+    await deleteGroup(groupId, currentUser);
+    setActiveGroupScope("all");
+  };
+
   const handleUpdateDisplayName = async (nextName: string) => {
     const firebaseAuth = auth;
     if (!firebaseAuth?.currentUser) {
@@ -1032,6 +1058,9 @@ export default function App() {
             onRenameGroup={handleRenameGroup}
             onCreateGroupInvite={handleCreateGroupInviteLink}
             onSetGroupMemberAdmin={handleSetGroupMemberAdmin}
+            onRemoveGroupMember={handleRemoveGroupMember}
+            onLeaveGroup={handleLeaveGroup}
+            onDeleteGroup={handleDeleteGroup}
             onLogout={handleLogout}
             onRequestNotifications={registerPushToken}
             onUpdateDisplayName={handleUpdateDisplayName}

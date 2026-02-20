@@ -54,7 +54,12 @@ export default async function handler(
         const group = groupSnapshot.data() as {
           memberAuthUids: string[];
           memberNamesByAuthUid: Record<string, string>;
+          isDeleted?: boolean;
         };
+
+        if (group.isDeleted === true) {
+          throw new Error("Este grupo ya no está disponible.");
+        }
 
         const memberAuthUids = group.memberAuthUids.includes(authUid)
           ? group.memberAuthUids
