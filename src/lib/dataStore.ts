@@ -550,13 +550,14 @@ export const subscribeReservations = (
       () => {
         reservationSlices.delete(sliceKey);
         emit();
+        fallbackToApi(true);
       }
     );
     reservationUnsubscribers.push(unsubscribe);
   };
 
-  const fallbackToApi = () => {
-    if (fallbackRequested) {
+  const fallbackToApi = (force = false) => {
+    if (fallbackRequested && !force) {
       return;
     }
     fallbackRequested = true;
@@ -606,6 +607,7 @@ export const subscribeReservations = (
       lastAllowedGroupIdsKey = nextKey;
       allowedGroupIds = new Set(groupIds);
       rebuildReservationSubscriptions(groupIds);
+      fallbackToApi(true);
     }
     emit();
   };
@@ -636,9 +638,7 @@ export const subscribeReservations = (
   subscribeGroupSlice("group-owners", groupQueries.owners);
   subscribeGroupSlice("group-admins", groupQueries.admins);
   fallbackTimer = window.setTimeout(() => {
-    if (allowedGroupIds.size === 0) {
-      fallbackToApi();
-    }
+    fallbackToApi(true);
   }, 3500);
 
   return () => {
