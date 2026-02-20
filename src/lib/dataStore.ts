@@ -24,9 +24,7 @@ import {
 import {
   addGroupMemberLocal,
   createCourtLocal,
-  createGroupInviteLocal,
   createGroupLocal,
-  createReservationInviteLocal,
   createVenueLocal,
   ensureDefaultGroupLocal,
   getInviteByTokenLocal,
@@ -1026,15 +1024,14 @@ export const updateReservationDetails = async (
 
 export const createGroupInviteLink = async (
   groupId: string,
-  currentUser: User,
+  _currentUser: User,
   baseUrl: string,
   channel: GroupInvite["channel"] = "link"
 ): Promise<string> => {
   const cloudDb = db;
   const normalizedBase = baseUrl.replace(/\/+$/, "");
   if (!isCloudDbEnabled() || !cloudDb) {
-    const invite = createGroupInviteLocal(groupId, currentUser.id, channel);
-    return `${normalizedBase}/join/${invite.token}`;
+    throw new Error("Las invitaciones por link requieren sincronización activa.");
   }
 
   const actorAuthUid = auth?.currentUser?.uid;
@@ -1068,19 +1065,14 @@ export const createGroupInviteLink = async (
 
 export const createReservationInviteLink = async (
   reservationId: string,
-  currentUser: User,
+  _currentUser: User,
   baseUrl: string,
   channel: ReservationInvite["channel"] = "link"
 ): Promise<string> => {
   const cloudDb = db;
   const normalizedBase = baseUrl.replace(/\/+$/, "");
   if (!isCloudDbEnabled() || !cloudDb) {
-    const reservation = getReservations().find((candidate) => candidate.id === reservationId);
-    if (!reservation) {
-      throw new Error("Reserva no encontrada.");
-    }
-    const invite = createReservationInviteLocal(reservation.groupId, reservationId, currentUser.id, channel);
-    return `${normalizedBase}/join/${invite.token}`;
+    throw new Error("Las invitaciones por link requieren sincronización activa.");
   }
 
   const actorAuthUid = auth?.currentUser?.uid;
