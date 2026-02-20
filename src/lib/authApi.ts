@@ -81,7 +81,7 @@ export const fetchAccountsByIds = async (ids: string[]): Promise<AccountProfile[
     return [];
   }
 
-  const response = await fetch("/api/auth/by-ids", {
+  const response = await fetch("/api/auth/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ids })

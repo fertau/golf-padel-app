@@ -218,9 +218,10 @@ export const listMyReservationHistory = async (limit = 200): Promise<Reservation
 
   const headers = await buildAuthHeader();
   const params = new URLSearchParams({
+    mode: "history",
     limit: String(Math.min(Math.max(limit, 1), 500))
   });
-  const response = await fetch(`/api/reservations/history?${params.toString()}`, {
+  const response = await fetch(`/api/reservations/list?${params.toString()}`, {
     method: "GET",
     headers
   });

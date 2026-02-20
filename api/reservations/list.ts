@@ -2,6 +2,8 @@ import { adminDb } from "../_lib/firebaseAdmin.js";
 import { requireAuthUid } from "../_lib/auth.js";
 import type { VercelRequestLike, VercelResponseLike } from "../_lib/http.js";
 
+const parseQueryValue = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
+
 const chunkItems = <T,>(items: T[], size: number): T[][] => {
   const out: T[][] = [];
   for (let i = 0; i < items.length; i += size) {
@@ -27,8 +29,19 @@ const isRelatedToUser = (reservation: Record<string, any>, authUid: string) => {
   return false;
 };
 
+const toTimestamp = (value: unknown): number | null => {
+  if (typeof value !== "string" || value.length === 0) {
+    return null;
+  }
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 export default async function handler(
-  req: VercelRequestLike & { headers?: Record<string, string | string[] | undefined> },
+  req: VercelRequestLike & {
+    headers?: Record<string, string | string[] | undefined>;
+    query?: Record<string, string | string[] | undefined>;
+  },
   res: VercelResponseLike
 ) {
   if (req.method !== "GET") {
@@ -38,6 +51,44 @@ export default async function handler(
 
   try {
     const authUid = await requireAuthUid(req);
+    const mode = parseQueryValue(req.query?.mode)?.trim().toLowerCase() ?? "active";
+
+    if (mode === "history") {
+      const rawLimit = Number.parseInt(parseQueryValue(req.query?.limit) ?? "200", 10);
+      const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 500) : 200;
+      const now = Date.now();
+
+      const [createdSnapshot, legacyCreatedSnapshot, guestSnapshot, fullSnapshot] = await Promise.all([
+        adminDb.collection("reservations").where("createdByAuthUid", "==", authUid).get(),
+        adminDb.collection("reservations").where("createdBy.id", "==", authUid).get(),
+        adminDb.collection("reservations").where("guestAccessUids", "array-contains", authUid).get(),
+        adminDb.collection("reservations").get()
+      ]);
+
+      const mergedHistory = new Map<string, Record<string, any>>();
+      [createdSnapshot, legacyCreatedSnapshot, guestSnapshot, fullSnapshot].forEach((snapshot) => {
+        snapshot.docs.forEach((snapshotDoc) => {
+          const data = snapshotDoc.data() ?? {};
+          const reservation = { id: snapshotDoc.id, ...data };
+          if (!isRelatedToUser(reservation, authUid)) {
+            return;
+          }
+          const timestamp = toTimestamp(reservation.startDateTime);
+          if (timestamp === null || timestamp >= now) {
+            return;
+          }
+          mergedHistory.set(snapshotDoc.id, reservation);
+        });
+      });
+
+      const reservations = Array.from(mergedHistory.values())
+        .sort((a, b) => (toTimestamp(b.startDateTime) ?? 0) - (toTimestamp(a.startDateTime) ?? 0))
+        .slice(0, limit);
+
+      res.status(200).json({ reservations });
+      return;
+    }
+
     const [memberSnapshot, ownerSnapshot, adminSnapshot] = await Promise.all([
       adminDb.collection("groups").where("memberAuthUids", "array-contains", authUid).get(),
       adminDb.collection("groups").where("ownerAuthUid", "==", authUid).get(),
