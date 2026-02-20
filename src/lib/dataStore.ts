@@ -335,6 +335,27 @@ const renameGroupCloudFallback = async (groupId: string, name: string) => {
   }
 };
 
+const createReservationCloudFallback = async (input: ReservationInput, currentUser: User) => {
+  const headers = await buildAuthHeader();
+  const response = await fetch("/api/reservations/list", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...headers
+    },
+    body: JSON.stringify({
+      ...input,
+      currentUserName: currentUser.name
+    })
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { ok?: boolean; reservationId?: string; error?: string }
+    | null;
+  if (!response.ok) {
+    throw new Error(payload?.error ?? "No se pudo crear la reserva.");
+  }
+};
+
 const isGroupAdmin = (group: Group, authUid: string) =>
   !group.isDeleted && (group.ownerAuthUid === authUid || group.adminAuthUids.includes(authUid));
 
@@ -1258,6 +1279,26 @@ export const createReservation = async (input: ReservationInput, currentUser: Us
   const actorAuthUid = auth?.currentUser?.uid;
   if (!actorAuthUid) {
     throw new Error("Necesitás iniciar sesión.");
+  }
+
+  try {
+    await createReservationCloudFallback(
+      {
+        ...input,
+        visibilityScope: requestedScope
+      },
+      currentUser
+    );
+    return;
+  } catch (apiError) {
+    const message = (apiError as Error).message || "";
+    const canTryClientFallback =
+      /failed to fetch/i.test(message) ||
+      /method not allowed/i.test(message) ||
+      /not found/i.test(message);
+    if (!canTryClientFallback) {
+      throw apiError;
+    }
   }
 
   let group: Group | null = null;
