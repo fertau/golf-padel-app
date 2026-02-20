@@ -3,6 +3,7 @@ import type { AttendanceStatus, Reservation, User, Signup } from "../lib/types";
 import {
   buildWhatsAppMessage,
   canJoinReservation,
+  copyTextWithFallback,
   getSignupsByStatus,
   getUserAttendance,
   isGenericDisplayName,
@@ -83,8 +84,13 @@ export default function ReservationDetail({
         // Fallback
       }
     }
-    await navigator.clipboard.writeText(message);
-    onFeedback("Mensaje copiado.");
+    const copied = await copyTextWithFallback(message);
+    if (copied) {
+      onFeedback("Mensaje copiado.");
+    } else {
+      window.prompt("Copiá el mensaje manualmente:", message);
+      onFeedback("Copiá el mensaje manualmente.");
+    }
   };
 
   const isCreator = isReservationCreator(reservation, currentUser.id);
@@ -140,8 +146,13 @@ export default function ReservationDetail({
         window.open(`mailto:${recipient}?subject=${subject}&body=${encodedMessage}`, "_self");
         onFeedback("Abriendo email...");
       } else {
-        await navigator.clipboard.writeText(inviteLink);
-        onFeedback("Link copiado.");
+        const copied = await copyTextWithFallback(inviteLink);
+        if (copied) {
+          onFeedback("Link copiado.");
+        } else {
+          window.prompt("Copiá el link manualmente:", inviteLink);
+          onFeedback("Copiá el link manualmente.");
+        }
       }
       triggerHaptic("medium");
     } catch (error) {

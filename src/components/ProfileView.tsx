@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Group, User } from "../lib/types";
-import { isValidDisplayName, normalizeDisplayName, triggerHaptic } from "../lib/utils";
+import { copyTextWithFallback, isValidDisplayName, normalizeDisplayName, triggerHaptic } from "../lib/utils";
 
 type Props = {
   user: User;
@@ -115,8 +115,12 @@ export default function ProfileView({
         const recipient = encodeURIComponent(emailTo);
         window.open(`mailto:${recipient}?subject=${subject}&body=${encoded}`, "_self");
       } else {
-        await navigator.clipboard.writeText(message);
-        alert("Invitación copiada.");
+        const copied = await copyTextWithFallback(message);
+        if (copied) {
+          alert("Invitación copiada.");
+        } else {
+          window.prompt("Copiá la invitación manualmente:", message);
+        }
       }
       triggerHaptic("medium");
     } catch (error) {

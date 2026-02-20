@@ -25,6 +25,48 @@ export const triggerHaptic = (style: "light" | "medium" | "heavy" = "light") => 
   window.navigator.vibrate(patterns[style]);
 };
 
+export const copyTextWithFallback = async (text: string): Promise<boolean> => {
+  try {
+    if (navigator.clipboard && document.hasFocus()) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // fallback below
+  }
+
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.pointerEvents = "none";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+    const copied = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    if (copied) {
+      return true;
+    }
+  } catch {
+    // fallback below
+  }
+
+  try {
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // ignore
+  }
+
+  return false;
+};
+
 const GENERIC_DISPLAY_NAMES = new Set(["jugador", "player", "usuario", "user", "guest"]);
 
 export const normalizeDisplayName = (value: string): string =>
