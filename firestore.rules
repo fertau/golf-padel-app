@@ -200,10 +200,7 @@ service cloud.firestore {
         request.resource.data.createdByAuthUid == request.auth.uid &&
         reservationExists(request.resource.data.reservationId) &&
         request.resource.data.groupId == reservationData(request.resource.data.reservationId).groupId &&
-        (
-          reservationData(request.resource.data.reservationId).createdByAuthUid == request.auth.uid ||
-          isGroupAdmin(request.resource.data.groupId)
-        );
+        reservationData(request.resource.data.reservationId).createdByAuthUid == request.auth.uid;
       allow update: if false;
       allow delete: if false;
     }

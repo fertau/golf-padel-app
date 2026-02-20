@@ -40,6 +40,7 @@ import {
   leaveGroup,
   migrateLegacyReservationsForUser,
   removeGroupMember,
+  reassignReservationCreator,
   renameGroup,
   setGroupMemberAdmin,
   setAttendanceStatus,
@@ -812,6 +813,24 @@ export default function App() {
     }
   };
 
+  const handleReassignReservationCreator = async (
+    reservationId: string,
+    targetAuthUid: string,
+    targetName: string
+  ) => {
+    if (!currentUser) return;
+    try {
+      setBusy(true);
+      await reassignReservationCreator(reservationId, targetAuthUid, targetName, currentUser);
+      triggerHaptic("medium");
+      setToastMessage("Creador de reserva actualizado.");
+    } catch (error) {
+      alert((error as Error).message || "No se pudo reasignar el creador.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const saveMandatoryDisplayName = async () => {
     const normalized = normalizeDisplayName(nameDraft);
     if (!isValidDisplayName(normalized)) {
@@ -1109,6 +1128,7 @@ export default function App() {
               onSetAttendanceStatus={(rid, s) => setAttendanceStatus(rid, currentUser, s)}
               onCancel={handleCancelReservation}
               onCreateGuestInvite={handleCreateGuestInviteLink}
+              onReassignCreator={handleReassignReservationCreator}
               onFeedback={setToastMessage}
               onUpdateReservation={handleUpdateReservation}
             />

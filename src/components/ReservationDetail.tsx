@@ -23,6 +23,7 @@ type Props = {
     reservationId: string,
     channel?: "whatsapp" | "email" | "link"
   ) => Promise<string>;
+  onReassignCreator: (reservationId: string, targetAuthUid: string, targetName: string) => Promise<void>;
   onFeedback: (message: string) => void;
   onUpdateReservation: (
     reservationId: string,
@@ -46,6 +47,7 @@ export default function ReservationDetail({
   onSetAttendanceStatus,
   onCancel,
   onCreateGuestInvite,
+  onReassignCreator,
   onFeedback,
   onUpdateReservation
 }: Props) {
@@ -103,8 +105,31 @@ export default function ReservationDetail({
   };
 
   const isCreator = isReservationCreator(reservation, currentUser.id);
+  const reservationGroup =
+    reservation.groupId && reservation.groupId !== "default-group"
+      ? groups.find((group) => group.id === reservation.groupId) ?? null
+      : null;
+  const isGroupAdminForReservation = Boolean(
+    reservationGroup &&
+      (reservationGroup.ownerAuthUid === currentUser.id || reservationGroup.adminAuthUids.includes(currentUser.id))
+  );
+  const canManageReservation = isCreator || isGroupAdminForReservation;
+  const currentCreatorAuthUid = reservation.createdByAuthUid || reservation.createdBy.id;
+  const reassignCandidates = reservationGroup
+    ? reservationGroup.memberAuthUids
+        .filter((authUid) => authUid !== currentCreatorAuthUid)
+        .map((authUid) => ({
+          authUid,
+          name:
+            reservationGroup.memberNamesByAuthUid[authUid] ??
+            signupNameByAuthUid[authUid] ??
+            `Jugador #${authUid.slice(-4).toUpperCase()}`
+        }))
+    : [];
   const [guestInviteBusy, setGuestInviteBusy] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [reassignTargetAuthUid, setReassignTargetAuthUid] = useState("");
+  const [reassignBusy, setReassignBusy] = useState(false);
   const [editCourtName, setEditCourtName] = useState(reservation.courtName);
   const [editStartDateTime, setEditStartDateTime] = useState(reservation.startDateTime.slice(0, 16));
   const [editDuration, setEditDuration] = useState(reservation.durationMinutes);
@@ -121,6 +146,7 @@ export default function ReservationDetail({
     setEditDuration(reservation.durationMinutes);
     setEditVisibilityScope(reservation.visibilityScope === "group" ? "group" : "link_only");
     setEditGroupId(reservation.visibilityScope === "group" && reservation.groupId !== "default-group" ? reservation.groupId : "");
+    setReassignTargetAuthUid("");
   }, [reservation.id, reservation.courtName, reservation.startDateTime, reservation.durationMinutes, reservation.visibilityScope, reservation.groupId]);
 
   const confirmed = getSignupsByStatus(reservation, "confirmed");
@@ -199,6 +225,27 @@ export default function ReservationDetail({
       return;
     }
     await onCancel(reservation.id);
+  };
+
+  const submitReassignCreator = async () => {
+    if (!reassignTargetAuthUid) {
+      onFeedback("Seleccioná un miembro para reasignar el creador.");
+      return;
+    }
+    const target = reassignCandidates.find((candidate) => candidate.authUid === reassignTargetAuthUid);
+    if (!target) {
+      onFeedback("Seleccioná un miembro válido.");
+      return;
+    }
+    try {
+      setReassignBusy(true);
+      await onReassignCreator(reservation.id, target.authUid, target.name);
+      setReassignTargetAuthUid("");
+    } catch (error) {
+      onFeedback((error as Error).message || "No se pudo reasignar el creador.");
+    } finally {
+      setReassignBusy(false);
+    }
   };
 
   const renderPlayerList = (list: Signup[], label: string, isOpen = false) => (
@@ -307,7 +354,7 @@ export default function ReservationDetail({
           Google Calendar
         </button>
 
-        {isCreator && (
+        {canManageReservation && (
           <div className="creator-actions-elite compact">
             <button className="btn-secondary-elite" onClick={openWhatsApp}>
               Compartir por WhatsApp
@@ -315,15 +362,19 @@ export default function ReservationDetail({
             <details className="action-menu-elite">
               <summary>Más acciones</summary>
               <div className="action-menu-content">
-                <button className="btn-secondary-elite" onClick={() => inviteGuest("whatsapp")} disabled={guestInviteBusy}>
-                  {guestInviteBusy ? "Generando..." : "Invitar externo WA"}
-                </button>
-                <button className="btn-secondary-elite" onClick={() => inviteGuest("email")} disabled={guestInviteBusy}>
-                  Invitar externo por email
-                </button>
-                <button className="btn-secondary-elite" onClick={() => inviteGuest("link")} disabled={guestInviteBusy}>
-                  Copiar link externo
-                </button>
+                {isCreator ? (
+                  <>
+                    <button className="btn-secondary-elite" onClick={() => inviteGuest("whatsapp")} disabled={guestInviteBusy}>
+                      {guestInviteBusy ? "Generando..." : "Invitar externo WA"}
+                    </button>
+                    <button className="btn-secondary-elite" onClick={() => inviteGuest("email")} disabled={guestInviteBusy}>
+                      Invitar externo por email
+                    </button>
+                    <button className="btn-secondary-elite" onClick={() => inviteGuest("link")} disabled={guestInviteBusy}>
+                      Copiar link externo
+                    </button>
+                  </>
+                ) : null}
                 <button className="btn-secondary-elite" onClick={share}>
                   Compartir (sistema)
                 </button>
@@ -338,6 +389,34 @@ export default function ReservationDetail({
           </div>
         )}
       </div>
+
+      {isGroupAdminForReservation && reservationGroup && reassignCandidates.length > 0 ? (
+        <div className="edit-pane-elite glass-panel-elite animate-fade-in edit-pane-with-top-gap">
+          <label className="elite-field-label">
+            Reasignar creador
+            <select
+              className="select-elite"
+              value={reassignTargetAuthUid}
+              onChange={(event) => setReassignTargetAuthUid(event.target.value)}
+              disabled={reassignBusy}
+            >
+              <option value="">Seleccionar miembro...</option>
+              {reassignCandidates.map((candidate) => (
+                <option key={candidate.authUid} value={candidate.authUid}>
+                  {candidate.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            className="btn-elite btn-elite-outline btn-block"
+            onClick={submitReassignCreator}
+            disabled={reassignBusy || !reassignTargetAuthUid}
+          >
+            {reassignBusy ? "Reasignando..." : "Reasignar creador"}
+          </button>
+        </div>
+      ) : null}
 
       {editing && (
         <div className="edit-pane-elite glass-panel-elite animate-fade-in edit-pane-with-top-gap">
