@@ -1,5 +1,5 @@
-import { useState } from "react";
-import type { AttendanceStatus, Reservation, User, Signup } from "../lib/types";
+import { useEffect, useState } from "react";
+import type { AttendanceStatus, Group, Reservation, User, Signup } from "../lib/types";
 import {
   buildWhatsAppMessage,
   canJoinReservation,
@@ -14,6 +14,7 @@ import {
 type Props = {
   reservation: Reservation;
   currentUser: User;
+  groups: Group[];
   appUrl: string;
   signupNameByAuthUid: Record<string, string>;
   onSetAttendanceStatus: (reservationId: string, status: AttendanceStatus) => void;
@@ -25,13 +26,21 @@ type Props = {
   onFeedback: (message: string) => void;
   onUpdateReservation: (
     reservationId: string,
-    updates: { courtName: string; startDateTime: string; durationMinutes: number }
+    updates: {
+      courtName: string;
+      startDateTime: string;
+      durationMinutes: number;
+      groupId?: string;
+      groupName?: string;
+      visibilityScope?: "group" | "link_only";
+    }
   ) => void;
 };
 
 export default function ReservationDetail({
   reservation,
   currentUser,
+  groups,
   appUrl,
   signupNameByAuthUid,
   onSetAttendanceStatus,
@@ -99,6 +108,20 @@ export default function ReservationDetail({
   const [editCourtName, setEditCourtName] = useState(reservation.courtName);
   const [editStartDateTime, setEditStartDateTime] = useState(reservation.startDateTime.slice(0, 16));
   const [editDuration, setEditDuration] = useState(reservation.durationMinutes);
+  const [editVisibilityScope, setEditVisibilityScope] = useState<"group" | "link_only">(
+    reservation.visibilityScope === "group" ? "group" : "link_only"
+  );
+  const [editGroupId, setEditGroupId] = useState(
+    reservation.visibilityScope === "group" && reservation.groupId !== "default-group" ? reservation.groupId : ""
+  );
+
+  useEffect(() => {
+    setEditCourtName(reservation.courtName);
+    setEditStartDateTime(reservation.startDateTime.slice(0, 16));
+    setEditDuration(reservation.durationMinutes);
+    setEditVisibilityScope(reservation.visibilityScope === "group" ? "group" : "link_only");
+    setEditGroupId(reservation.visibilityScope === "group" && reservation.groupId !== "default-group" ? reservation.groupId : "");
+  }, [reservation.id, reservation.courtName, reservation.startDateTime, reservation.durationMinutes, reservation.visibilityScope, reservation.groupId]);
 
   const confirmed = getSignupsByStatus(reservation, "confirmed");
   const maybe = getSignupsByStatus(reservation, "maybe");
@@ -117,10 +140,18 @@ export default function ReservationDetail({
   const eligibility = canJoinReservation(reservation, currentUser);
 
   const submitEdit = () => {
+    const selectedGroup = groups.find((group) => group.id === editGroupId) ?? null;
+    if (editVisibilityScope === "group" && !selectedGroup) {
+      onFeedback("Seleccioná un grupo para esta reserva.");
+      return;
+    }
     onUpdateReservation(reservation.id, {
       courtName: editCourtName,
       startDateTime: editStartDateTime,
-      durationMinutes: editDuration
+      durationMinutes: editDuration,
+      visibilityScope: editVisibilityScope,
+      groupId: editVisibilityScope === "group" ? selectedGroup?.id : undefined,
+      groupName: editVisibilityScope === "group" ? selectedGroup?.name : undefined
     });
     setEditing(false);
     triggerHaptic("medium");
@@ -212,6 +243,7 @@ export default function ReservationDetail({
           <p className="reservation-status-pill cancelled">Cancelada</p>
         ) : null}
         {reservation.groupName ? <p className="private-hint">{reservation.groupName}</p> : null}
+        {!reservation.groupName ? <p className="private-hint">Solo por link</p> : null}
         {reservation.venueName ? (
           <p className="private-hint">
             {reservation.venueName}
@@ -322,6 +354,30 @@ export default function ReservationDetail({
               <option value={60}>60m</option><option value={90}>90m</option><option value={120}>120m</option>
             </select>
           </label>
+          <label className="elite-field-label">Alcance
+            <select
+              className="select-elite"
+              value={editVisibilityScope}
+              onChange={(e) => setEditVisibilityScope(e.target.value as "group" | "link_only")}
+            >
+              <option value="group">Por grupo</option>
+              <option value="link_only">Solo por link</option>
+            </select>
+          </label>
+          {editVisibilityScope === "group" ? (
+            <label className="elite-field-label">Grupo
+              <select className="select-elite" value={editGroupId} onChange={(e) => setEditGroupId(e.target.value)}>
+                <option value="">Seleccionar grupo...</option>
+                {groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <p className="private-hint">Solo podrán acceder por link (o invitados puntuales).</p>
+          )}
           <button className="btn-elite btn-elite-accent btn-block" onClick={submitEdit}>Guardar cambios</button>
         </div>
       )}

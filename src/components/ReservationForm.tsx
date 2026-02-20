@@ -9,8 +9,9 @@ type Props = {
   courts: Court[];
   defaultGroupId?: string;
   onCreate: (payload: {
-    groupId: string;
+    groupId?: string;
     groupName?: string;
+    visibilityScope?: "group" | "link_only";
     venueId?: string;
     venueName?: string;
     venueAddress?: string;
@@ -25,6 +26,7 @@ type Props = {
 
 const SUGGESTED_TIMES = ["17:00", "18:30", "20:00", "21:30"] as const;
 const NEW_BADGE = "Nuevo";
+const LINK_ONLY_GROUP_VALUE = "__link_only__";
 
 const getTodayLocalDate = (): string => {
   const now = new Date();
@@ -51,7 +53,7 @@ export default function ReservationForm({
   courts,
   defaultGroupId
 }: Props) {
-  const [groupId, setGroupId] = useState(defaultGroupId ?? groups[0]?.id ?? "");
+  const [groupId, setGroupId] = useState(defaultGroupId ?? groups[0]?.id ?? LINK_ONLY_GROUP_VALUE);
   const [venueQuery, setVenueQuery] = useState("");
   const [selectedVenueId, setSelectedVenueId] = useState("");
   const [venueAddress, setVenueAddress] = useState("");
@@ -69,16 +71,19 @@ export default function ReservationForm({
   const [durationMinutes, setDurationMinutes] = useState(90);
 
   const selectedGroup = useMemo(() => groups.find((group) => group.id === groupId) ?? null, [groups, groupId]);
+  const linkOnlyMode = groupId === LINK_ONLY_GROUP_VALUE;
 
   const availableVenues = useMemo(() => {
+    if (linkOnlyMode) return venues;
     if (!selectedGroup) return [];
     return venues.filter((venue) => selectedGroup.venueIds.includes(venue.id));
-  }, [venues, selectedGroup]);
+  }, [venues, selectedGroup, linkOnlyMode]);
 
   const globalVenues = useMemo(() => {
+    if (linkOnlyMode) return [];
     if (!selectedGroup) return [];
     return venues.filter((venue) => !selectedGroup.venueIds.includes(venue.id));
-  }, [venues, selectedGroup]);
+  }, [venues, selectedGroup, linkOnlyMode]);
 
   const venueSuggestions = useMemo(() => {
     const source = [...availableVenues, ...globalVenues];
@@ -116,8 +121,12 @@ export default function ReservationForm({
   const recentCourts = useMemo(() => availableCourts.slice(0, 4), [availableCourts]);
 
   useEffect(() => {
-    if (!groupId && groups.length > 0) {
-      setGroupId(defaultGroupId ?? groups[0].id);
+    if (!groupId) {
+      setGroupId(defaultGroupId ?? groups[0]?.id ?? LINK_ONLY_GROUP_VALUE);
+      return;
+    }
+    if (groupId !== LINK_ONLY_GROUP_VALUE && !groups.some((group) => group.id === groupId)) {
+      setGroupId(defaultGroupId ?? groups[0]?.id ?? LINK_ONLY_GROUP_VALUE);
     }
   }, [defaultGroupId, groupId, groups]);
 
@@ -168,7 +177,7 @@ export default function ReservationForm({
   const showCourtSuggestions = Boolean(courtQuery.trim()) && !selectedCourtId;
 
   const hasValidVenue = Boolean(selectedVenueId || venueQuery.trim().length >= 2);
-  const canSubmit = Boolean(groupId && hasValidTime && hasValidVenue && durationMinutes > 0);
+  const canSubmit = Boolean(hasValidTime && hasValidVenue && durationMinutes > 0);
 
   const handleSearchMaps = async () => {
     if (!canSearchGooglePlaces()) {
@@ -219,7 +228,7 @@ export default function ReservationForm({
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (!canSubmit || !selectedGroup) return;
+    if (!canSubmit) return;
 
     const venueId = selectedVenueId || matchedVenueByName?.id;
     const finalVenueName = venueId ? matchedVenueByName?.name ?? selectedVenue?.name : venueQuery.trim();
@@ -230,8 +239,9 @@ export default function ReservationForm({
     const finalCourtName = courtId ? matchedCourtByName?.name ?? courtQuery.trim() : courtQuery.trim();
 
     onCreate({
-      groupId: selectedGroup.id,
-      groupName: selectedGroup.name,
+      groupId: linkOnlyMode ? undefined : selectedGroup?.id,
+      groupName: linkOnlyMode ? undefined : selectedGroup?.name,
+      visibilityScope: linkOnlyMode ? "link_only" : "group",
       venueId: venueId || undefined,
       venueName: finalVenueName,
       venueAddress: finalVenueAddress,
@@ -253,19 +263,20 @@ export default function ReservationForm({
     <form className="elite-form" onSubmit={handleSubmit}>
       <header className="form-header-elite animate-fade-in">
         <h2>Reservá un partido</h2>
-        <p>Elegí grupo, complejo y turno.</p>
+        <p>Elegí grupo o modo por link, complejo y turno.</p>
       </header>
 
       <div className="elite-field-group">
         <label className="elite-field-label">Grupo</label>
         <select className="elite-select" value={groupId} onChange={(event) => setGroupId(event.target.value)} required>
-          {groups.length === 0 ? <option value="">Sin grupos</option> : null}
+          <option value={LINK_ONLY_GROUP_VALUE}>Solo por link</option>
           {groups.map((group) => (
             <option key={group.id} value={group.id}>
               {group.name}
             </option>
           ))}
         </select>
+        {linkOnlyMode ? <p className="private-hint">Esta reserva no aparece en Home grupal, solo por link.</p> : null}
       </div>
 
       <div className="elite-field-group">

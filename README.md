@@ -17,6 +17,7 @@ PWA para gestionar reservas de pádel y anotados (titulares/suplentes) para grup
 - UI modernizada con estética padel.
 - Gestión de ciclo de vida de grupos: salir del grupo, quitar miembros y soft-delete de grupo.
 - Al eliminar grupo: reservas quedan en modo `link_only` (no se borran).
+- Reservas `link_only`: se pueden crear y editar sin grupo, visibles solo por link/participantes.
 
 ## Stack
 - React + TypeScript + Vite

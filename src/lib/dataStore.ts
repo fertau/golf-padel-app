@@ -980,24 +980,33 @@ export const deleteGroup = async (groupId: string, currentUser: User) => {
 
 export const createReservation = async (input: ReservationInput, currentUser: User) => {
   const cloudDb = db;
-  if (!input.groupId) {
-    throw new Error("Seleccioná un grupo.");
-  }
+  const requestedScope: ReservationVisibilityScope =
+    input.visibilityScope ??
+    (input.groupId && input.groupId !== "default-group" ? "group" : "link_only");
 
   if (!isCloudDbEnabled() || !cloudDb) {
-    const localGroups = getLocalGroups();
-    const group = localGroups.find((candidate) => candidate.id === input.groupId) ?? ensureDefaultGroupLocal(currentUser);
     const actorAuthUid = currentUser.id;
     const resolved = resolveLocalVenueAndCourt(input, actorAuthUid);
-    if (resolved.venue) {
+    const localGroups = getLocalGroups();
+    const group =
+      requestedScope === "group" && input.groupId
+        ? localGroups.find((candidate) => candidate.id === input.groupId) ?? null
+        : null;
+
+    if (requestedScope === "group" && !group) {
+      throw new Error("Seleccioná un grupo válido.");
+    }
+
+    if (resolved.venue && group) {
       linkVenueToGroupLocal(group.id, resolved.venue.id);
     }
 
     createReservationLocal(
       {
         ...input,
-        groupId: group.id,
-        groupName: group.name,
+        groupId: group?.id ?? "default-group",
+        groupName: group?.name,
+        visibilityScope: requestedScope,
         venueId: input.venueId ?? resolved.venue?.id,
         venueName: input.venueName ?? resolved.venue?.name,
         venueAddress: input.venueAddress ?? resolved.venue?.address,
@@ -1014,24 +1023,30 @@ export const createReservation = async (input: ReservationInput, currentUser: Us
     throw new Error("Necesitás iniciar sesión.");
   }
 
-  const groupSnapshot = await getDoc(doc(cloudDb, groupCollection, input.groupId));
-  if (!groupSnapshot.exists()) {
-    throw new Error("Grupo no encontrado.");
+  let group: Group | null = null;
+  if (requestedScope === "group") {
+    if (!input.groupId) {
+      throw new Error("Seleccioná un grupo.");
+    }
+    const groupSnapshot = await getDoc(doc(cloudDb, groupCollection, input.groupId));
+    if (!groupSnapshot.exists()) {
+      throw new Error("Grupo no encontrado.");
+    }
+    group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
+    ensureGroupMembership(group, actorAuthUid);
   }
-  const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
-  ensureGroupMembership(group, actorAuthUid);
 
   const { venue, court } = await resolveCloudVenueAndCourt(input, actorAuthUid);
-  if (venue) {
+  if (venue && group) {
     await linkVenueInCloudGroup(group.id, venue.id);
   }
 
   const id = crypto.randomUUID();
   const payload: Reservation = {
     id,
-    groupId: group.id,
-    visibilityScope: "group",
-    groupName: group.name,
+    groupId: group?.id ?? "default-group",
+    visibilityScope: requestedScope,
+    groupName: group?.name,
     venueId: input.venueId ?? venue?.id,
     venueName: input.venueName?.trim() || venue?.name,
     venueAddress: input.venueAddress?.trim() || venue?.address,
@@ -1249,6 +1264,9 @@ export const updateReservationDetails = async (
     venueAddress?: string;
     startDateTime: string;
     durationMinutes: number;
+    groupId?: string;
+    groupName?: string;
+    visibilityScope?: ReservationVisibilityScope;
   },
   currentUser: User
 ) => {
@@ -1284,6 +1302,27 @@ export const updateReservationDetails = async (
       throw new Error("Solo el creador o un admin del grupo puede editar");
     }
 
+    const nextVisibilityScope =
+      updates.visibilityScope ?? inferReservationVisibilityScope({ ...reservation, ...updates });
+    const nextGroupId =
+      nextVisibilityScope === "link_only" ? "default-group" : updates.groupId ?? reservation.groupId;
+    let nextGroupName = reservation.groupName;
+
+    if (nextVisibilityScope === "group") {
+      if (!nextGroupId || nextGroupId === "default-group") {
+        throw new Error("Seleccioná un grupo válido.");
+      }
+      const targetGroupSnapshot = await transaction.get(doc(cloudDb, groupCollection, nextGroupId));
+      if (!targetGroupSnapshot.exists()) {
+        throw new Error("Grupo no encontrado.");
+      }
+      const targetGroup = normalizeGroup(targetGroupSnapshot.id, targetGroupSnapshot.data() as Omit<Group, "id">);
+      ensureGroupMembership(targetGroup, actorAuthUid);
+      nextGroupName = targetGroup.name;
+    } else {
+      nextGroupName = undefined;
+    }
+
     transaction.update(
       reservationRef,
       stripUndefinedDeep({
@@ -1294,6 +1333,9 @@ export const updateReservationDetails = async (
         venueAddress: updates.venueAddress,
         startDateTime: updates.startDateTime,
         durationMinutes: updates.durationMinutes,
+        groupId: nextGroupId,
+        groupName: nextGroupName,
+        visibilityScope: nextVisibilityScope,
         updatedAt: nowIso()
       })
     );

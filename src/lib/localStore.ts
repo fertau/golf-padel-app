@@ -44,6 +44,7 @@ const saveReservations = (reservations: Reservation[]) => {
 export type ReservationInput = {
   groupId?: string;
   groupName?: string;
+  visibilityScope?: "group" | "link_only";
   venueId?: string;
   venueName?: string;
   venueAddress?: string;
@@ -61,8 +62,10 @@ export const createReservationLocal = (input: ReservationInput, currentUser: Use
   const reservation: Reservation = {
     id: crypto.randomUUID(),
     groupId: input.groupId ?? "default-group",
-    visibilityScope: "group",
-    groupName: input.groupName ?? "Mi grupo",
+    visibilityScope:
+      input.visibilityScope ??
+      (input.groupId && input.groupId !== "default-group" ? "group" : "link_only"),
+    groupName: input.groupName,
     venueId: input.venueId,
     venueName: input.venueName,
     venueAddress: input.venueAddress,
@@ -173,6 +176,9 @@ export const updateReservationDetailsLocal = (
     venueAddress?: string;
     startDateTime: string;
     durationMinutes: number;
+    groupId?: string;
+    groupName?: string;
+    visibilityScope?: "group" | "link_only";
   },
   currentUser: User
 ): Reservation[] =>
@@ -189,6 +195,17 @@ export const updateReservationDetailsLocal = (
       venueName: updates.venueName,
       venueAddress: updates.venueAddress,
       startDateTime: updates.startDateTime,
-      durationMinutes: updates.durationMinutes
+      durationMinutes: updates.durationMinutes,
+      groupId:
+        updates.visibilityScope === "link_only"
+          ? "default-group"
+          : updates.groupId ?? reservation.groupId,
+      groupName:
+        updates.visibilityScope === "link_only"
+          ? undefined
+          : updates.groupName ?? reservation.groupName,
+      visibilityScope:
+        updates.visibilityScope ??
+        (updates.groupId && updates.groupId !== "default-group" ? "group" : reservation.visibilityScope)
     };
   });

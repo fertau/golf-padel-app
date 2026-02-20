@@ -461,7 +461,10 @@ export default function App() {
     }
     return reservationsWithGroupContext
       .filter((reservation) => {
-        if (!matchesActiveScope(reservation)) {
+        const visibleInScope =
+          matchesActiveScope(reservation) ||
+          (!isReservationGroupScoped(reservation) && activeGroupScope === "all");
+        if (!visibleInScope) {
           return false;
         }
         const isPast = parseReservationDate(reservation.startDateTime).getTime() < Date.now();
@@ -471,7 +474,7 @@ export default function App() {
         return Boolean(getUserAttendance(reservation, currentUser.id)) || isReservationCreator(reservation, currentUser.id);
       })
       .sort((a, b) => parseReservationDate(b.startDateTime).getTime() - parseReservationDate(a.startDateTime).getTime());
-  }, [reservationsWithGroupContext, currentUser, activeGroupScope, defaultGroupId]);
+  }, [reservationsWithGroupContext, currentUser, activeGroupScope]);
 
   const historyStats = useMemo(() => {
     if (!currentUser) {
@@ -787,7 +790,14 @@ export default function App() {
 
   const handleUpdateReservation = async (
     reservationId: string,
-    updates: { courtName: string; startDateTime: string; durationMinutes: number }
+    updates: {
+      courtName: string;
+      startDateTime: string;
+      durationMinutes: number;
+      groupId?: string;
+      groupName?: string;
+      visibilityScope?: "group" | "link_only";
+    }
   ) => {
     if (!currentUser) return;
     try {
@@ -1030,10 +1040,10 @@ export default function App() {
           <>
             {!showCreateForm && (
               <section className="panel glass-panel-elite animate-fade-in">
-                <button className="btn-elite btn-elite-accent btn-block" onClick={() => setShowCreateForm(true)} disabled={busy || groups.length === 0}>
+                <button className="btn-elite btn-elite-accent btn-block" onClick={() => setShowCreateForm(true)} disabled={busy}>
                   + Reservá un partido
                 </button>
-                {groups.length === 0 ? <p className="private-hint">Creá o uníte a un grupo para reservar.</p> : null}
+                {groups.length === 0 ? <p className="private-hint">Podés reservar en modo solo link o crear/unirte a un grupo.</p> : null}
               </section>
             )}
             {renderReservationList(
@@ -1042,7 +1052,8 @@ export default function App() {
                 (reservation) =>
                   reservation.status === "active" &&
                   isReservationCreator(reservation, currentUser.id) &&
-                  matchesActiveScope(reservation)
+                  (matchesActiveScope(reservation) ||
+                    (!isReservationGroupScoped(reservation) && activeGroupScope === "all"))
               ),
               "Todavía no reservaste nada."
             )}
@@ -1093,6 +1104,7 @@ export default function App() {
             <div className="sheet-handle" /><div className="sheet-head"><h3>Partido</h3><button className="sheet-close" onClick={() => setExpandedReservationId(null)}>Cerrar</button></div>
             <ReservationDetail
               reservation={selectedReservation} currentUser={currentUser} appUrl={shareBaseUrl}
+              groups={groups}
               signupNameByAuthUid={signupNameByAuthUid}
               onSetAttendanceStatus={(rid, s) => setAttendanceStatus(rid, currentUser, s)}
               onCancel={handleCancelReservation}

@@ -77,6 +77,23 @@ service cloud.firestore {
       );
     }
 
+    function isValidReservationTarget(data) {
+      return (
+        (
+          isGroupScopedReservation(data) &&
+          isGroupMember(data.groupId)
+        ) ||
+        (
+          reservationScope(data) == "link_only" &&
+          (
+            !("groupId" in data) ||
+            data.groupId == null ||
+            data.groupId == "default-group"
+          )
+        )
+      );
+    }
+
     function reservationExists(reservationId) {
       return exists(/databases/$(database)/documents/reservations/$(reservationId));
     }
@@ -185,25 +202,12 @@ service cloud.firestore {
 
       allow create: if isSignedIn() &&
         request.resource.data.createdByAuthUid == request.auth.uid &&
-        (
-          (
-            isGroupScopedReservation(request.resource.data) &&
-            isGroupMember(request.resource.data.groupId)
-          ) ||
-          (
-            reservationScope(request.resource.data) == "link_only" &&
-            (
-              !("groupId" in request.resource.data) ||
-              request.resource.data.groupId == null ||
-              request.resource.data.groupId == "default-group"
-            )
-          )
-        );
+        isValidReservationTarget(request.resource.data);
 
       allow update: if isSignedIn() &&
         request.resource.data.createdByAuthUid == resource.data.createdByAuthUid &&
         (
-          isReservationManager(resource.data) ||
+          (isReservationManager(resource.data) && isValidReservationTarget(request.resource.data)) ||
           (
             canReadReservation(resource.data) &&
             reservationMetaUnchanged()

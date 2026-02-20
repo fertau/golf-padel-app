@@ -38,7 +38,9 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
         </div>
         <div className="card-meta-line">
           {reservation.groupName ? <span className="card-meta-muted">{reservation.groupName}</span> : null}
-          {reservation.venueName ? <span>· {reservation.venueName}</span> : null}
+          {reservation.venueName ? (
+            <span>{reservation.groupName ? `· ${reservation.venueName}` : reservation.venueName}</span>
+          ) : null}
         </div>
 
         <div className="card-content-bottom">
