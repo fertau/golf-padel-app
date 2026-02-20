@@ -674,6 +674,18 @@ export default function App() {
   }, [activeGroupScope, groups]);
 
   useEffect(() => {
+    setMatchesFilter("all");
+    setQuickDateFilter("all");
+    setShowAllUpcoming(false);
+    setActiveGroupScope("all");
+    setHistoryExpanded(false);
+    setHistoryStatuses(["confirmed", "maybe", "cancelled"]);
+    setHistoryRange("all");
+    setHistoryPlayerFilter("all");
+    setHistoryCourtFilter("all");
+  }, [currentUser?.id]);
+
+  useEffect(() => {
     setHistoryApiReservations([]);
     setHistoryApiLoaded(false);
     setHistoryLoading(false);
