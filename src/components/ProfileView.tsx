@@ -183,7 +183,6 @@ export default function ProfileView({
           </CardIcon>
           <div className="section-info">
             <h3>Nombre visible</h3>
-            <p>Así te van a ver en reservas y asistencias.</p>
             <input
               className="input-elite input-top-gap"
               type="text"
@@ -210,7 +209,6 @@ export default function ProfileView({
           </CardIcon>
           <div className="section-info profile-groups-content">
             <h3>Mis Grupos</h3>
-            <p>Tenés {groups.length} grupo(s) activo(s).</p>
 
             <div className="groups-controls">
               {!showCreateGroupForm ? (
@@ -300,7 +298,7 @@ export default function ProfileView({
                         <>
                           <strong>{group.name}</strong>
                           <div className="group-summary-actions">
-                            <span className={`role-tag role-tag-${role}`}>{role === "owner" ? "Owner" : role === "admin" ? "Admin" : "Miembro"}</span>
+                            <span className={`role-tag role-tag-${role}`}>{role === "member" ? "Miembro" : "Admin"}</span>
                             {role !== "member" ? (
                               <button
                                 className="quick-chip action-chip quick-chip-icon"
@@ -340,8 +338,8 @@ export default function ProfileView({
                               <div key={key} className="member-card-elite">
                                 <div className="member-card-main">
                                   <strong>{memberName}</strong>
-                                  <span className={`role-badge-elite ${isOwner ? "owner" : isAdmin ? "admin" : "member"}`}>
-                                    {isOwner ? "Owner" : isAdmin ? "Admin" : "Miembro"}
+                                  <span className={`role-badge-elite ${isOwner || isAdmin ? "admin" : "member"}`}>
+                                    {isOwner || isAdmin ? "Admin" : "Miembro"}
                                   </span>
                                 </div>
                                 {canManage ? (
@@ -417,7 +415,6 @@ export default function ProfileView({
           </CardIcon>
           <div className="section-info">
             <h3>Notificaciones</h3>
-            <p>Recibí alertas de nuevos partidos.</p>
           </div>
           <button className="btn-elite btn-elite-outline" onClick={() => handleAction(onRequestNotifications)} disabled={busy}>
             Configurar
