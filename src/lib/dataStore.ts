@@ -122,6 +122,7 @@ const courtCollection = "courts";
 const reservationCollection = "reservations";
 const groupInviteCollection = "groupInvites";
 const reservationInviteCollection = "reservationInvites";
+const GROUPS_REFRESH_EVENT = "padel-cloud-groups-refresh";
 
 const chunkItems = <T,>(items: T[], size: number): T[][] => {
   const out: T[][] = [];
@@ -170,6 +171,13 @@ const fetchGroupsCloudFallback = async (): Promise<Group[]> => {
     throw new Error(payload?.error ?? "No se pudieron cargar los grupos.");
   }
   return (payload?.groups ?? []).map((group) => normalizeGroup(group.id, group as Omit<Group, "id">));
+};
+
+const dispatchGroupsRefresh = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.dispatchEvent(new Event(GROUPS_REFRESH_EVENT));
 };
 
 const fetchReservationsCloudFallback = async (): Promise<Reservation[]> => {
@@ -541,8 +549,8 @@ export const subscribeGroups = (currentAuthUid: string, onChange: (groups: Group
   let fallbackRequested = false;
   let fallbackTimer: number | null = null;
 
-  const fallbackToApi = () => {
-    if (fallbackRequested) {
+  const fallbackToApi = (force = false) => {
+    if (fallbackRequested && !force) {
       return;
     }
     fallbackRequested = true;
@@ -551,6 +559,10 @@ export const subscribeGroups = (currentAuthUid: string, onChange: (groups: Group
         onChange(groups);
       })
       .catch(() => null);
+  };
+
+  const handleForcedRefresh = () => {
+    fallbackToApi(true);
   };
 
   const emit = () => {
@@ -588,11 +600,13 @@ export const subscribeGroups = (currentAuthUid: string, onChange: (groups: Group
       fallbackToApi();
     }
   }, 3000);
+  window.addEventListener(GROUPS_REFRESH_EVENT, handleForcedRefresh);
 
   return () => {
     if (fallbackTimer) {
       window.clearTimeout(fallbackTimer);
     }
+    window.removeEventListener(GROUPS_REFRESH_EVENT, handleForcedRefresh);
     unsubscribers.forEach((unsubscribe) => unsubscribe());
   };
 };
@@ -1050,9 +1064,11 @@ export const removeGroupMember = async (
         updatedAt: nowIso()
       });
     });
+    dispatchGroupsRefresh();
   } catch (error) {
     try {
       await removeGroupMemberCloudFallback(groupId, targetAuthUid);
+      dispatchGroupsRefresh();
       return;
     } catch (fallbackError) {
       if (isPermissionDeniedError(error)) {
