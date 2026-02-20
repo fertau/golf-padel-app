@@ -439,13 +439,15 @@ export default function App() {
   const myPendingResponseCount = activeUpcomingReservations.filter(r => !getUserAttendance(r, currentUser?.id ?? "")).length;
   const myConfirmedCount = activeUpcomingReservations.filter(r => getUserAttendance(r, currentUser?.id ?? "")?.attendanceStatus === "confirmed").length;
 
-  const myUpcomingConfirmed = useMemo(() =>
-    activeUpcomingReservations
-      .filter(r => getUserAttendance(r, currentUser?.id ?? "")?.attendanceStatus === "confirmed")
-      .sort((a, b) => parseReservationDate(a.startDateTime).getTime() - parseReservationDate(b.startDateTime).getTime())
-    , [activeUpcomingReservations, currentUser]);
+  const upcomingByScope = useMemo(
+    () =>
+      activeUpcomingReservations.sort(
+        (a, b) => parseReservationDate(a.startDateTime).getTime() - parseReservationDate(b.startDateTime).getTime()
+      ),
+    [activeUpcomingReservations]
+  );
 
-  const visibleUpcoming = showAllUpcoming ? myUpcomingConfirmed : myUpcomingConfirmed.slice(0, 3);
+  const visibleUpcoming = showAllUpcoming ? upcomingByScope : upcomingByScope.slice(0, 3);
 
   const filteredMatches = useMemo(() => {
     let list = activeUpcomingReservations;
@@ -1033,8 +1035,8 @@ export default function App() {
 
             <section className="panel upcoming-widget glass-panel-elite animate-fade-in">
               <h2 className="section-title">Próximos partidos</h2>
-              {myUpcomingConfirmed.length === 0 ? (
-                <p className="private-hint">Todavía no confirmaste próximos partidos.</p>
+              {upcomingByScope.length === 0 ? (
+                <p className="private-hint">No hay próximos partidos en tu alcance actual.</p>
               ) : (
                 <>
                   <ul className="upcoming-list">
@@ -1085,7 +1087,7 @@ export default function App() {
                       );
                     })}
                   </ul>
-                  {myUpcomingConfirmed.length > 3 ? (
+                  {upcomingByScope.length > 3 ? (
                     <button className="btn-elite btn-elite-outline upcoming-more-btn" onClick={() => setShowAllUpcoming(!showAllUpcoming)}>
                       {showAllUpcoming ? "Ver menos" : "Ver más"}
                     </button>
