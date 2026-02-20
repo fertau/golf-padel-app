@@ -5,7 +5,6 @@ import {
   type DocumentReference,
   getDoc,
   getDocs,
-  limit,
   onSnapshot,
   orderBy,
   query,
@@ -123,6 +122,24 @@ const courtCollection = "courts";
 const reservationCollection = "reservations";
 const groupInviteCollection = "groupInvites";
 const reservationInviteCollection = "reservationInvites";
+
+const buildGroupMembershipQueries = (cloudDb: NonNullable<typeof db>, authUid: string) => ({
+  members: query(collection(cloudDb, groupCollection), where("memberAuthUids", "array-contains", authUid)),
+  owners: query(collection(cloudDb, groupCollection), where("ownerAuthUid", "==", authUid)),
+  admins: query(collection(cloudDb, groupCollection), where("adminAuthUids", "array-contains", authUid))
+});
+
+const mergeGroupSlices = (groupSlices: Map<string, Map<string, Group>>) => {
+  const merged = new Map<string, Group>();
+  for (const slice of groupSlices.values()) {
+    for (const [id, group] of slice.entries()) {
+      merged.set(id, group);
+    }
+  }
+  return Array.from(merged.values())
+    .filter((group) => !group.isDeleted)
+    .sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+};
 
 const isGroupAdmin = (group: Group, authUid: string) =>
   !group.isDeleted && (group.ownerAuthUid === authUid || group.adminAuthUids.includes(authUid));
@@ -301,8 +318,11 @@ export const subscribeReservations = (
   }
 
   const reservationSlices = new Map<string, Map<string, Reservation>>();
+  const groupSlices = new Map<string, Map<string, Group>>();
   let allowedGroupIds = new Set<string>();
+  let lastAllowedGroupIdsKey = "";
   let reservationUnsubscribers: Array<() => void> = [];
+  let groupUnsubscribers: Array<() => void> = [];
 
   const emit = () => {
     const merged = new Map<string, Reservation>();
@@ -375,23 +395,44 @@ export const subscribeReservations = (
     });
   };
 
-  const groupsQuery = query(
-    collection(cloudDb, groupCollection),
-    where("memberAuthUids", "array-contains", currentAuthUid)
-  );
-
-  const unsubscribeGroups = onSnapshot(groupsQuery, (snapshot) => {
-    const groupIds = snapshot.docs
-      .map((snapshotDoc) => normalizeGroup(snapshotDoc.id, snapshotDoc.data() as Omit<Group, "id">))
-      .filter((group) => !group.isDeleted)
-      .map((group) => group.id);
-    allowedGroupIds = new Set(groupIds);
-    rebuildReservationSubscriptions(groupIds);
+  const syncAllowedGroupIds = () => {
+    const groupIds = mergeGroupSlices(groupSlices).map((group) => group.id);
+    const nextKey = groupIds.join("|");
+    if (nextKey !== lastAllowedGroupIdsKey) {
+      lastAllowedGroupIdsKey = nextKey;
+      allowedGroupIds = new Set(groupIds);
+      rebuildReservationSubscriptions(groupIds);
+    }
     emit();
-  });
+  };
+
+  const subscribeGroupSlice = (sliceKey: string, q: ReturnType<typeof query>) => {
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const nextSlice = new Map<string, Group>();
+        snapshot.docs.forEach((snapshotDoc) => {
+          nextSlice.set(snapshotDoc.id, normalizeGroup(snapshotDoc.id, snapshotDoc.data() as Omit<Group, "id">));
+        });
+        groupSlices.set(sliceKey, nextSlice);
+        syncAllowedGroupIds();
+      },
+      () => {
+        groupSlices.delete(sliceKey);
+        syncAllowedGroupIds();
+      }
+    );
+    groupUnsubscribers.push(unsubscribe);
+  };
+
+  rebuildReservationSubscriptions([]);
+  const groupQueries = buildGroupMembershipQueries(cloudDb, currentAuthUid);
+  subscribeGroupSlice("group-members", groupQueries.members);
+  subscribeGroupSlice("group-owners", groupQueries.owners);
+  subscribeGroupSlice("group-admins", groupQueries.admins);
 
   return () => {
-    unsubscribeGroups();
+    groupUnsubscribers.forEach((unsubscribe) => unsubscribe());
     reservationUnsubscribers.forEach((unsubscribe) => unsubscribe());
   };
 };
@@ -402,14 +443,41 @@ export const subscribeGroups = (currentAuthUid: string, onChange: (groups: Group
     return subscribeLocalGroupsForUser(currentAuthUid, onChange);
   }
 
-  const q = query(collection(cloudDb, groupCollection), where("memberAuthUids", "array-contains", currentAuthUid));
-  return onSnapshot(q, (snapshot) => {
-    const groups = snapshot.docs
-      .map((snapshotDoc) => normalizeGroup(snapshotDoc.id, snapshotDoc.data() as Omit<Group, "id">))
-      .filter((group) => !group.isDeleted)
-      .sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+  const groupSlices = new Map<string, Map<string, Group>>();
+  const unsubscribers: Array<() => void> = [];
+
+  const emit = () => {
+    const groups = mergeGroupSlices(groupSlices);
     onChange(groups);
-  });
+  };
+
+  const subscribeGroupSlice = (sliceKey: string, q: ReturnType<typeof query>) => {
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const nextSlice = new Map<string, Group>();
+        snapshot.docs.forEach((snapshotDoc) => {
+          nextSlice.set(snapshotDoc.id, normalizeGroup(snapshotDoc.id, snapshotDoc.data() as Omit<Group, "id">));
+        });
+        groupSlices.set(sliceKey, nextSlice);
+        emit();
+      },
+      () => {
+        groupSlices.delete(sliceKey);
+        emit();
+      }
+    );
+    unsubscribers.push(unsubscribe);
+  };
+
+  const groupQueries = buildGroupMembershipQueries(cloudDb, currentAuthUid);
+  subscribeGroupSlice("group-members", groupQueries.members);
+  subscribeGroupSlice("group-owners", groupQueries.owners);
+  subscribeGroupSlice("group-admins", groupQueries.admins);
+
+  return () => {
+    unsubscribers.forEach((unsubscribe) => unsubscribe());
+  };
 };
 
 export const subscribeVenues = (onChange: (venues: Venue[]) => void) => {
@@ -448,31 +516,58 @@ export const ensureUserDefaultGroup = async (currentUser: User): Promise<Group> 
     return ensureDefaultGroupLocal(currentUser);
   }
 
-  const q = query(
-    collection(cloudDb, groupCollection),
-    where("memberAuthUids", "array-contains", currentUser.id),
-    limit(1)
-  );
-  const existingSnapshot = await getDocs(q);
-  if (!existingSnapshot.empty) {
-    const existing = existingSnapshot.docs[0];
-    const group = normalizeGroup(existing.id, existing.data() as Omit<Group, "id">);
-    if (!group.adminAuthUids.includes(currentUser.id)) {
+  const groupQueries = buildGroupMembershipQueries(cloudDb, currentUser.id);
+  const snapshots = await Promise.all([
+    getDocs(groupQueries.members),
+    getDocs(groupQueries.owners),
+    getDocs(groupQueries.admins)
+  ]);
+  const existingGroups = snapshots
+    .flatMap((snapshot) => snapshot.docs)
+    .reduce((acc, snapshotDoc) => {
+      if (!acc.has(snapshotDoc.id)) {
+        acc.set(snapshotDoc.id, normalizeGroup(snapshotDoc.id, snapshotDoc.data() as Omit<Group, "id">));
+      }
+      return acc;
+    }, new Map<string, Group>());
+
+  if (existingGroups.size > 0) {
+    const candidates = Array.from(existingGroups.values()).filter((group) => !group.isDeleted);
+    const existing =
+      candidates.find((group) => group.name.trim().toLowerCase() === "mi grupo") ??
+      candidates.sort((a, b) => String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? "")))[0];
+
+    const memberAuthUids = existing.memberAuthUids.includes(currentUser.id)
+      ? existing.memberAuthUids
+      : Array.from(new Set([...existing.memberAuthUids, currentUser.id]));
+    const adminAuthUids = existing.adminAuthUids.includes(currentUser.id)
+      ? existing.adminAuthUids
+      : Array.from(new Set([...existing.adminAuthUids, currentUser.id]));
+    if (
+      memberAuthUids.length !== existing.memberAuthUids.length ||
+      adminAuthUids.length !== existing.adminAuthUids.length
+    ) {
       await setDoc(
-        doc(cloudDb, groupCollection, group.id),
+        doc(cloudDb, groupCollection, existing.id),
         stripUndefinedDeep({
-          ...group,
-          adminAuthUids: Array.from(new Set([...group.adminAuthUids, currentUser.id])),
+          memberAuthUids,
+          adminAuthUids,
+          [`memberNamesByAuthUid.${currentUser.id}`]: currentUser.name,
           updatedAt: nowIso()
         }),
         { merge: true }
       );
       return {
-        ...group,
-        adminAuthUids: Array.from(new Set([...group.adminAuthUids, currentUser.id]))
+        ...existing,
+        memberAuthUids,
+        adminAuthUids,
+        memberNamesByAuthUid: {
+          ...existing.memberNamesByAuthUid,
+          [currentUser.id]: currentUser.name
+        }
       };
     }
-    return group;
+    return existing;
   }
 
   const id = crypto.randomUUID();

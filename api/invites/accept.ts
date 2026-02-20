@@ -52,8 +52,8 @@ export default async function handler(
         }
 
         const group = groupSnapshot.data() as {
-          memberAuthUids: string[];
-          memberNamesByAuthUid: Record<string, string>;
+          memberAuthUids?: string[];
+          memberNamesByAuthUid?: Record<string, string>;
           isDeleted?: boolean;
         };
 
@@ -61,9 +61,10 @@ export default async function handler(
           throw new Error("Este grupo ya no está disponible.");
         }
 
-        const memberAuthUids = group.memberAuthUids.includes(authUid)
-          ? group.memberAuthUids
-          : [...group.memberAuthUids, authUid];
+        const baseMemberAuthUids = Array.isArray(group.memberAuthUids) ? group.memberAuthUids : [];
+        const memberAuthUids = baseMemberAuthUids.includes(authUid)
+          ? baseMemberAuthUids
+          : [...baseMemberAuthUids, authUid];
 
         transaction.update(groupRef, {
           memberAuthUids,

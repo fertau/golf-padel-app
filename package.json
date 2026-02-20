@@ -12,7 +12,8 @@
     "migrate:mi-grupo": "node scripts/migrateReservationsToMiGrupo.mjs",
     "repair:mi-grupo": "node scripts/repairMiGrupoData.mjs",
     "backfill:reservation-visibility": "node scripts/backfillReservationVisibilityScope.mjs",
-    "cleanup:forced-mi-grupo": "node scripts/cleanupForcedMiGrupo.mjs"
+    "cleanup:forced-mi-grupo": "node scripts/cleanupForcedMiGrupo.mjs",
+    "backfill:group-memberships": "node scripts/backfillGroupMemberships.mjs"
   },
   "dependencies": {
     "date-fns": "^4.1.0",

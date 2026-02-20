@@ -20,7 +20,17 @@ service cloud.firestore {
     function isGroupMember(groupId) {
       return isSignedIn() &&
         isActiveGroup(groupId) &&
-        request.auth.uid in groupData(groupId).memberAuthUids;
+        (
+          groupData(groupId).ownerAuthUid == request.auth.uid ||
+          (
+            ("adminAuthUids" in groupData(groupId)) &&
+            request.auth.uid in groupData(groupId).adminAuthUids
+          ) ||
+          (
+            ("memberAuthUids" in groupData(groupId)) &&
+            request.auth.uid in groupData(groupId).memberAuthUids
+          )
+        );
     }
 
     function isGroupAdmin(groupId) {
@@ -28,7 +38,10 @@ service cloud.firestore {
         isActiveGroup(groupId) &&
         (
           groupData(groupId).ownerAuthUid == request.auth.uid ||
-          request.auth.uid in groupData(groupId).adminAuthUids
+          (
+            ("adminAuthUids" in groupData(groupId)) &&
+            request.auth.uid in groupData(groupId).adminAuthUids
+          )
         );
     }
 
@@ -147,9 +160,7 @@ service cloud.firestore {
     }
 
     match /groups/{groupId} {
-      allow read: if isSignedIn() &&
-        resource.data.isDeleted != true &&
-        request.auth.uid in resource.data.memberAuthUids;
+      allow read: if isSignedIn() && resource.data.isDeleted != true && isGroupMember(groupId);
 
       allow create: if isSignedIn() &&
         request.resource.data.ownerAuthUid == request.auth.uid &&
