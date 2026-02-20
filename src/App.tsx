@@ -247,9 +247,15 @@ export default function App() {
       return;
     }
 
-    const invitePathMatch = window.location.pathname.match(/^\/join\/([a-zA-Z0-9-]+)$/);
-    if (invitePathMatch) {
-      setPendingInviteToken(invitePathMatch[1]);
+    const invitePathMatch = window.location.pathname.match(/^\/join\/([a-zA-Z0-9-]+)\/?$/);
+    const inviteFromPath = invitePathMatch?.[1];
+    const inviteFromQuery =
+      new URLSearchParams(window.location.search).get("invite") ??
+      new URLSearchParams(window.location.search).get("token");
+    const inviteToken = inviteFromPath ?? inviteFromQuery;
+
+    if (inviteToken) {
+      setPendingInviteToken(inviteToken);
       setActiveTab("mis-partidos");
       setContextNotice("Validando invitación...");
     }
@@ -306,7 +312,14 @@ export default function App() {
         window.history.replaceState({}, "", "/");
       } catch (error) {
         if (!cancelled) {
-          setInviteFeedback((error as Error).message);
+          const rawMessage = (error as Error).message;
+          const normalizedMessage = rawMessage?.toLowerCase() ?? "";
+          const inviteErrorMessage =
+            rawMessage && (normalizedMessage.includes("invite") || normalizedMessage.includes("invit"))
+              ? "La invitación es inválida, venció o no tenés permisos."
+              : rawMessage;
+          setInviteFeedback(inviteErrorMessage);
+          setContextNotice(null);
           window.history.replaceState({}, "", "/");
         }
       } finally {

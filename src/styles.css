@@ -153,9 +153,8 @@ body::before {
   }
 }
 
-/* --- AUTH & SPLASH ELITE --- */
-.auth-view,
-.splash {
+/* --- AUTH ELITE --- */
+.auth-view {
   position: fixed;
   inset: 0;
   z-index: 9999;
@@ -164,26 +163,6 @@ body::before {
   align-items: center;
   justify-content: center;
   color: white;
-}
-
-.splash-canvas {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.splash-content {
-  position: relative;
-  z-index: 2;
-  opacity: 0;
-  transform: translateY(20px);
-  transition: all 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.splash-content.visible {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 .auth-overlay {
@@ -306,6 +285,7 @@ body::before {
     width: calc(100% - 32px);
     left: 16px;
     right: 16px;
+    transform: none;
     bottom: calc(16px + env(safe-area-inset-bottom));
     border-radius: 28px;
     padding: 0.6rem 1rem;
@@ -1800,10 +1780,6 @@ button.neutral {
   .app {
     padding-top: calc(env(safe-area-inset-top) + 0.82rem);
     padding-bottom: calc(116px + env(safe-area-inset-bottom));
-  }
-
-  .navbar {
-    height: auto;
   }
 
   .sheet {
