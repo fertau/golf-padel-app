@@ -123,6 +123,14 @@ const reservationCollection = "reservations";
 const groupInviteCollection = "groupInvites";
 const reservationInviteCollection = "reservationInvites";
 
+const chunkItems = <T,>(items: T[], size: number): T[][] => {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    out.push(items.slice(i, i + size));
+  }
+  return out;
+};
+
 const buildGroupMembershipQueries = (cloudDb: NonNullable<typeof db>, authUid: string) => ({
   members: query(collection(cloudDb, groupCollection), where("memberAuthUids", "array-contains", authUid)),
   owners: query(collection(cloudDb, groupCollection), where("ownerAuthUid", "==", authUid)),
@@ -139,6 +147,46 @@ const mergeGroupSlices = (groupSlices: Map<string, Map<string, Group>>) => {
   return Array.from(merged.values())
     .filter((group) => !group.isDeleted)
     .sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+};
+
+const buildAuthHeader = async () => {
+  const idToken = await auth?.currentUser?.getIdToken();
+  if (!idToken) {
+    throw new Error("Necesitás iniciar sesión.");
+  }
+  return {
+    Authorization: `Bearer ${idToken}`
+  };
+};
+
+const fetchGroupsCloudFallback = async (): Promise<Group[]> => {
+  const headers = await buildAuthHeader();
+  const response = await fetch("/api/groups/list", {
+    method: "GET",
+    headers
+  });
+  const payload = (await response.json().catch(() => null)) as { groups?: Group[]; error?: string } | null;
+  if (!response.ok) {
+    throw new Error(payload?.error ?? "No se pudieron cargar los grupos.");
+  }
+  return (payload?.groups ?? []).map((group) => normalizeGroup(group.id, group as Omit<Group, "id">));
+};
+
+const fetchReservationsCloudFallback = async (): Promise<Reservation[]> => {
+  const headers = await buildAuthHeader();
+  const response = await fetch("/api/reservations/list", {
+    method: "GET",
+    headers
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { reservations?: Reservation[]; error?: string }
+    | null;
+  if (!response.ok) {
+    throw new Error(payload?.error ?? "No se pudieron cargar las reservas.");
+  }
+  return (payload?.reservations ?? []).map((reservation) =>
+    normalizeReservation(reservation.id, reservation as Omit<Reservation, "id">)
+  );
 };
 
 const isGroupAdmin = (group: Group, authUid: string) =>
@@ -323,6 +371,8 @@ export const subscribeReservations = (
   let lastAllowedGroupIdsKey = "";
   let reservationUnsubscribers: Array<() => void> = [];
   let groupUnsubscribers: Array<() => void> = [];
+  let fallbackRequested = false;
+  let fallbackTimer: number | null = null;
 
   const emit = () => {
     const merged = new Map<string, Reservation>();
@@ -359,12 +409,20 @@ export const subscribeReservations = (
     reservationUnsubscribers.push(unsubscribe);
   };
 
-  const chunk = <T,>(items: T[], size: number): T[][] => {
-    const out: T[][] = [];
-    for (let i = 0; i < items.length; i += size) {
-      out.push(items.slice(i, i + size));
+  const fallbackToApi = () => {
+    if (fallbackRequested) {
+      return;
     }
-    return out;
+    fallbackRequested = true;
+    fetchReservationsCloudFallback()
+      .then((reservations) => {
+        onChange(
+          reservations
+            .filter((reservation) => canAccessReservation(reservation, currentAuthUid, allowedGroupIds))
+            .sort((a, b) => a.startDateTime.localeCompare(b.startDateTime))
+        );
+      })
+      .catch(() => null);
   };
 
   const rebuildReservationSubscriptions = (groupIds: string[]) => {
@@ -387,7 +445,7 @@ export const subscribeReservations = (
       query(collection(cloudDb, reservationCollection), where("guestAccessUids", "array-contains", currentAuthUid))
     );
 
-    chunk(groupIds, 10).forEach((batch, index) => {
+    chunkItems(groupIds, 10).forEach((batch, index) => {
       subscribeReservationSlice(
         `group-batch-${index}`,
         query(collection(cloudDb, reservationCollection), where("groupId", "in", batch))
@@ -420,6 +478,7 @@ export const subscribeReservations = (
       () => {
         groupSlices.delete(sliceKey);
         syncAllowedGroupIds();
+        fallbackToApi();
       }
     );
     groupUnsubscribers.push(unsubscribe);
@@ -430,8 +489,16 @@ export const subscribeReservations = (
   subscribeGroupSlice("group-members", groupQueries.members);
   subscribeGroupSlice("group-owners", groupQueries.owners);
   subscribeGroupSlice("group-admins", groupQueries.admins);
+  fallbackTimer = window.setTimeout(() => {
+    if (allowedGroupIds.size === 0) {
+      fallbackToApi();
+    }
+  }, 3500);
 
   return () => {
+    if (fallbackTimer) {
+      window.clearTimeout(fallbackTimer);
+    }
     groupUnsubscribers.forEach((unsubscribe) => unsubscribe());
     reservationUnsubscribers.forEach((unsubscribe) => unsubscribe());
   };
@@ -445,6 +512,20 @@ export const subscribeGroups = (currentAuthUid: string, onChange: (groups: Group
 
   const groupSlices = new Map<string, Map<string, Group>>();
   const unsubscribers: Array<() => void> = [];
+  let fallbackRequested = false;
+  let fallbackTimer: number | null = null;
+
+  const fallbackToApi = () => {
+    if (fallbackRequested) {
+      return;
+    }
+    fallbackRequested = true;
+    fetchGroupsCloudFallback()
+      .then((groups) => {
+        onChange(groups);
+      })
+      .catch(() => null);
+  };
 
   const emit = () => {
     const groups = mergeGroupSlices(groupSlices);
@@ -465,6 +546,7 @@ export const subscribeGroups = (currentAuthUid: string, onChange: (groups: Group
       () => {
         groupSlices.delete(sliceKey);
         emit();
+        fallbackToApi();
       }
     );
     unsubscribers.push(unsubscribe);
@@ -474,8 +556,17 @@ export const subscribeGroups = (currentAuthUid: string, onChange: (groups: Group
   subscribeGroupSlice("group-members", groupQueries.members);
   subscribeGroupSlice("group-owners", groupQueries.owners);
   subscribeGroupSlice("group-admins", groupQueries.admins);
+  fallbackTimer = window.setTimeout(() => {
+    const groups = mergeGroupSlices(groupSlices);
+    if (groups.length === 0) {
+      fallbackToApi();
+    }
+  }, 3000);
 
   return () => {
+    if (fallbackTimer) {
+      window.clearTimeout(fallbackTimer);
+    }
     unsubscribers.forEach((unsubscribe) => unsubscribe());
   };
 };
