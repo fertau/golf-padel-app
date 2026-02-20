@@ -13,7 +13,8 @@
     "repair:mi-grupo": "node scripts/repairMiGrupoData.mjs",
     "backfill:reservation-visibility": "node scripts/backfillReservationVisibilityScope.mjs",
     "cleanup:forced-mi-grupo": "node scripts/cleanupForcedMiGrupo.mjs",
-    "backfill:group-memberships": "node scripts/backfillGroupMemberships.mjs"
+    "backfill:group-memberships": "node scripts/backfillGroupMemberships.mjs",
+    "audit:group-access": "node scripts/auditGroupAccess.mjs"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
