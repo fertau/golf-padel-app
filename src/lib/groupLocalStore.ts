@@ -42,7 +42,7 @@ const normalizeLocalGroup = (group: Group): Group => ({
   adminAuthUids: group.adminAuthUids ?? [],
   memberNamesByAuthUid: group.memberNamesByAuthUid ?? {},
   venueIds: group.venueIds ?? [],
-  isDeleted: group.isDeleted ?? false
+  isDeleted: group.isDeleted === true
 });
 
 export const getLocalGroups = (): Group[] => read<Group[]>(GROUPS_KEY, []).map(normalizeLocalGroup);

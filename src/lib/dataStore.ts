@@ -85,7 +85,7 @@ const normalizeGroup = (id: string, data: Omit<Group, "id">): Group => ({
   adminAuthUids: data.adminAuthUids ?? [],
   memberNamesByAuthUid: data.memberNamesByAuthUid ?? {},
   venueIds: data.venueIds ?? [],
-  isDeleted: data.isDeleted ?? false
+  isDeleted: data.isDeleted === true
 });
 
 const normalizeVenue = (id: string, data: Omit<Venue, "id">): Venue => ({
