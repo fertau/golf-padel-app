@@ -62,10 +62,12 @@ export default function ReservationDetail({
   const message = buildWhatsAppMessage(reservation, appUrl);
 
   const handleSetAttendance = async (status: AttendanceStatus) => {
+    setPendingAttendanceStatus(status);
     try {
       await onSetAttendanceStatus(reservation.id, status);
       triggerHaptic("light");
     } catch (error) {
+      setPendingAttendanceStatus(null);
       onFeedback((error as Error).message || "No se pudo actualizar la asistencia.");
     }
   };
@@ -143,6 +145,7 @@ export default function ReservationDetail({
   const [editGroupId, setEditGroupId] = useState(
     reservation.visibilityScope === "group" && reservation.groupId !== "default-group" ? reservation.groupId : ""
   );
+  const [pendingAttendanceStatus, setPendingAttendanceStatus] = useState<AttendanceStatus | null>(null);
 
   useEffect(() => {
     setEditCourtName(reservation.courtName);
@@ -151,12 +154,24 @@ export default function ReservationDetail({
     setEditVisibilityScope(reservation.visibilityScope === "group" ? "group" : "link_only");
     setEditGroupId(reservation.visibilityScope === "group" && reservation.groupId !== "default-group" ? reservation.groupId : "");
     setReassignTargetAuthUid("");
+    setPendingAttendanceStatus(null);
   }, [reservation.id, reservation.courtName, reservation.startDateTime, reservation.durationMinutes, reservation.visibilityScope, reservation.groupId]);
 
   const confirmed = getSignupsByStatus(reservation, "confirmed");
   const maybe = getSignupsByStatus(reservation, "maybe");
   const cancelled = getSignupsByStatus(reservation, "cancelled");
   const myAttendance = getUserAttendance(reservation, currentUser.id);
+  const myAttendanceStatus = myAttendance?.attendanceStatus;
+  const effectiveAttendanceStatus = pendingAttendanceStatus ?? myAttendanceStatus;
+
+  useEffect(() => {
+    if (!pendingAttendanceStatus) {
+      return;
+    }
+    if (myAttendanceStatus === pendingAttendanceStatus) {
+      setPendingAttendanceStatus(null);
+    }
+  }, [myAttendanceStatus, pendingAttendanceStatus]);
 
   const formatCompactDate = (iso: string): string => {
     const date = new Date(iso);
@@ -319,7 +334,7 @@ export default function ReservationDetail({
           <h3>Tu asistencia</h3>
           <div className="segmented-control-elite">
             <button
-              className={`elite-choice confirmed ${myAttendance?.attendanceStatus === "confirmed" ? "active" : ""}`}
+              className={`elite-choice confirmed ${effectiveAttendanceStatus === "confirmed" ? "active" : ""}`}
               onClick={() => {
                 void handleSetAttendance("confirmed");
               }}
@@ -327,7 +342,7 @@ export default function ReservationDetail({
               Juego
             </button>
             <button
-              className={`elite-choice maybe ${myAttendance?.attendanceStatus === "maybe" ? "active" : ""}`}
+              className={`elite-choice maybe ${effectiveAttendanceStatus === "maybe" ? "active" : ""}`}
               onClick={() => {
                 void handleSetAttendance("maybe");
               }}
@@ -336,7 +351,7 @@ export default function ReservationDetail({
               Quizás
             </button>
             <button
-              className={`elite-choice cancelled ${myAttendance?.attendanceStatus === "cancelled" ? "active" : ""}`}
+              className={`elite-choice cancelled ${effectiveAttendanceStatus === "cancelled" ? "active" : ""}`}
               onClick={() => {
                 void handleSetAttendance("cancelled");
               }}
@@ -344,6 +359,7 @@ export default function ReservationDetail({
               No juego
             </button>
           </div>
+          {pendingAttendanceStatus ? <p className="private-hint">Guardando asistencia...</p> : null}
           {!eligibility.ok && !myAttendance && eligibility.reason !== "La reserva está cancelada" ? (
             <p className="eligibility-warning animate-fade-in eligibility-warning-centered">
               {eligibility.reason}
