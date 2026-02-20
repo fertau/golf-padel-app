@@ -313,8 +313,20 @@ export default function App() {
           }
           const rawMessage = (error as Error).message;
           const normalizedMessage = rawMessage?.toLowerCase() ?? "";
+          const isInvalidInviteError =
+            normalizedMessage.includes("invitación no encontrada") ||
+            normalizedMessage.includes("invitacion no encontrada") ||
+            normalizedMessage.includes("invitación vencida") ||
+            normalizedMessage.includes("invitacion vencida") ||
+            normalizedMessage.includes("invitación inválida") ||
+            normalizedMessage.includes("invitacion invalida") ||
+            normalizedMessage.includes("invalid invite") ||
+            normalizedMessage.includes("expired invite") ||
+            normalizedMessage.includes("no tenés permisos") ||
+            normalizedMessage.includes("no tienes permisos") ||
+            normalizedMessage.includes("without permission");
           const inviteErrorMessage =
-            rawMessage && (normalizedMessage.includes("invite") || normalizedMessage.includes("invit"))
+            rawMessage && isInvalidInviteError
               ? "La invitación es inválida, venció o no tenés permisos."
               : rawMessage;
           setInviteFeedback(inviteErrorMessage);
