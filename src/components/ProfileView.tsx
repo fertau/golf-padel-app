@@ -97,25 +97,26 @@ export default function ProfileView({
     }
   };
 
-  const shareGroupInvite = async (groupId: string, channel: "whatsapp" | "email" | "link") => {
+  const buildGroupInviteMessage = (groupName: string, link: string) =>
+    `🎾 Te invito al grupo "${groupName}" en Golf Padel.\n\nUnite desde este link (vence en 7 días):\n${link}`;
+
+  const shareGroupInvite = async (groupId: string, groupName: string, channel: "whatsapp" | "email" | "link") => {
     try {
       setInviteBusyGroupId(groupId);
       const link = await onCreateGroupInvite(groupId, channel);
-      const message = `🎾 Te invito a mi grupo de pádel.\n\nUnite desde este link (vence en 7 días):\n${link}`;
+      const message = buildGroupInviteMessage(groupName, link);
       const encoded = encodeURIComponent(message);
+      const subject = encodeURIComponent(`Invitación a ${groupName} · Golf Padel`);
 
       if (channel === "whatsapp") {
         window.open(`https://wa.me/?text=${encoded}`, "_blank", "noopener,noreferrer");
       } else if (channel === "email") {
         const emailTo = window.prompt("Email del invitado (opcional):", "")?.trim() ?? "";
-        const subject = encodeURIComponent("Invitación a grupo de pádel");
         const recipient = encodeURIComponent(emailTo);
         window.open(`mailto:${recipient}?subject=${subject}&body=${encoded}`, "_self");
-      } else if (navigator.share) {
-        await navigator.share({ title: "Invitación a grupo", text: message });
       } else {
-        await navigator.clipboard.writeText(link);
-        alert("Link copiado.");
+        await navigator.clipboard.writeText(message);
+        alert("Invitación copiada.");
       }
       triggerHaptic("medium");
     } catch (error) {
@@ -362,7 +363,7 @@ export default function ProfileView({
                           <div className="group-invite-menu-elite">
                             <button
                               className="quick-chip action-chip quick-chip-icon"
-                              onClick={() => shareGroupInvite(group.id, "whatsapp")}
+                              onClick={() => shareGroupInvite(group.id, group.name, "whatsapp")}
                               disabled={inviteBusyGroupId === group.id}
                               type="button"
                             >
@@ -373,7 +374,7 @@ export default function ProfileView({
                             </button>
                             <button
                               className="quick-chip action-chip quick-chip-icon"
-                              onClick={() => shareGroupInvite(group.id, "email")}
+                              onClick={() => shareGroupInvite(group.id, group.name, "email")}
                               disabled={inviteBusyGroupId === group.id}
                               type="button"
                             >
@@ -384,7 +385,7 @@ export default function ProfileView({
                             </button>
                             <button
                               className="quick-chip action-chip quick-chip-icon"
-                              onClick={() => shareGroupInvite(group.id, "link")}
+                              onClick={() => shareGroupInvite(group.id, group.name, "link")}
                               disabled={inviteBusyGroupId === group.id}
                               type="button"
                             >
