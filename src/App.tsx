@@ -39,6 +39,7 @@ import {
   isCloudDbEnabled,
   leaveGroup,
   listGroupAuditEvents,
+  listMyReservationHistory,
   migrateLegacyReservationsForUser,
   removeGroupMember,
   reassignReservationCreator,
@@ -141,6 +142,9 @@ export default function App() {
   const [quickDateFilter, setQuickDateFilter] = useState<"all" | "hoy" | "manana" | "semana">("all");
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyApiLoaded, setHistoryApiLoaded] = useState(false);
+  const [historyApiReservations, setHistoryApiReservations] = useState<Reservation[]>([]);
   const [historyStatuses, setHistoryStatuses] = useState<HistoryStatus[]>(["confirmed", "maybe", "cancelled"]);
   const [historyRange, setHistoryRange] = useState<HistoryRange>("all");
   const [historyMonth, setHistoryMonth] = useState(() => {
@@ -457,11 +461,32 @@ export default function App() {
     });
   }, [activeUpcomingReservations, matchesFilter, quickDateFilter, currentUser]);
 
+  const historySourceReservations = useMemo(() => {
+    const merged = new Map<string, Reservation>();
+
+    historyApiReservations.forEach((reservation) => {
+      const resolvedGroupName =
+        isReservationGroupScoped(reservation) && reservation.groupId && groupNameById[reservation.groupId]
+          ? groupNameById[reservation.groupId]
+          : reservation.groupName;
+      merged.set(reservation.id, {
+        ...reservation,
+        groupName: resolvedGroupName
+      });
+    });
+
+    reservationsWithGroupContext.forEach((reservation) => {
+      merged.set(reservation.id, reservation);
+    });
+
+    return Array.from(merged.values());
+  }, [historyApiReservations, reservationsWithGroupContext, groupNameById]);
+
   const historyBase = useMemo(() => {
     if (!currentUser) {
       return [];
     }
-    return reservationsWithGroupContext
+    return historySourceReservations
       .filter((reservation) => {
         const visibleInScope =
           matchesActiveScope(reservation) ||
@@ -476,7 +501,7 @@ export default function App() {
         return Boolean(getUserAttendance(reservation, currentUser.id)) || isReservationCreator(reservation, currentUser.id);
       })
       .sort((a, b) => parseReservationDate(b.startDateTime).getTime() - parseReservationDate(a.startDateTime).getTime());
-  }, [reservationsWithGroupContext, currentUser, activeGroupScope]);
+  }, [historySourceReservations, currentUser, activeGroupScope]);
 
   const historyStats = useMemo(() => {
     if (!currentUser) {
@@ -645,6 +670,44 @@ export default function App() {
       setActiveGroupScope("all");
     }
   }, [activeGroupScope, groups]);
+
+  useEffect(() => {
+    setHistoryApiReservations([]);
+    setHistoryApiLoaded(false);
+    setHistoryLoading(false);
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (!currentUser || !historyExpanded || historyLoading || historyApiLoaded) {
+      return;
+    }
+
+    let cancelled = false;
+    setHistoryLoading(true);
+    listMyReservationHistory(300)
+      .then((items) => {
+        if (cancelled) {
+          return;
+        }
+        setHistoryApiReservations(items);
+        setHistoryApiLoaded(true);
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+        setHistoryApiLoaded(true);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setHistoryLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, historyExpanded, historyApiLoaded, historyLoading]);
 
   // 6. Actions
   const loginGoogle = async () => {
@@ -1036,6 +1099,7 @@ export default function App() {
             <HistoryView
               historyExpanded={historyExpanded}
               setHistoryExpanded={setHistoryExpanded}
+              historyLoading={historyLoading}
               historyStats={historyStats}
               historyStatuses={historyStatuses}
               setHistoryStatuses={setHistoryStatuses}

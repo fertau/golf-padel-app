@@ -198,6 +198,44 @@ const fetchReservationsCloudFallback = async (): Promise<Reservation[]> => {
   );
 };
 
+export const listMyReservationHistory = async (limit = 200): Promise<Reservation[]> => {
+  const cloudDb = db;
+  if (!isCloudDbEnabled() || !cloudDb) {
+    const actorAuthUid = auth?.currentUser?.uid;
+    if (!actorAuthUid) {
+      return [];
+    }
+    return getReservations()
+      .filter((reservation) => {
+        const timestamp = new Date(reservation.startDateTime).getTime();
+        if (!Number.isFinite(timestamp) || timestamp >= Date.now()) {
+          return false;
+        }
+        return isReservationRelatedToUser(reservation, actorAuthUid);
+      })
+      .sort((a, b) => new Date(b.startDateTime).getTime() - new Date(a.startDateTime).getTime())
+      .slice(0, Math.min(Math.max(limit, 1), 500));
+  }
+
+  const headers = await buildAuthHeader();
+  const params = new URLSearchParams({
+    limit: String(Math.min(Math.max(limit, 1), 500))
+  });
+  const response = await fetch(`/api/reservations/history?${params.toString()}`, {
+    method: "GET",
+    headers
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { reservations?: Reservation[]; error?: string }
+    | null;
+  if (!response.ok) {
+    throw new Error(payload?.error ?? "No se pudo cargar el historial.");
+  }
+  return (payload?.reservations ?? []).map((reservation) =>
+    normalizeReservation(reservation.id, reservation as Omit<Reservation, "id">)
+  );
+};
+
 export const listGroupAuditEvents = async (groupId: string, limit = 30): Promise<GroupAuditEvent[]> => {
   const normalizedGroupId = groupId.trim();
   if (!normalizedGroupId) {

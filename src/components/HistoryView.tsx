@@ -8,6 +8,7 @@ type HistoryRange = "all" | "1m" | "3m" | "6m" | "1y" | "month";
 type Props = {
     historyExpanded: boolean;
     setHistoryExpanded: (expanded: boolean) => void;
+    historyLoading: boolean;
     historyStats: { playedCount: number; latest: string };
     historyStatuses: HistoryStatus[];
     setHistoryStatuses: (statuses: HistoryStatus[]) => void;
@@ -31,6 +32,7 @@ type Props = {
 export const HistoryView: React.FC<Props> = ({
     historyExpanded,
     setHistoryExpanded,
+    historyLoading,
     historyStats,
     historyStatuses,
     setHistoryStatuses,
@@ -67,6 +69,7 @@ export const HistoryView: React.FC<Props> = ({
 
             {historyExpanded && (
                 <div className="history-content-elite animate-fade-in">
+                    {historyLoading ? <p className="private-hint">Actualizando historial...</p> : null}
                     <div className="detail-kpis">
                         <div className="kpi-card glass-panel-elite kpi-card-compact">
                             <span className="kpi-label">Jugados</span>
