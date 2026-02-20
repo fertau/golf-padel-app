@@ -1051,11 +1051,15 @@ export const removeGroupMember = async (
       });
     });
   } catch (error) {
-    if (isPermissionDeniedError(error)) {
+    try {
       await removeGroupMemberCloudFallback(groupId, targetAuthUid);
       return;
+    } catch (fallbackError) {
+      if (isPermissionDeniedError(error)) {
+        throw fallbackError;
+      }
+      throw error;
     }
-    throw error;
   }
 };
 
