@@ -847,21 +847,12 @@ export default function App() {
                 </button>
               ))}
             </div>
-            {inviteFeedback ? <p className="private-hint">{inviteFeedback}</p> : null}
-            {contextNotice ? (
-              <div className="context-notice animate-fade-in" role="status">
-                <span>{contextNotice}</span>
-                <button type="button" className="context-notice-close" onClick={() => setContextNotice(null)}>
-                  OK
-                </button>
-              </div>
-            ) : null}
           </section>
         ) : null}
 
         {activeTab === "mis-partidos" && (
           <>
-            <section className="panel my-summary">
+            <section className="panel glass-panel-elite animate-fade-in my-summary">
               <h2 className="section-title">Mis partidos</h2>
               <div className="detail-kpis summary-kpis">
                 <button className={`kpi-card kpi-action ${matchesFilter === "pending" ? "kpi-active" : ""}`} onClick={() => setMatchesFilter("pending")}>
@@ -969,9 +960,9 @@ export default function App() {
         {activeTab === "mis-reservas" && (
           <>
             {!showCreateForm && (
-              <section className="panel">
-                <button onClick={() => setShowCreateForm(true)} disabled={busy || groups.length === 0}>
-                  Reservá un partido
+              <section className="panel glass-panel-elite animate-fade-in">
+                <button className="btn-elite btn-elite-accent btn-block" onClick={() => setShowCreateForm(true)} disabled={busy || groups.length === 0}>
+                  + Reservá un partido
                 </button>
                 {groups.length === 0 ? <p className="private-hint">Creá o uníte a un grupo para reservar.</p> : null}
               </section>
@@ -1013,7 +1004,6 @@ export default function App() {
           <section className="sheet" onClick={e => e.stopPropagation()}>
             <div className="sheet-handle" /><div className="sheet-head"><h3>Nueva reserva</h3><button className="sheet-close" onClick={() => setShowCreateForm(false)}>Cerrar</button></div>
             <ReservationForm
-              currentUser={currentUser}
               groups={groups}
               venues={venues}
               courts={courts}
@@ -1066,12 +1056,25 @@ export default function App() {
           </section>
         </div>
       )}
-
-      {toastMessage ? (
-        <div className="floating-toast" role="status" aria-live="polite">
-          {toastMessage}
-        </div>
-      ) : null}
+      {/* Elite Floating Toasts */}
+      <div className="toasts-container-elite">
+        {inviteFeedback ? (
+          <div className="toast-elite animate-slide-up">
+            <span>{inviteFeedback}</span>
+          </div>
+        ) : null}
+        {contextNotice ? (
+          <div className="toast-elite animate-slide-up" role="status">
+            <span>{contextNotice}</span>
+            <button type="button" className="toast-close" onClick={() => setContextNotice(null)}>OK</button>
+          </div>
+        ) : null}
+        {toastMessage ? (
+          <div className="toast-elite animate-slide-up" role="status" aria-live="polite">
+            <span>{toastMessage}</span>
+          </div>
+        ) : null}
+      </div>
     </>
   );
 }

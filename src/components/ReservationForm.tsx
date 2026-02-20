@@ -1,10 +1,9 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import type { Court, Group, User, Venue } from "../lib/types";
+import type { Court, Group, Venue } from "../lib/types";
 import { canSearchGooglePlaces, searchGooglePlaces, type GooglePlaceCandidate } from "../lib/places";
 import { triggerHaptic } from "../lib/utils";
 
 type Props = {
-  currentUser: User;
   groups: Group[];
   venues: Venue[];
   courts: Court[];
@@ -47,7 +46,6 @@ const normalize = (value: string) => value.trim().toLowerCase();
 export default function ReservationForm({
   onCreate,
   onCancel,
-  currentUser,
   groups,
   venues,
   courts,
@@ -253,9 +251,9 @@ export default function ReservationForm({
 
   return (
     <form className="elite-form" onSubmit={handleSubmit}>
-      <header className="form-header-elite">
+      <header className="form-header-elite animate-fade-in">
         <h2>Reservá un partido</h2>
-        <p>{currentUser.name}, elegí grupo, complejo y turno.</p>
+        <p>Elegí grupo, complejo y turno.</p>
       </header>
 
       <div className="elite-field-group">
@@ -293,28 +291,30 @@ export default function ReservationForm({
         <div className="autocomplete-shell">
           <input
             type="text"
-            className="elite-input"
-            placeholder="Escribí el nombre del complejo"
+            className="input-elite"
+            placeholder="Nombre del complejo"
             value={venueQuery}
             onChange={(event) => {
               setVenueQuery(event.target.value);
               setSelectedVenueId("");
             }}
           />
-          {creatingNewVenue ? <span className="quick-chip autocomplete-new">+ {NEW_BADGE}</span> : null}
+          {creatingNewVenue ? <span className="quick-chip-badge-elite">+ {NEW_BADGE}</span> : null}
         </div>
 
         {showVenueSuggestions && venueSuggestions.length > 0 ? (
-          <div className="autocomplete-list">
+          <div className="autocomplete-list-elite animate-fade-in">
             {venueSuggestions.map((venue) => (
               <button
                 key={`venue-suggestion-${venue.id}`}
                 type="button"
-                className="autocomplete-row"
+                className="autocomplete-row-elite"
                 onClick={() => chooseVenueSuggestion(venue)}
               >
-                <strong>{venue.name}</strong>
-                <small>{venue.address}</small>
+                <div className="suggestion-main">
+                  <strong>{venue.name}</strong>
+                  <small>{venue.address}</small>
+                </div>
               </button>
             ))}
           </div>
@@ -391,7 +391,7 @@ export default function ReservationForm({
         <div className="autocomplete-shell">
           <input
             type="text"
-            className="elite-input"
+            className="input-elite"
             placeholder="Escribí la cancha o dejalo vacío"
             value={courtQuery}
             onChange={(event) => {
@@ -399,16 +399,16 @@ export default function ReservationForm({
               setSelectedCourtId("");
             }}
           />
-          {creatingNewCourt ? <span className="quick-chip autocomplete-new">+ {NEW_BADGE}</span> : null}
+          {creatingNewCourt ? <span className="quick-chip-badge-elite">+ {NEW_BADGE}</span> : null}
         </div>
 
         {showCourtSuggestions && courtSuggestions.length > 0 ? (
-          <div className="autocomplete-list">
+          <div className="autocomplete-list-elite animate-fade-in">
             {courtSuggestions.map((court) => (
               <button
                 key={`court-suggestion-${court.id}`}
                 type="button"
-                className="autocomplete-row"
+                className="autocomplete-row-elite"
                 onClick={() => chooseCourtSuggestion(court)}
               >
                 <strong>{court.name}</strong>
@@ -420,7 +420,7 @@ export default function ReservationForm({
 
       <div className="elite-field-group">
         <label className="elite-field-label">Fecha del turno</label>
-        <input type="date" className="elite-input" value={reservationDate} onChange={(e) => setReservationDate(e.target.value)} required />
+        <input type="date" className="input-elite" value={reservationDate} onChange={(e) => setReservationDate(e.target.value)} required />
       </div>
 
       <div className="elite-field-group">
@@ -452,9 +452,9 @@ export default function ReservationForm({
       </div>
 
       {useCustomTime ? (
-        <div className="elite-field-group animate-in">
+        <div className="elite-field-group animate-fade-in">
           <label className="elite-field-label">Horario específico (00 o 30 min)</label>
-          <input type="time" className="elite-input" value={customTime} onChange={(e) => setCustomTime(e.target.value)} step={1800} required />
+          <input type="time" className="input-elite" value={customTime} onChange={(e) => setCustomTime(e.target.value)} step={1800} required />
           {!hasValidTime ? <p className="elite-error">El horario debe ser en bloques de 30 min.</p> : null}
         </div>
       ) : null}
@@ -469,8 +469,8 @@ export default function ReservationForm({
       </div>
 
       <footer className="form-actions-elite">
-        <button type="submit" className="btn-primary-elite" disabled={!canSubmit}>Confirmar reserva</button>
-        <button type="button" className="btn-ghost-elite" onClick={onCancel}>Cancelar</button>
+        <button type="submit" className="btn-elite btn-elite-accent btn-block" disabled={!canSubmit}>Confirmar reserva</button>
+        <button type="button" className="btn-elite btn-elite-outline btn-block" onClick={onCancel}>Cancelar</button>
       </footer>
     </form>
   );

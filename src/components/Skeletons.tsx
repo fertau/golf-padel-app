@@ -9,8 +9,8 @@ export function Skeleton({ className, width, height, borderRadius = "4px" }: { c
 
 export function ReservationSkeleton() {
     return (
-        <div className="reservation-card skeleton-card-elite">
-            <div className="card-date-column">
+        <div className="reservation-card-elite skeleton-card-elite">
+            <div className="card-date-column-elite">
                 <Skeleton width="30px" height="8px" borderRadius="4px" />
                 <Skeleton width="40px" height="24px" borderRadius="6px" />
             </div>

@@ -204,8 +204,8 @@ export default function ProfileView({
             </svg>
           </CardIcon>
           <div className="section-info profile-groups-content">
-            <h3>Grupos</h3>
-            <p>Pertenecés a {groups.length} grupo(s).</p>
+            <h3>Mis Grupos</h3>
+            <p>Tenés {groups.length} grupo(s) activo(s).</p>
 
             <div className="groups-controls">
               {!showCreateGroupForm ? (
@@ -317,9 +317,11 @@ export default function ProfileView({
                       )}
                     </summary>
                     <div className="group-item-content">
-                      <details className="group-members-collapse" open>
-                        <summary>Miembros ({group.memberAuthUids.length})</summary>
-                        <div className="member-list">
+                      <div className="group-members-list-elite animate-fade-in">
+                        <header className="member-list-header">
+                          <h4>Miembros ({group.memberAuthUids.length})</h4>
+                        </header>
+                        <div className="member-cards-grid">
                           {group.memberAuthUids.map((memberAuthUid) => {
                             const memberName =
                               group.memberNamesByAuthUid[memberAuthUid] ??
@@ -330,20 +332,16 @@ export default function ProfileView({
                             const canManage = role !== "member" && !isOwner && memberAuthUid !== user.id;
                             const key = `${group.id}:${memberAuthUid}`;
                             return (
-                              <div key={key} className="member-row-soft">
-                                <div className="member-row-main">
+                              <div key={key} className="member-card-elite">
+                                <div className="member-card-main">
                                   <strong>{memberName}</strong>
-                                  {!isOwner ? (
-                                    <div>
-                                      <span className={`member-role-chip ${isAdmin ? "admin" : "member"}`}>
-                                        {isAdmin ? "Admin" : "Miembro"}
-                                      </span>
-                                    </div>
-                                  ) : null}
+                                  <span className={`role-badge-elite ${isOwner ? "owner" : isAdmin ? "admin" : "member"}`}>
+                                    {isOwner ? "Owner" : isAdmin ? "Admin" : "Miembro"}
+                                  </span>
                                 </div>
                                 {canManage ? (
                                   <button
-                                    className={`quick-chip action-chip ${isAdmin ? "active" : ""}`}
+                                    className={`btn-elite btn-elite-outline btn-compact ${isAdmin ? "active" : ""}`}
                                     onClick={() => toggleAdminRole(group.id, memberAuthUid, !isAdmin)}
                                     disabled={roleBusyKey === key}
                                   >
@@ -354,12 +352,14 @@ export default function ProfileView({
                             );
                           })}
                         </div>
-                      </details>
+                      </div>
 
                       {role !== "member" ? (
-                        <details className="group-share-collapse">
-                          <summary>Invitar</summary>
-                          <div className="group-invite-menu group-action-menu">
+                        <div className="group-invite-section-elite">
+                          <header className="member-list-header">
+                            <h4>Invitar al grupo</h4>
+                          </header>
+                          <div className="group-invite-menu-elite">
                             <button
                               className="quick-chip action-chip quick-chip-icon"
                               onClick={() => shareGroupInvite(group.id, "whatsapp")}
@@ -394,7 +394,7 @@ export default function ProfileView({
                               Copiar
                             </button>
                           </div>
-                        </details>
+                        </div>
                       ) : null}
                     </div>
                   </details>
@@ -420,7 +420,7 @@ export default function ProfileView({
         </section>
 
         <footer className="profile-footer-elite animate-fade-in">
-          <button className="btn-elite btn-link-danger-elite btn-block btn-logout" onClick={() => handleAction(onLogout)} disabled={busy}>
+          <button className="btn-elite btn-logout btn-block" onClick={() => handleAction(onLogout)} disabled={busy}>
             Cerrar sesión
           </button>
           <p className="version-tag">Golf Padel App v3.2</p>
