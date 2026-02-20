@@ -252,7 +252,8 @@ export default function App() {
     const inviteFromQuery =
       new URLSearchParams(window.location.search).get("invite") ??
       new URLSearchParams(window.location.search).get("token");
-    const inviteToken = inviteFromPath ?? inviteFromQuery;
+    const inviteTokenRaw = inviteFromPath ?? inviteFromQuery;
+    const inviteToken = inviteTokenRaw?.trim().replace(/[.,;:!?]+$/, "") ?? null;
 
     if (inviteToken) {
       setPendingInviteToken(inviteToken);

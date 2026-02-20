@@ -1219,6 +1219,7 @@ export const acceptInviteToken = async (
     throw new Error("Necesitás iniciar sesión.");
   }
 
+  let apiErrorMessage: string | null = null;
   try {
     const response = await fetch("/api/invites/accept", {
       method: "POST",
@@ -1244,15 +1245,20 @@ export const acceptInviteToken = async (
       };
     }
 
-    if (response.status !== 404 && response.status !== 405) {
-      throw new Error(payload?.error ?? "No se pudo aceptar la invitación.");
-    }
+    apiErrorMessage = payload?.error ?? "No se pudo aceptar la invitación.";
   } catch (error) {
     const message = (error as Error).message ?? "";
     if (!/Failed to fetch/i.test(message)) {
-      throw error;
+      apiErrorMessage = message || apiErrorMessage;
     }
   }
 
-  return acceptInviteTokenCloudFallback(cloudDb, token, currentUser);
+  try {
+    return await acceptInviteTokenCloudFallback(cloudDb, token, currentUser);
+  } catch (fallbackError) {
+    if (apiErrorMessage) {
+      throw new Error(apiErrorMessage);
+    }
+    throw fallbackError;
+  }
 };
