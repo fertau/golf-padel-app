@@ -59,7 +59,6 @@ import type {
 import { canJoinReservation, isReservationCreator } from "./utils";
 
 const nowIso = () => new Date().toISOString();
-const inviteExpirationIso = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
 const inferReservationVisibilityScope = (
   data: Partial<Reservation>
@@ -1595,32 +1594,25 @@ export const createGroupInviteLink = async (
   if (!actorAuthUid) {
     throw new Error("Necesitás iniciar sesión.");
   }
-
-  const groupSnapshot = await getDoc(doc(cloudDb, groupCollection, groupId));
-  if (!groupSnapshot.exists()) {
-    throw new Error("Grupo no encontrado.");
+  const headers = await buildAuthHeader();
+  const response = await fetch("/api/invites/create", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...headers
+    },
+    body: JSON.stringify({
+      targetType: "group",
+      groupId,
+      baseUrl: normalizedBase,
+      channel
+    })
+  });
+  const payload = (await response.json().catch(() => null)) as { inviteLink?: string; error?: string } | null;
+  if (!response.ok || !payload?.inviteLink) {
+    throw new Error(payload?.error ?? "No se pudo crear la invitación del grupo.");
   }
-  const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
-  if (group.isDeleted) {
-    throw new Error("El grupo ya no está disponible.");
-  }
-  if (!isGroupAdmin(group, actorAuthUid)) {
-    throw new Error("Solo administradores del grupo pueden invitar.");
-  }
-
-  const token = crypto.randomUUID();
-  const invite: GroupInvite = {
-    token,
-    targetType: "group",
-    groupId,
-    createdByAuthUid: actorAuthUid,
-    createdAt: nowIso(),
-    expiresAt: inviteExpirationIso(),
-    status: "active",
-    channel
-  };
-  await setDoc(doc(cloudDb, groupInviteCollection, token), stripUndefinedDeep(invite));
-  return `${normalizedBase}/join/${token}`;
+  return payload.inviteLink;
 };
 
 export const createReservationInviteLink = async (
@@ -1639,34 +1631,25 @@ export const createReservationInviteLink = async (
   if (!actorAuthUid) {
     throw new Error("Necesitás iniciar sesión.");
   }
-
-  const reservationSnapshot = await getDoc(doc(cloudDb, reservationCollection, reservationId));
-  if (!reservationSnapshot.exists()) {
-    throw new Error("Reserva no encontrada.");
+  const headers = await buildAuthHeader();
+  const response = await fetch("/api/invites/create", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...headers
+    },
+    body: JSON.stringify({
+      targetType: "reservation",
+      reservationId,
+      baseUrl: normalizedBase,
+      channel
+    })
+  });
+  const payload = (await response.json().catch(() => null)) as { inviteLink?: string; error?: string } | null;
+  if (!response.ok || !payload?.inviteLink) {
+    throw new Error(payload?.error ?? "No se pudo crear la invitación del partido.");
   }
-  const reservation = normalizeReservation(
-    reservationSnapshot.id,
-    reservationSnapshot.data() as Omit<Reservation, "id">
-  );
-
-  if (!isReservationCreator(reservation, actorAuthUid)) {
-    throw new Error("Solo el creador de la reserva puede invitar jugadores externos.");
-  }
-
-  const token = crypto.randomUUID();
-  const invite: ReservationInvite = {
-    token,
-    targetType: "reservation",
-    groupId: reservation.groupId,
-    reservationId: reservation.id,
-    createdByAuthUid: actorAuthUid,
-    createdAt: nowIso(),
-    expiresAt: inviteExpirationIso(),
-    status: "active",
-    channel
-  };
-  await setDoc(doc(cloudDb, reservationInviteCollection, token), stripUndefinedDeep(invite));
-  return `${normalizedBase}/join/${token}`;
+  return payload.inviteLink;
 };
 
 export const reassignReservationCreator = async (
