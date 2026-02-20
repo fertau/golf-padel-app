@@ -356,6 +356,31 @@ const createReservationCloudFallback = async (input: ReservationInput, currentUs
   }
 };
 
+const setAttendanceStatusCloudFallback = async (
+  reservationId: string,
+  user: User,
+  status: AttendanceStatus
+) => {
+  const headers = await buildAuthHeader();
+  const response = await fetch("/api/reservations/list", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...headers
+    },
+    body: JSON.stringify({
+      action: "attendance",
+      reservationId,
+      status,
+      currentUserName: user.name
+    })
+  });
+  const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+  if (!response.ok) {
+    throw new Error(payload?.error ?? "No se pudo actualizar la asistencia.");
+  }
+};
+
 const isGroupAdmin = (group: Group, authUid: string) =>
   !group.isDeleted && (group.ownerAuthUid === authUid || group.adminAuthUids.includes(authUid));
 
@@ -1406,6 +1431,20 @@ export const setAttendanceStatus = async (
       throw new Error(error);
     }
     return;
+  }
+
+  try {
+    await setAttendanceStatusCloudFallback(reservationId, user, status);
+    return;
+  } catch (apiError) {
+    const message = (apiError as Error).message || "";
+    const canTryClientFallback =
+      /failed to fetch/i.test(message) ||
+      /method not allowed/i.test(message) ||
+      /not found/i.test(message);
+    if (!canTryClientFallback) {
+      throw apiError;
+    }
   }
 
   await runTransaction(cloudDb, async (transaction) => {

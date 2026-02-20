@@ -17,7 +17,7 @@ type Props = {
   groups: Group[];
   appUrl: string;
   signupNameByAuthUid: Record<string, string>;
-  onSetAttendanceStatus: (reservationId: string, status: AttendanceStatus) => void;
+  onSetAttendanceStatus: (reservationId: string, status: AttendanceStatus) => Promise<void>;
   onCancel: (reservationId: string) => Promise<void>;
   onCreateGuestInvite: (
     reservationId: string,
@@ -61,9 +61,13 @@ export default function ReservationDetail({
   const reservationUrl = `${appUrl}/r/${reservation.id}`;
   const message = buildWhatsAppMessage(reservation, appUrl);
 
-  const handleSetAttendance = (status: AttendanceStatus) => {
-    onSetAttendanceStatus(reservation.id, status);
-    triggerHaptic("light");
+  const handleSetAttendance = async (status: AttendanceStatus) => {
+    try {
+      await onSetAttendanceStatus(reservation.id, status);
+      triggerHaptic("light");
+    } catch (error) {
+      onFeedback((error as Error).message || "No se pudo actualizar la asistencia.");
+    }
   };
 
   const openGoogleCalendar = () => {
@@ -316,20 +320,26 @@ export default function ReservationDetail({
           <div className="segmented-control-elite">
             <button
               className={`elite-choice confirmed ${myAttendance?.attendanceStatus === "confirmed" ? "active" : ""}`}
-              onClick={() => handleSetAttendance("confirmed")}
+              onClick={() => {
+                void handleSetAttendance("confirmed");
+              }}
             >
               Juego
             </button>
             <button
               className={`elite-choice maybe ${myAttendance?.attendanceStatus === "maybe" ? "active" : ""}`}
-              onClick={() => handleSetAttendance("maybe")}
+              onClick={() => {
+                void handleSetAttendance("maybe");
+              }}
               disabled={!myAttendance && !eligibility.ok}
             >
               Quizás
             </button>
             <button
               className={`elite-choice cancelled ${myAttendance?.attendanceStatus === "cancelled" ? "active" : ""}`}
-              onClick={() => handleSetAttendance("cancelled")}
+              onClick={() => {
+                void handleSetAttendance("cancelled");
+              }}
             >
               No juego
             </button>

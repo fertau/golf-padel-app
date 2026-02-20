@@ -40,6 +40,7 @@ const toTimestamp = (value: unknown): number | null => {
 };
 
 type CreateReservationBody = {
+  action?: "create";
   groupId?: string;
   groupName?: string;
   visibilityScope?: "group" | "link_only";
@@ -50,6 +51,25 @@ type CreateReservationBody = {
   courtName?: string;
   startDateTime?: string;
   durationMinutes?: number;
+  currentUserName?: string;
+};
+
+type AttendanceStatus = "confirmed" | "maybe" | "cancelled";
+type AttendanceReservationSignup = {
+  id: string;
+  reservationId: string;
+  userId: string;
+  authUid?: string;
+  userName: string;
+  createdAt: string;
+  updatedAt: string;
+  attendanceStatus?: AttendanceStatus;
+};
+
+type AttendanceBody = {
+  action: "attendance";
+  reservationId?: string;
+  status?: AttendanceStatus;
   currentUserName?: string;
 };
 
@@ -70,6 +90,12 @@ const stripUndefinedDeep = <T>(value: T): T => {
     return next as T;
   }
   return value;
+};
+
+const isGroupMemberRecord = (group: Record<string, any>, authUid: string) => {
+  const adminAuthUids = Array.isArray(group.adminAuthUids) ? group.adminAuthUids : [];
+  const memberAuthUids = Array.isArray(group.memberAuthUids) ? group.memberAuthUids : [];
+  return group.ownerAuthUid === authUid || adminAuthUids.includes(authUid) || memberAuthUids.includes(authUid);
 };
 
 const handleCreate = async (
@@ -169,6 +195,108 @@ const handleCreate = async (
 
   await adminDb.collection("reservations").doc(reservationId).set(stripUndefinedDeep(payload));
   res.status(200).json({ ok: true, reservationId });
+};
+
+const handleAttendanceUpdate = async (
+  req: VercelRequestLike & { headers?: Record<string, string | string[] | undefined> },
+  res: VercelResponseLike
+) => {
+  const authUid = await requireAuthUid(req);
+  const body = parseBody<AttendanceBody>(req.body);
+  const reservationId = normalizeText(body.reservationId);
+  const nextStatus = body.status;
+  const actorName = normalizeText(body.currentUserName) || `Jugador #${authUid.slice(-4).toUpperCase()}`;
+
+  if (!reservationId || !nextStatus) {
+    res.status(400).json({ error: "Faltan datos para actualizar asistencia." });
+    return;
+  }
+  if (!["confirmed", "maybe", "cancelled"].includes(nextStatus)) {
+    res.status(400).json({ error: "Estado de asistencia inválido." });
+    return;
+  }
+
+  await adminDb.runTransaction(async (transaction) => {
+    const reservationRef = adminDb.collection("reservations").doc(reservationId);
+    const reservationSnapshot = await transaction.get(reservationRef);
+    if (!reservationSnapshot.exists) {
+      throw new Error("Reserva no encontrada.");
+    }
+
+    const reservation = reservationSnapshot.data() as {
+      status?: string;
+      groupId?: string;
+      visibilityScope?: "group" | "link_only";
+      createdByAuthUid?: string;
+      createdBy?: { id?: string };
+      guestAccessUids?: string[];
+      signups?: AttendanceReservationSignup[];
+    };
+
+    if (reservation.status === "cancelled" && nextStatus !== "cancelled") {
+      throw new Error("La reserva está cancelada.");
+    }
+
+    const scope = inferScope(reservation as Record<string, any>);
+    if (scope === "group") {
+      const groupId = reservation.groupId;
+      if (!groupId || groupId === "default-group") {
+        throw new Error("Reserva de grupo inválida.");
+      }
+      const groupSnapshot = await transaction.get(adminDb.collection("groups").doc(groupId));
+      if (!groupSnapshot.exists) {
+        throw new Error("Grupo no encontrado.");
+      }
+      const group = groupSnapshot.data() as Record<string, any>;
+      if (group.isDeleted === true || !isGroupMemberRecord(group, authUid)) {
+        throw new Error("No tenés permisos para confirmar en esta reserva.");
+      }
+    } else {
+      const related = isRelatedToUser(reservation as Record<string, any>, authUid);
+      if (!related) {
+        throw new Error("No tenés permisos para confirmar en esta reserva.");
+      }
+    }
+
+    const signups = Array.isArray(reservation.signups) ? reservation.signups : [];
+    const existing = signups.find((signup) => signup.authUid === authUid || signup.userId === authUid);
+
+    const nextSignups = existing
+      ? signups.map((signup) =>
+          signup.id === existing.id || signup.authUid === authUid || signup.userId === authUid
+            ? {
+                ...signup,
+                userName: actorName,
+                authUid,
+                attendanceStatus: nextStatus,
+                updatedAt: nowIso()
+              }
+            : signup
+        )
+      : [
+          ...signups,
+          {
+            id: crypto.randomUUID(),
+            reservationId,
+            userId: authUid,
+            authUid,
+            userName: actorName,
+            createdAt: nowIso(),
+            updatedAt: nowIso(),
+            attendanceStatus: nextStatus
+          }
+        ];
+
+    transaction.update(
+      reservationRef,
+      stripUndefinedDeep({
+        signups: nextSignups,
+        updatedAt: nowIso()
+      })
+    );
+  });
+
+  res.status(200).json({ ok: true });
 };
 
 const handleGet = async (
@@ -272,9 +400,14 @@ export default async function handler(
 ) {
   if (req.method === "POST") {
     try {
-      await handleCreate(req, res);
+      const body = parseBody<{ action?: string }>(req.body);
+      if (body.action === "attendance") {
+        await handleAttendanceUpdate(req, res);
+      } else {
+        await handleCreate(req, res);
+      }
     } catch (error) {
-      res.status(500).json({ error: (error as Error).message || "No se pudo crear la reserva." });
+      res.status(500).json({ error: (error as Error).message || "No se pudo procesar la reserva." });
     }
     return;
   }
