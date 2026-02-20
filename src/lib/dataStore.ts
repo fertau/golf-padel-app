@@ -584,11 +584,7 @@ export const subscribeReservations = (
     fallbackRequested = true;
     fetchReservationsCloudFallback()
       .then((reservations) => {
-        onChange(
-          reservations
-            .filter((reservation) => canAccessReservation(reservation, currentAuthUid, allowedGroupIds))
-            .sort((a, b) => a.startDateTime.localeCompare(b.startDateTime))
-        );
+        onChange(reservations.sort((a, b) => a.startDateTime.localeCompare(b.startDateTime)));
       })
       .catch(() => null);
   };
