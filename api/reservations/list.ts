@@ -2,6 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "../_lib/firebaseAdmin.js";
 import { requireAuthUid } from "../_lib/auth.js";
 import { parseBody, type VercelRequestLike, type VercelResponseLike } from "../_lib/http.js";
+import { recordGroupAuditEvent, resolveMemberName } from "../_lib/groupAudit.js";
 
 const parseQueryValue = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
@@ -153,6 +154,9 @@ const handleCreate = async (
         ? "group"
         : "link_only";
 
+  const fallbackActorName = normalizeText(body.currentUserName) || `Jugador #${authUid.slice(-4).toUpperCase()}`;
+  let actorName = fallbackActorName;
+  let auditGroupId = "";
   let groupId = "default-group";
   let groupName: string | undefined;
   if (requestedScope === "group") {
@@ -173,6 +177,7 @@ const handleCreate = async (
       ownerAuthUid?: string;
       adminAuthUids?: string[];
       memberAuthUids?: string[];
+      memberNamesByAuthUid?: Record<string, string>;
       isDeleted?: boolean;
     };
     if (group.isDeleted === true) {
@@ -190,6 +195,8 @@ const handleCreate = async (
 
     groupId = targetGroupId;
     groupName = normalizeText(body.groupName) || normalizeText(group.name) || undefined;
+    actorName = resolveMemberName(group.memberNamesByAuthUid, authUid, fallbackActorName);
+    auditGroupId = targetGroupId;
   }
 
   const reservationId = crypto.randomUUID();
@@ -207,7 +214,7 @@ const handleCreate = async (
     durationMinutes,
     createdBy: {
       id: authUid,
-      name: normalizeText(body.currentUserName) || `Jugador #${authUid.slice(-4).toUpperCase()}`
+      name: actorName
     },
     createdByAuthUid: authUid,
     rules: {
@@ -223,6 +230,21 @@ const handleCreate = async (
   };
 
   await adminDb.collection("reservations").doc(reservationId).set(stripUndefinedDeep(payload));
+
+  if (requestedScope === "group" && auditGroupId) {
+    await recordGroupAuditEvent({
+      groupId: auditGroupId,
+      type: "reservation_created",
+      actorAuthUid: authUid,
+      actorName,
+      metadata: {
+        reservationId,
+        courtName: payload.courtName,
+        startDateTime: payload.startDateTime
+      }
+    }).catch(() => null);
+  }
+
   res.status(200).json({ ok: true, reservationId });
 };
 
@@ -340,6 +362,10 @@ const handleCancel = async (
     return;
   }
 
+  const fallbackActorName = `Jugador #${authUid.slice(-4).toUpperCase()}`;
+  let actorName = fallbackActorName;
+  let auditGroupId = "";
+
   await adminDb.runTransaction(async (transaction) => {
     const reservationRef = adminDb.collection("reservations").doc(reservationId);
     const reservationSnapshot = await transaction.get(reservationRef);
@@ -347,16 +373,23 @@ const handleCancel = async (
       throw new Error("Reserva no encontrada.");
     }
     const reservation = reservationSnapshot.data() as Record<string, any>;
+    actorName = normalizeText(reservation.createdBy?.name) || fallbackActorName;
 
     let allowed = isReservationCreatorRecord(reservation, authUid);
     const scope = inferScope(reservation);
-    if (!allowed && scope === "group") {
+    if (scope === "group") {
       const groupId = reservation.groupId;
       if (groupId && groupId !== "default-group") {
         const groupSnapshot = await transaction.get(adminDb.collection("groups").doc(groupId));
         if (groupSnapshot.exists) {
           const group = groupSnapshot.data() as Record<string, any>;
-          allowed = group.isDeleted !== true && isGroupAdminRecord(group, authUid);
+          if (group.isDeleted !== true) {
+            auditGroupId = groupId;
+            actorName = resolveMemberName(group.memberNamesByAuthUid, authUid, actorName);
+            if (!allowed) {
+              allowed = isGroupAdminRecord(group, authUid);
+            }
+          }
         }
       }
     }
@@ -373,6 +406,18 @@ const handleCancel = async (
     );
   });
 
+  if (auditGroupId) {
+    await recordGroupAuditEvent({
+      groupId: auditGroupId,
+      type: "reservation_cancelled",
+      actorAuthUid: authUid,
+      actorName,
+      metadata: {
+        reservationId
+      }
+    }).catch(() => null);
+  }
+
   res.status(200).json({ ok: true });
 };
 
@@ -388,6 +433,10 @@ const handleUpdateDetails = async (
     return;
   }
 
+  const fallbackActorName = `Jugador #${authUid.slice(-4).toUpperCase()}`;
+  let actorName = fallbackActorName;
+  let auditGroupId = "";
+
   await adminDb.runTransaction(async (transaction) => {
     const reservationRef = adminDb.collection("reservations").doc(reservationId);
     const reservationSnapshot = await transaction.get(reservationRef);
@@ -396,15 +445,23 @@ const handleUpdateDetails = async (
     }
 
     const reservation = reservationSnapshot.data() as Record<string, any>;
+    actorName = normalizeText(reservation.createdBy?.name) || fallbackActorName;
     let allowed = isReservationCreatorRecord(reservation, authUid);
     const currentScope = inferScope(reservation);
-    if (!allowed && currentScope === "group") {
+    let currentGroupForAudit = "";
+    if (currentScope === "group") {
       const currentGroupId = reservation.groupId;
       if (currentGroupId && currentGroupId !== "default-group") {
         const currentGroupSnapshot = await transaction.get(adminDb.collection("groups").doc(currentGroupId));
         if (currentGroupSnapshot.exists) {
           const currentGroup = currentGroupSnapshot.data() as Record<string, any>;
-          allowed = currentGroup.isDeleted !== true && isGroupAdminRecord(currentGroup, authUid);
+          if (currentGroup.isDeleted !== true) {
+            currentGroupForAudit = currentGroupId;
+            actorName = resolveMemberName(currentGroup.memberNamesByAuthUid, authUid, actorName);
+            if (!allowed) {
+              allowed = isGroupAdminRecord(currentGroup, authUid);
+            }
+          }
         }
       }
     }
@@ -440,6 +497,7 @@ const handleUpdateDetails = async (
 
       nextGroupId = requestedGroupId;
       nextGroupName = normalizeText(body.groupName) || normalizeText(targetGroup.name) || undefined;
+      actorName = resolveMemberName(targetGroup.memberNamesByAuthUid, authUid, actorName);
     } else {
       nextGroupId = "default-group";
       nextGroupName = undefined;
@@ -478,7 +536,20 @@ const handleUpdateDetails = async (
     }
 
     transaction.update(reservationRef, stripUndefinedDeep(updateData));
+    auditGroupId = nextVisibilityScope === "group" ? nextGroupId : currentGroupForAudit;
   });
+
+  if (auditGroupId) {
+    await recordGroupAuditEvent({
+      groupId: auditGroupId,
+      type: "reservation_updated",
+      actorAuthUid: authUid,
+      actorName,
+      metadata: {
+        reservationId
+      }
+    }).catch(() => null);
+  }
 
   res.status(200).json({ ok: true });
 };

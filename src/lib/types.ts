@@ -58,7 +58,10 @@ export type GroupAuditEventType =
   | "admin_granted"
   | "admin_revoked"
   | "group_renamed"
-  | "reservation_owner_reassigned";
+  | "reservation_owner_reassigned"
+  | "reservation_created"
+  | "reservation_updated"
+  | "reservation_cancelled";
 
 export type GroupAuditEvent = {
   id: string;

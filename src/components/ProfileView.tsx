@@ -89,6 +89,12 @@ export default function ProfileView({
         return `${actor} renombró el grupo`;
       case "reservation_owner_reassigned":
         return `${actor} reasignó creador a ${target}`;
+      case "reservation_created":
+        return `${actor} creó una reserva`;
+      case "reservation_updated":
+        return `${actor} editó una reserva`;
+      case "reservation_cancelled":
+        return `${actor} canceló una reserva`;
       default:
         return `${actor} hizo un cambio`;
     }
