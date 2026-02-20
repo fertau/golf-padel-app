@@ -149,7 +149,7 @@ export default function SplashScreen({ visible }: Props) {
       <canvas ref={canvasRef} className="splash-canvas" />
       <div className={`splash-content ${showContent ? "visible" : ""}`}>
         <h1 className="splash-brand">
-          GOLF <span>PADEL</span>
+          PADEL <span>APP</span>
         </h1>
       </div>
     </div>

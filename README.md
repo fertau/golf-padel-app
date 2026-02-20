@@ -1,4 +1,4 @@
-# Golf Padel App
+# Padel App
 
 PWA para gestionar reservas de pádel y anotados (titulares/suplentes) para grupos de WhatsApp.
 
@@ -37,7 +37,7 @@ npm run dev
 ```bash
 git init
 git add .
-git commit -m "feat: initial Golf Padel app"
+git commit -m "feat: initial Padel App"
 git branch -M main
 git remote add origin https://github.com/TU_USUARIO/golf-padel-app.git
 git push -u origin main

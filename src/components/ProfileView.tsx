@@ -98,7 +98,7 @@ export default function ProfileView({
   };
 
   const buildGroupInviteMessage = (groupName: string, link: string) =>
-    `🎾 Te invito al grupo "${groupName}" en Golf Padel.\n\nUnite desde este link (vence en 7 días):\n${link}`;
+    `🎾 Te invito al grupo "${groupName}" en Padel App.\n\nUnite desde este link (vence en 7 días):\n${link}`;
 
   const shareGroupInvite = async (groupId: string, groupName: string, channel: "whatsapp" | "email" | "link") => {
     try {
@@ -106,7 +106,7 @@ export default function ProfileView({
       const link = await onCreateGroupInvite(groupId, channel);
       const message = buildGroupInviteMessage(groupName, link);
       const encoded = encodeURIComponent(message);
-      const subject = encodeURIComponent(`Invitación a ${groupName} · Golf Padel`);
+      const subject = encodeURIComponent(`Invitación a ${groupName} · Padel App`);
 
       if (channel === "whatsapp") {
         window.open(`https://wa.me/?text=${encoded}`, "_blank", "noopener,noreferrer");
@@ -424,7 +424,7 @@ export default function ProfileView({
           <button className="btn-elite btn-logout btn-block" onClick={() => handleAction(onLogout)} disabled={busy}>
             Cerrar sesión
           </button>
-          <p className="version-tag">Golf Padel App v3.2</p>
+          <p className="version-tag">Padel App v3.2</p>
         </footer>
       </div>
     </div>

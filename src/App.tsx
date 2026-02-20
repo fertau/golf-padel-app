@@ -829,8 +829,8 @@ export default function App() {
       <main className="app mobile-shell">
         <header className="header court-header glass-panel-elite animate-fade-in">
           <div className="brand-shell">
-            <img src="/apple-touch-icon.png" alt="Golf Padel" className="brand-icon" />
-            <h1 className="name-logo">GOLF <span>PADEL</span> APP</h1>
+            <img src="/apple-touch-icon.png" alt="Padel App" className="brand-icon" />
+            <h1 className="name-logo">PADEL <span>APP</span></h1>
           </div>
           <div className={`header-pill sync-pill ${isSynchronized ? "ok" : "off"}`}>
             <span className="sync-dot" />

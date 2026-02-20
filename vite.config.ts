@@ -17,8 +17,8 @@ export default defineConfig({
       ],
       manifest: {
         id: "/",
-        name: "Golf Padel App",
-        short_name: "GolfPadel",
+        name: "Padel App",
+        short_name: "PadelApp",
         description: "Reservas e inscripciones de padel para grupos de WhatsApp",
         theme_color: "#010614",
         background_color: "#010614",
