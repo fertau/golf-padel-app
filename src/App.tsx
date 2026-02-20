@@ -104,6 +104,13 @@ const GROUP_LABELS: Record<string, string> = {
   "mas-adelante": "Más adelante"
 };
 
+const isReservationGroupScoped = (reservation: Reservation): boolean => {
+  if (reservation.visibilityScope === "group" || reservation.visibilityScope === "link_only") {
+    return reservation.visibilityScope === "group";
+  }
+  return Boolean(reservation.groupId && reservation.groupId !== "default-group");
+};
+
 const getShareBaseUrl = (): string => {
   const configured = import.meta.env.VITE_SHARE_BASE_URL?.trim();
   const fallback = window.location.origin;
@@ -368,11 +375,11 @@ export default function App() {
       reservations.map((reservation) => ({
         ...reservation,
         groupName:
-          reservation.groupId && groupNameById[reservation.groupId]
+          isReservationGroupScoped(reservation) && reservation.groupId && groupNameById[reservation.groupId]
             ? groupNameById[reservation.groupId]
-            : !reservation.groupId || reservation.groupId === "default-group"
+            : isReservationGroupScoped(reservation) && (!reservation.groupId || reservation.groupId === "default-group")
               ? (defaultGroupName ?? reservation.groupName)
-              : reservation.groupName === "Mi grupo" && defaultGroupName
+              : isReservationGroupScoped(reservation) && reservation.groupName === "Mi grupo" && defaultGroupName
                 ? defaultGroupName
                 : reservation.groupName
       })),
@@ -391,19 +398,28 @@ export default function App() {
     () => reservationsWithGroupContext.filter((reservation) => reservation.status === "active"),
     [reservationsWithGroupContext]
   );
+
+  const activeGroupScopedReservations = useMemo(
+    () => activeReservations.filter((reservation) => isReservationGroupScoped(reservation)),
+    [activeReservations]
+  );
+
   const matchesActiveScope = (reservation: Reservation) => {
     if (activeGroupScope === "all") {
       return true;
     }
+    if (!isReservationGroupScoped(reservation)) {
+      return false;
+    }
     if (reservation.groupId === activeGroupScope) {
       return true;
     }
-    return !reservation.groupId && defaultGroupId === activeGroupScope;
+    return false;
   };
 
   const scopedActiveReservations = useMemo(
-    () => activeReservations.filter((reservation) => matchesActiveScope(reservation)),
-    [activeReservations, activeGroupScope, defaultGroupId]
+    () => activeGroupScopedReservations.filter((reservation) => matchesActiveScope(reservation)),
+    [activeGroupScopedReservations, activeGroupScope]
   );
 
   const activeUpcomingReservations = useMemo(

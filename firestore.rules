@@ -30,22 +30,38 @@ service cloud.firestore {
 
     function canReadReservation(data) {
       return isSignedIn() && (
-        !("groupId" in data) ||
-        data.groupId == "default-group" ||
-        isGroupMember(data.groupId) ||
         data.createdByAuthUid == request.auth.uid ||
-        (("guestAccessUids" in data) && request.auth.uid in data.guestAccessUids)
+        (("guestAccessUids" in data) && request.auth.uid in data.guestAccessUids) ||
+        (
+          isGroupScopedReservation(data) &&
+          isGroupMember(data.groupId)
+        )
       );
+    }
+
+    function reservationScope(data) {
+      return ("visibilityScope" in data)
+        ? data.visibilityScope
+        : (
+          ("groupId" in data) &&
+          data.groupId != null &&
+          data.groupId != "default-group"
+            ? "group"
+            : "link_only"
+        );
+    }
+
+    function isGroupScopedReservation(data) {
+      return reservationScope(data) == "group" &&
+        ("groupId" in data) &&
+        data.groupId != null &&
+        data.groupId != "default-group";
     }
 
     function isReservationManager(data) {
       return isSignedIn() && (
         data.createdByAuthUid == request.auth.uid ||
-        (
-          ("groupId" in data) &&
-          data.groupId != "default-group" &&
-          isGroupAdmin(data.groupId)
-        )
+        (isGroupScopedReservation(data) && isGroupAdmin(data.groupId))
       );
     }
 
@@ -66,6 +82,7 @@ service cloud.firestore {
         request.resource.data.venueAddress == resource.data.venueAddress &&
         request.resource.data.groupId == resource.data.groupId &&
         request.resource.data.groupName == resource.data.groupName &&
+        request.resource.data.visibilityScope == resource.data.visibilityScope &&
         request.resource.data.startDateTime == resource.data.startDateTime &&
         request.resource.data.durationMinutes == resource.data.durationMinutes &&
         request.resource.data.createdBy == resource.data.createdBy &&
@@ -153,9 +170,18 @@ service cloud.firestore {
       allow create: if isSignedIn() &&
         request.resource.data.createdByAuthUid == request.auth.uid &&
         (
-          !("groupId" in request.resource.data) ||
-          request.resource.data.groupId == "default-group" ||
-          isGroupMember(request.resource.data.groupId)
+          (
+            isGroupScopedReservation(request.resource.data) &&
+            isGroupMember(request.resource.data.groupId)
+          ) ||
+          (
+            reservationScope(request.resource.data) == "link_only" &&
+            (
+              !("groupId" in request.resource.data) ||
+              request.resource.data.groupId == null ||
+              request.resource.data.groupId == "default-group"
+            )
+          )
         );
 
       allow update: if isSignedIn() &&

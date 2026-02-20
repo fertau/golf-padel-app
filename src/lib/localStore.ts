@@ -61,6 +61,7 @@ export const createReservationLocal = (input: ReservationInput, currentUser: Use
   const reservation: Reservation = {
     id: crypto.randomUUID(),
     groupId: input.groupId ?? "default-group",
+    visibilityScope: "group",
     groupName: input.groupName ?? "Mi grupo",
     venueId: input.venueId,
     venueName: input.venueName,

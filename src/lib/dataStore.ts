@@ -45,6 +45,7 @@ import type {
   Reservation,
   ReservationInvite,
   ReservationRules,
+  ReservationVisibilityScope,
   Signup,
   User,
   Venue
@@ -54,11 +55,20 @@ import { canJoinReservation, isReservationCreator } from "./utils";
 const nowIso = () => new Date().toISOString();
 const inviteExpirationIso = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
+const inferReservationVisibilityScope = (
+  data: Partial<Reservation>
+): ReservationVisibilityScope => {
+  if (data.visibilityScope === "group" || data.visibilityScope === "link_only") {
+    return data.visibilityScope;
+  }
+  return data.groupId && data.groupId !== "default-group" ? "group" : "link_only";
+};
+
 const normalizeReservation = (id: string, data: Omit<Reservation, "id">): Reservation => ({
   id,
   ...data,
   groupId: data.groupId ?? "default-group",
-  groupName: data.groupName ?? "Mi grupo",
+  visibilityScope: inferReservationVisibilityScope(data),
   guestAccessUids: data.guestAccessUids ?? []
 });
 
@@ -117,13 +127,11 @@ const isReservationRelatedToUser = (reservation: Reservation, authUid: string) =
   reservation.signups.some((signup) => signup.authUid === authUid || signup.userId === authUid);
 
 const canAccessReservation = (reservation: Reservation, authUid: string, allowedGroupIds: Set<string>) => {
-  if (!reservation.groupId) {
-    return true;
-  }
-  if (reservation.groupId === "default-group") {
+  const scope = inferReservationVisibilityScope(reservation);
+  if (scope === "link_only") {
     return isReservationRelatedToUser(reservation, authUid);
   }
-  if (allowedGroupIds.has(reservation.groupId)) {
+  if (reservation.groupId && allowedGroupIds.has(reservation.groupId)) {
     return true;
   }
   return isReservationRelatedToUser(reservation, authUid);
@@ -328,11 +336,6 @@ export const subscribeReservations = (
     subscribeReservationSlice(
       `guest:${currentAuthUid}`,
       query(collection(cloudDb, reservationCollection), where("guestAccessUids", "array-contains", currentAuthUid))
-    );
-
-    subscribeReservationSlice(
-      "legacy-default-group",
-      query(collection(cloudDb, reservationCollection), where("groupId", "==", "default-group"))
     );
 
     chunk(groupIds, 10).forEach((batch, index) => {
@@ -580,6 +583,10 @@ export const migrateLegacyReservationsForUser = async (
       if (!nextReservation.groupId || nextReservation.groupId === "default-group") {
         nextReservation.groupId = fallbackGroupId;
         nextReservation.groupName = fallbackGroupName;
+        nextReservation.visibilityScope = "group";
+        changed = true;
+      } else if (!nextReservation.visibilityScope) {
+        nextReservation.visibilityScope = inferReservationVisibilityScope(nextReservation);
         changed = true;
       }
       if (
@@ -628,18 +635,33 @@ export const migrateLegacyReservationsForUser = async (
   await runTransaction(cloudDb, async (transaction) => {
     for (const snapshotDoc of uniqueById.values()) {
       const reservation = normalizeReservation(snapshotDoc.id, snapshotDoc.data() as Omit<Reservation, "id">);
-      if (reservation.groupId && reservation.groupId !== "default-group") {
-        continue;
-      }
-      if (reservation.createdByAuthUid !== actorAuthUid) {
+      const isOwnedByActor =
+        reservation.createdByAuthUid === actorAuthUid || reservation.createdBy.id === actorAuthUid;
+      if (!isOwnedByActor) {
         continue;
       }
 
-      const updates: Partial<Reservation> & { updatedAt: string } = {
-        updatedAt: nowIso(),
-        groupId: fallbackGroupId,
-        groupName: fallbackGroupName
-      };
+      const updates: Partial<Reservation> & { updatedAt: string } = { updatedAt: nowIso() };
+      let changed = false;
+
+      if (!reservation.groupId || reservation.groupId === "default-group") {
+        updates.groupId = fallbackGroupId;
+        updates.groupName = fallbackGroupName;
+        updates.visibilityScope = "group";
+        changed = true;
+      } else if (!reservation.visibilityScope) {
+        updates.visibilityScope = inferReservationVisibilityScope(reservation);
+        changed = true;
+      }
+
+      if (!reservation.createdByAuthUid && reservation.createdBy.id === actorAuthUid) {
+        updates.createdByAuthUid = actorAuthUid;
+        changed = true;
+      }
+
+      if (!changed) {
+        continue;
+      }
 
       transaction.update(doc(cloudDb, reservationCollection, reservation.id), stripUndefinedDeep(updates));
     }
@@ -753,6 +775,7 @@ export const createReservation = async (input: ReservationInput, currentUser: Us
   const payload: Reservation = {
     id,
     groupId: group.id,
+    visibilityScope: "group",
     groupName: group.name,
     venueId: input.venueId ?? venue?.id,
     venueName: input.venueName?.trim() || venue?.name,

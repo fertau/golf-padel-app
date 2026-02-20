@@ -81,6 +81,7 @@ const run = async () => {
     const updates = {
       groupId: targetGroupId,
       groupName: "Mi grupo",
+      visibilityScope: "group",
       createdByAuthUid: reservation.createdByAuthUid || (reservation.createdBy?.id === ownerAuthUid ? ownerAuthUid : reservation.createdByAuthUid),
       updatedAt: nowIso()
     };

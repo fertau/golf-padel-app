@@ -125,6 +125,18 @@ Para forzar backfill de **todas** las reservas legacy sin grupo (aunque no esté
 npm run repair:mi-grupo -- <ownerAuthUid> --all-missing
 ```
 
+## Backfill de visibilidad de reservas (Stage 1 grupos/permisos)
+Para normalizar `visibilityScope` y migrar reservas legacy (`default-group` / sin grupo) al grupo del creador cuando corresponda:
+```bash
+npm run backfill:reservation-visibility -- --dry-run
+npm run backfill:reservation-visibility
+```
+
+Resultado esperado:
+- Reservas con grupo válido => `visibilityScope: "group"`.
+- Reservas sin grupo legacy => se asignan al grupo del creador (si existe) y quedan `group`.
+- Si no hay grupo asignable => quedan `link_only`.
+
 ## Seguridad
 - Firestore bloquea writes anónimas.
 - `players` solo accesible por dueño autenticado.

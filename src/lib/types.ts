@@ -33,6 +33,7 @@ export type ReservationRules = {
 };
 
 export type AttendanceStatus = "confirmed" | "maybe" | "cancelled";
+export type ReservationVisibilityScope = "group" | "link_only";
 
 export type GroupRole = "owner" | "admin" | "member";
 
@@ -107,6 +108,7 @@ export type Signup = {
 export type Reservation = {
   id: string;
   groupId: string;
+  visibilityScope?: ReservationVisibilityScope;
   groupName?: string;
   venueId?: string;
   venueName?: string;

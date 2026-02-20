@@ -107,7 +107,13 @@ const run = async () => {
       ...(needsGroupBackfill
         ? {
             groupId: canonical.id,
-            groupName: "Mi grupo"
+            groupName: "Mi grupo",
+            visibilityScope: "group"
+          }
+        : {}),
+      ...(!reservation.visibilityScope
+        ? {
+            visibilityScope: reservation.groupId && reservation.groupId !== "default-group" ? "group" : "link_only"
           }
         : {}),
       ...(!reservation.createdByAuthUid && reservation.createdBy?.id === ownerAuthUid
