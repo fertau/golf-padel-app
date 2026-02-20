@@ -57,6 +57,21 @@ const nowIso = () => new Date().toISOString();
 
 const normalizeText = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 
+const stripUndefinedDeep = <T>(value: T): T => {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripUndefinedDeep(item)) as T;
+  }
+  if (value && typeof value === "object") {
+    const next: Record<string, unknown> = {};
+    for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+      if (nested === undefined) continue;
+      next[key] = stripUndefinedDeep(nested);
+    }
+    return next as T;
+  }
+  return value;
+};
+
 const handleCreate = async (
   req: VercelRequestLike & { headers?: Record<string, string | string[] | undefined> },
   res: VercelResponseLike
@@ -152,7 +167,7 @@ const handleCreate = async (
     updatedAt: nowIso()
   };
 
-  await adminDb.collection("reservations").doc(reservationId).set(payload);
+  await adminDb.collection("reservations").doc(reservationId).set(stripUndefinedDeep(payload));
   res.status(200).json({ ok: true, reservationId });
 };
 
