@@ -189,6 +189,32 @@ const fetchReservationsCloudFallback = async (): Promise<Reservation[]> => {
   );
 };
 
+const isPermissionDeniedError = (error: unknown) => {
+  const message = (error as Error)?.message?.toLowerCase?.() ?? "";
+  const code = (error as { code?: string })?.code ?? "";
+  return (
+    code === "permission-denied" ||
+    message.includes("missing or insufficient permissions") ||
+    message.includes("insufficient permissions")
+  );
+};
+
+const removeGroupMemberCloudFallback = async (groupId: string, targetAuthUid: string) => {
+  const headers = await buildAuthHeader();
+  const response = await fetch("/api/groups/remove-member", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...headers
+    },
+    body: JSON.stringify({ groupId, targetAuthUid })
+  });
+  const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+  if (!response.ok) {
+    throw new Error(payload?.error ?? "No se pudo quitar al miembro.");
+  }
+};
+
 const isGroupAdmin = (group: Group, authUid: string) =>
   !group.isDeleted && (group.ownerAuthUid === authUid || group.adminAuthUids.includes(authUid));
 
@@ -987,42 +1013,50 @@ export const removeGroupMember = async (
     throw new Error("Necesitás iniciar sesión.");
   }
 
-  await runTransaction(cloudDb, async (transaction) => {
-    const groupRef = doc(cloudDb, groupCollection, groupId);
-    const groupSnapshot = await transaction.get(groupRef);
-    if (!groupSnapshot.exists()) {
-      throw new Error("Grupo no encontrado.");
-    }
-    const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
-    if (group.isDeleted) {
-      throw new Error("El grupo ya no está disponible.");
-    }
-    if (!isGroupAdmin(group, actorAuthUid)) {
-      throw new Error("Solo administradores pueden quitar miembros.");
-    }
-    if (!group.memberAuthUids.includes(targetAuthUid)) {
-      throw new Error("El usuario no es miembro del grupo.");
-    }
-    if (group.ownerAuthUid === targetAuthUid) {
-      throw new Error("No podés quitar al admin principal.");
-    }
+  try {
+    await runTransaction(cloudDb, async (transaction) => {
+      const groupRef = doc(cloudDb, groupCollection, groupId);
+      const groupSnapshot = await transaction.get(groupRef);
+      if (!groupSnapshot.exists()) {
+        throw new Error("Grupo no encontrado.");
+      }
+      const group = normalizeGroup(groupSnapshot.id, groupSnapshot.data() as Omit<Group, "id">);
+      if (group.isDeleted) {
+        throw new Error("El grupo ya no está disponible.");
+      }
+      if (!isGroupAdmin(group, actorAuthUid)) {
+        throw new Error("Solo administradores pueden quitar miembros.");
+      }
+      if (!group.memberAuthUids.includes(targetAuthUid)) {
+        throw new Error("El usuario no es miembro del grupo.");
+      }
+      if (group.ownerAuthUid === targetAuthUid) {
+        throw new Error("No podés quitar al admin principal.");
+      }
 
-    const memberAuthUids = group.memberAuthUids.filter((authUid) => authUid !== targetAuthUid);
-    const adminAuthUids = Array.from(
-      new Set(group.adminAuthUids.filter((authUid) => authUid !== targetAuthUid).concat(group.ownerAuthUid))
-    );
+      const memberAuthUids = group.memberAuthUids.filter((authUid) => authUid !== targetAuthUid);
+      const adminAuthUids = Array.from(
+        new Set(group.adminAuthUids.filter((authUid) => authUid !== targetAuthUid).concat(group.ownerAuthUid))
+      );
 
-    if (adminAuthUids.length === 0) {
-      throw new Error("El grupo debe tener al menos un admin.");
-    }
+      if (adminAuthUids.length === 0) {
+        throw new Error("El grupo debe tener al menos un admin.");
+      }
 
-    transaction.update(groupRef, {
-      memberAuthUids,
-      adminAuthUids,
-      [`memberNamesByAuthUid.${targetAuthUid}`]: deleteField(),
-      updatedAt: nowIso()
+      transaction.update(groupRef, {
+        memberAuthUids,
+        adminAuthUids,
+        [`memberNamesByAuthUid.${targetAuthUid}`]: deleteField(),
+        updatedAt: nowIso()
+      });
     });
-  });
+  } catch (error) {
+    if (isPermissionDeniedError(error)) {
+      await removeGroupMemberCloudFallback(groupId, targetAuthUid);
+      return;
+    }
+    throw error;
+  }
 };
 
 export const leaveGroup = async (groupId: string, currentUser: User) => {
