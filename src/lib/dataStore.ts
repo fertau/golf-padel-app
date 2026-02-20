@@ -381,6 +381,59 @@ const setAttendanceStatusCloudFallback = async (
   }
 };
 
+const cancelReservationCloudFallback = async (reservationId: string) => {
+  const headers = await buildAuthHeader();
+  const response = await fetch("/api/reservations/list", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...headers
+    },
+    body: JSON.stringify({
+      action: "cancel",
+      reservationId
+    })
+  });
+  const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+  if (!response.ok) {
+    throw new Error(payload?.error ?? "No se pudo cancelar la reserva.");
+  }
+};
+
+const updateReservationDetailsCloudFallback = async (
+  reservationId: string,
+  updates: {
+    courtName: string;
+    courtId?: string;
+    venueId?: string;
+    venueName?: string;
+    venueAddress?: string;
+    startDateTime: string;
+    durationMinutes: number;
+    groupId?: string;
+    groupName?: string;
+    visibilityScope?: ReservationVisibilityScope;
+  }
+) => {
+  const headers = await buildAuthHeader();
+  const response = await fetch("/api/reservations/list", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...headers
+    },
+    body: JSON.stringify({
+      action: "update_details",
+      reservationId,
+      ...updates
+    })
+  });
+  const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+  if (!response.ok) {
+    throw new Error(payload?.error ?? "No se pudo actualizar la reserva.");
+  }
+};
+
 const isGroupAdmin = (group: Group, authUid: string) =>
   !group.isDeleted && (group.ownerAuthUid === authUid || group.adminAuthUids.includes(authUid));
 
@@ -1531,6 +1584,20 @@ export const cancelReservation = async (reservationId: string, currentUser: User
     return;
   }
 
+  try {
+    await cancelReservationCloudFallback(reservationId);
+    return;
+  } catch (apiError) {
+    const message = (apiError as Error).message || "";
+    const canTryClientFallback =
+      /failed to fetch/i.test(message) ||
+      /method not allowed/i.test(message) ||
+      /not found/i.test(message);
+    if (!canTryClientFallback) {
+      throw apiError;
+    }
+  }
+
   await runTransaction(cloudDb, async (transaction) => {
     const actorAuthUid = auth?.currentUser?.uid;
     if (!actorAuthUid) {
@@ -1587,6 +1654,20 @@ export const updateReservationDetails = async (
   if (!isCloudDbEnabled() || !cloudDb) {
     updateReservationDetailsLocal(reservationId, updates, currentUser);
     return;
+  }
+
+  try {
+    await updateReservationDetailsCloudFallback(reservationId, updates);
+    return;
+  } catch (apiError) {
+    const message = (apiError as Error).message || "";
+    const canTryClientFallback =
+      /failed to fetch/i.test(message) ||
+      /method not allowed/i.test(message) ||
+      /not found/i.test(message);
+    if (!canTryClientFallback) {
+      throw apiError;
+    }
   }
 
   await runTransaction(cloudDb, async (transaction) => {

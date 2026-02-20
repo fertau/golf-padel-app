@@ -1,3 +1,4 @@
+import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "../_lib/firebaseAdmin.js";
 import { requireAuthUid } from "../_lib/auth.js";
 import { parseBody, type VercelRequestLike, type VercelResponseLike } from "../_lib/http.js";
@@ -73,6 +74,26 @@ type AttendanceBody = {
   currentUserName?: string;
 };
 
+type CancelBody = {
+  action: "cancel";
+  reservationId?: string;
+};
+
+type UpdateDetailsBody = {
+  action: "update_details";
+  reservationId?: string;
+  courtName?: string;
+  courtId?: string;
+  venueId?: string;
+  venueName?: string;
+  venueAddress?: string;
+  startDateTime?: string;
+  durationMinutes?: number;
+  groupId?: string;
+  groupName?: string;
+  visibilityScope?: "group" | "link_only";
+};
+
 const nowIso = () => new Date().toISOString();
 
 const normalizeText = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -97,6 +118,14 @@ const isGroupMemberRecord = (group: Record<string, any>, authUid: string) => {
   const memberAuthUids = Array.isArray(group.memberAuthUids) ? group.memberAuthUids : [];
   return group.ownerAuthUid === authUid || adminAuthUids.includes(authUid) || memberAuthUids.includes(authUid);
 };
+
+const isGroupAdminRecord = (group: Record<string, any>, authUid: string) => {
+  const adminAuthUids = Array.isArray(group.adminAuthUids) ? group.adminAuthUids : [];
+  return group.ownerAuthUid === authUid || adminAuthUids.includes(authUid);
+};
+
+const isReservationCreatorRecord = (reservation: Record<string, any>, authUid: string) =>
+  reservation.createdByAuthUid === authUid || reservation.createdBy?.id === authUid;
 
 const handleCreate = async (
   req: VercelRequestLike & { headers?: Record<string, string | string[] | undefined> },
@@ -299,6 +328,161 @@ const handleAttendanceUpdate = async (
   res.status(200).json({ ok: true });
 };
 
+const handleCancel = async (
+  req: VercelRequestLike & { headers?: Record<string, string | string[] | undefined> },
+  res: VercelResponseLike
+) => {
+  const authUid = await requireAuthUid(req);
+  const body = parseBody<CancelBody>(req.body);
+  const reservationId = normalizeText(body.reservationId);
+  if (!reservationId) {
+    res.status(400).json({ error: "Falta reservationId." });
+    return;
+  }
+
+  await adminDb.runTransaction(async (transaction) => {
+    const reservationRef = adminDb.collection("reservations").doc(reservationId);
+    const reservationSnapshot = await transaction.get(reservationRef);
+    if (!reservationSnapshot.exists) {
+      throw new Error("Reserva no encontrada.");
+    }
+    const reservation = reservationSnapshot.data() as Record<string, any>;
+
+    let allowed = isReservationCreatorRecord(reservation, authUid);
+    const scope = inferScope(reservation);
+    if (!allowed && scope === "group") {
+      const groupId = reservation.groupId;
+      if (groupId && groupId !== "default-group") {
+        const groupSnapshot = await transaction.get(adminDb.collection("groups").doc(groupId));
+        if (groupSnapshot.exists) {
+          const group = groupSnapshot.data() as Record<string, any>;
+          allowed = group.isDeleted !== true && isGroupAdminRecord(group, authUid);
+        }
+      }
+    }
+    if (!allowed) {
+      throw new Error("Solo el creador o un admin del grupo puede cancelar.");
+    }
+
+    transaction.update(
+      reservationRef,
+      stripUndefinedDeep({
+        status: "cancelled",
+        updatedAt: nowIso()
+      })
+    );
+  });
+
+  res.status(200).json({ ok: true });
+};
+
+const handleUpdateDetails = async (
+  req: VercelRequestLike & { headers?: Record<string, string | string[] | undefined> },
+  res: VercelResponseLike
+) => {
+  const authUid = await requireAuthUid(req);
+  const body = parseBody<UpdateDetailsBody>(req.body);
+  const reservationId = normalizeText(body.reservationId);
+  if (!reservationId) {
+    res.status(400).json({ error: "Falta reservationId." });
+    return;
+  }
+
+  await adminDb.runTransaction(async (transaction) => {
+    const reservationRef = adminDb.collection("reservations").doc(reservationId);
+    const reservationSnapshot = await transaction.get(reservationRef);
+    if (!reservationSnapshot.exists) {
+      throw new Error("Reserva no encontrada.");
+    }
+
+    const reservation = reservationSnapshot.data() as Record<string, any>;
+    let allowed = isReservationCreatorRecord(reservation, authUid);
+    const currentScope = inferScope(reservation);
+    if (!allowed && currentScope === "group") {
+      const currentGroupId = reservation.groupId;
+      if (currentGroupId && currentGroupId !== "default-group") {
+        const currentGroupSnapshot = await transaction.get(adminDb.collection("groups").doc(currentGroupId));
+        if (currentGroupSnapshot.exists) {
+          const currentGroup = currentGroupSnapshot.data() as Record<string, any>;
+          allowed = currentGroup.isDeleted !== true && isGroupAdminRecord(currentGroup, authUid);
+        }
+      }
+    }
+    if (!allowed) {
+      throw new Error("Solo el creador o un admin del grupo puede editar.");
+    }
+
+    const nextVisibilityScope =
+      body.visibilityScope === "group" || body.visibilityScope === "link_only"
+        ? body.visibilityScope
+        : inferScope({
+            ...reservation,
+            groupId: body.groupId ?? reservation.groupId
+          });
+
+    let nextGroupId: string = reservation.groupId ?? "default-group";
+    let nextGroupName: string | undefined = reservation.groupName;
+
+    if (nextVisibilityScope === "group") {
+      const requestedGroupId = normalizeText(body.groupId) || normalizeText(reservation.groupId);
+      if (!requestedGroupId || requestedGroupId === "default-group") {
+        throw new Error("Seleccioná un grupo válido.");
+      }
+
+      const targetGroupSnapshot = await transaction.get(adminDb.collection("groups").doc(requestedGroupId));
+      if (!targetGroupSnapshot.exists) {
+        throw new Error("Grupo no encontrado.");
+      }
+      const targetGroup = targetGroupSnapshot.data() as Record<string, any>;
+      if (targetGroup.isDeleted === true || !isGroupMemberRecord(targetGroup, authUid)) {
+        throw new Error("No tenés permisos para mover la reserva a ese grupo.");
+      }
+
+      nextGroupId = requestedGroupId;
+      nextGroupName = normalizeText(body.groupName) || normalizeText(targetGroup.name) || undefined;
+    } else {
+      nextGroupId = "default-group";
+      nextGroupName = undefined;
+    }
+
+    const courtName = normalizeText(body.courtName) || normalizeText(reservation.courtName) || "Cancha a definir";
+    const startDateTime = normalizeText(body.startDateTime) || normalizeText(reservation.startDateTime);
+    const parsedStart = toTimestamp(startDateTime);
+    if (!startDateTime || parsedStart === null) {
+      throw new Error("Fecha/hora inválida.");
+    }
+    const durationMinutes =
+      typeof body.durationMinutes === "number" && Number.isFinite(body.durationMinutes) && body.durationMinutes > 0
+        ? Math.round(body.durationMinutes)
+        : typeof reservation.durationMinutes === "number" && Number.isFinite(reservation.durationMinutes)
+          ? reservation.durationMinutes
+          : 90;
+
+    const updateData: Record<string, unknown> = {
+      courtName,
+      courtId: normalizeText(body.courtId) || normalizeText(reservation.courtId) || undefined,
+      venueId: normalizeText(body.venueId) || normalizeText(reservation.venueId) || undefined,
+      venueName: normalizeText(body.venueName) || normalizeText(reservation.venueName) || undefined,
+      venueAddress: normalizeText(body.venueAddress) || normalizeText(reservation.venueAddress) || undefined,
+      startDateTime,
+      durationMinutes,
+      groupId: nextGroupId,
+      visibilityScope: nextVisibilityScope,
+      updatedAt: nowIso()
+    };
+
+    if (nextVisibilityScope === "group") {
+      updateData.groupName = nextGroupName;
+    } else {
+      updateData.groupName = FieldValue.delete();
+    }
+
+    transaction.update(reservationRef, stripUndefinedDeep(updateData));
+  });
+
+  res.status(200).json({ ok: true });
+};
+
 const handleGet = async (
   req: VercelRequestLike & {
     headers?: Record<string, string | string[] | undefined>;
@@ -403,6 +587,10 @@ export default async function handler(
       const body = parseBody<{ action?: string }>(req.body);
       if (body.action === "attendance") {
         await handleAttendanceUpdate(req, res);
+      } else if (body.action === "cancel") {
+        await handleCancel(req, res);
+      } else if (body.action === "update_details") {
+        await handleUpdateDetails(req, res);
       } else {
         await handleCreate(req, res);
       }
