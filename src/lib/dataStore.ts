@@ -197,6 +197,21 @@ const fetchReservationsCloudFallback = async (): Promise<Reservation[]> => {
   );
 };
 
+export const pullLatestCloudState = async (): Promise<{
+  groups: Group[];
+  reservations: Reservation[];
+}> => {
+  const cloudDb = db;
+  if (!isCloudDbEnabled() || !cloudDb) {
+    throw new Error("La sincronización cloud no está disponible.");
+  }
+  const [groups, reservations] = await Promise.all([
+    fetchGroupsCloudFallback(),
+    fetchReservationsCloudFallback()
+  ]);
+  return { groups, reservations };
+};
+
 export const listMyReservationHistory = async (limit = 200): Promise<Reservation[]> => {
   const cloudDb = db;
   if (!isCloudDbEnabled() || !cloudDb) {

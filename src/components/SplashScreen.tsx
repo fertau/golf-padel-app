@@ -22,6 +22,8 @@ function easeInOutQuad(t: number): number {
 export default function SplashScreen({ visible }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [showContent, setShowContent] = useState(false);
+  const [rendered, setRendered] = useState(visible);
+  const [isHiding, setIsHiding] = useState(false);
   const [assetsLoaded, setAssetsLoaded] = useState(false);
   const imagesRef = useRef<{ court: HTMLImageElement; racket: HTMLImageElement } | null>(null);
   const racketSrcRef = useRef(rackets[Math.floor(Math.random() * rackets.length)]);
@@ -47,9 +49,23 @@ export default function SplashScreen({ visible }: Props) {
 
   useEffect(() => {
     if (visible) {
+      setRendered(true);
+      setIsHiding(false);
       setShowContent(false);
+      return;
     }
-  }, [visible]);
+
+    if (!rendered) {
+      return;
+    }
+    setIsHiding(true);
+    const timer = window.setTimeout(() => {
+      setRendered(false);
+      setIsHiding(false);
+      setShowContent(false);
+    }, 420);
+    return () => window.clearTimeout(timer);
+  }, [visible, rendered]);
 
   useEffect(() => {
     if (!visible || !canvasRef.current || !assetsLoaded) return;
@@ -142,10 +158,10 @@ export default function SplashScreen({ visible }: Props) {
     return () => cancelAnimationFrame(raf);
   }, [visible, assetsLoaded]);
 
-  if (!visible) return null;
+  if (!rendered) return null;
 
   return (
-    <div className="splash" aria-hidden>
+    <div className={`splash ${isHiding ? "is-hiding" : "is-visible"}`} aria-hidden>
       <canvas ref={canvasRef} className="splash-canvas" />
       <div className={`splash-content ${showContent ? "visible" : ""}`}>
         <h1 className="splash-brand">

@@ -41,6 +41,7 @@ import {
   listGroupAuditEvents,
   listMyReservationHistory,
   migrateLegacyReservationsForUser,
+  pullLatestCloudState,
   removeGroupMember,
   reassignReservationCreator,
   renameGroup,
@@ -253,6 +254,57 @@ export default function App() {
     if (!firebaseUser) return;
     return subscribeCourts(setCourts);
   }, [firebaseUser]);
+
+  useEffect(() => {
+    if (!firebaseUser || !isCloudDbEnabled()) {
+      return;
+    }
+
+    let cancelled = false;
+    let inFlight = false;
+    const syncCloudState = async () => {
+      if (inFlight) {
+        return;
+      }
+      inFlight = true;
+      try {
+        const { groups: latestGroups, reservations: latestReservations } = await pullLatestCloudState();
+        if (cancelled) {
+          return;
+        }
+        setGroups(latestGroups);
+        setReservations(latestReservations);
+      } catch {
+        // Snapshot listeners remain the source of truth; this is a resilience layer.
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    const runVisibleSync = () => {
+      if (document.visibilityState === "visible") {
+        void syncCloudState();
+      }
+    };
+
+    void syncCloudState();
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void syncCloudState();
+      }
+    }, 15000);
+    window.addEventListener("focus", runVisibleSync);
+    window.addEventListener("online", runVisibleSync);
+    document.addEventListener("visibilitychange", runVisibleSync);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", runVisibleSync);
+      window.removeEventListener("online", runVisibleSync);
+      document.removeEventListener("visibilitychange", runVisibleSync);
+    };
+  }, [firebaseUser, setReservations]);
 
   // 4. Initial Path Detection
   useEffect(() => {
@@ -968,23 +1020,28 @@ export default function App() {
     </section>
   );
 
-  if (authLoading) return (
-    <>
-      <SplashScreen visible={showSplash} />
-      <main className="app mobile-shell">
-        <section className="panel" style={{ padding: "4rem 2rem", background: 'transparent' }}>
-          <ReservationSkeleton /><ReservationSkeleton />
-        </section>
-      </main>
-    </>
-  );
+  const gatedContent = authLoading ? (
+    <main className="app mobile-shell">
+      <section className="panel" style={{ padding: "4rem 2rem", background: "transparent" }}>
+        <ReservationSkeleton />
+        <ReservationSkeleton />
+      </section>
+    </main>
+  ) : !currentUser ? (
+    <AuthView onLoginWithGoogle={loginGoogle} busy={busy} error={authError} />
+  ) : null;
 
-  if (!currentUser) return (
-    <>
-      <SplashScreen visible={showSplash} />
-      <AuthView onLoginWithGoogle={loginGoogle} busy={busy} error={authError} />
-    </>
-  );
+  if (gatedContent) {
+    return (
+      <>
+        <SplashScreen visible={showSplash} />
+        {gatedContent}
+      </>
+    );
+  }
+  if (!currentUser) {
+    return null;
+  }
 
   return (
     <>
