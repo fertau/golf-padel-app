@@ -1486,6 +1486,38 @@ button.neutral {
   gap: 0.22rem;
 }
 
+.hero-meta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.34rem;
+  margin-top: 0.12rem;
+}
+
+.hero-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  padding: 0.2rem 0.48rem;
+  border-radius: 999px;
+  border: 1px solid rgba(179, 207, 255, 0.26);
+  background: rgba(255, 255, 255, 0.04);
+  color: #d6e8ff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.hero-meta-chip svg {
+  opacity: 0.86;
+}
+
+.hero-meta-chip-accent {
+  color: var(--accent);
+  border-color: rgba(232, 255, 61, 0.42);
+  background: rgba(232, 255, 61, 0.08);
+}
+
 .hero-badge {
   background: var(--accent-soft);
   color: var(--accent);
@@ -1672,6 +1704,11 @@ button.neutral {
   border-radius: 10px;
 }
 
+.player-row-elite .player-name {
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
 .player-avatar-mini {
   width: 32px;
   /* Aumentado */
@@ -1688,13 +1725,14 @@ button.neutral {
 
 .host-label {
   margin-left: auto;
-  font-size: 0.6rem;
+  font-size: 0.58rem;
   background: var(--accent-soft);
   color: var(--accent);
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 6px;
-  font-weight: 800;
+  font-weight: 750;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .actions-section-elite {
@@ -1890,6 +1928,11 @@ button.neutral {
   .attendance-section-elite {
     border-radius: 12px;
     padding: 0.82rem;
+  }
+
+  .hero-meta-chip {
+    font-size: 0.62rem;
+    padding: 0.18rem 0.42rem;
   }
 
   .floating-toast {

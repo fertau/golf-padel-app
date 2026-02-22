@@ -238,7 +238,7 @@ export default function App() {
   useEffect(() => {
     if (!firebaseUser) return;
     return subscribeReservations(firebaseUser.uid, setReservations);
-  }, [firebaseUser, setReservations]);
+  }, [firebaseUser, setReservations, setGroups]);
 
   useEffect(() => {
     if (!firebaseUser) return;

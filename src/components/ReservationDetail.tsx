@@ -60,6 +60,7 @@ export default function ReservationDetail({
   const endDate = new Date(startDate.getTime() + reservation.durationMinutes * 60 * 1000);
   const reservationUrl = `${appUrl}/r/${reservation.id}`;
   const message = buildWhatsAppMessage(reservation, appUrl);
+  const creatorAuthUid = reservation.createdByAuthUid || reservation.createdBy.id;
 
   const handleSetAttendance = async (status: AttendanceStatus) => {
     setPendingAttendanceStatus(status);
@@ -181,6 +182,16 @@ export default function ReservationDetail({
     const min = `${date.getMinutes()}`.padStart(2, "0");
     return `${dd}/${mm} a las ${hh}:${min}`;
   };
+  const formattedDate = startDate.toLocaleDateString("es-AR", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit"
+  });
+  const formattedTime = startDate.toLocaleTimeString("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  });
 
   const eligibility = canJoinReservation(reservation, currentUser);
 
@@ -277,11 +288,11 @@ export default function ReservationDetail({
       </summary>
       <div className="player-list-elite">
         {list.length === 0 ? <p className="empty-state-list">Sin registros aún.</p> : null}
-        {list.map((signup, index) => (
+        {list.map((signup) => (
           <div key={signup.id} className="player-row-elite">
             <div className="player-avatar-mini">{formatSignupName(signup).charAt(0).toUpperCase()}</div>
             <span className="player-name">{formatSignupName(signup)}</span>
-            {index === 0 && label === "Juego" && <span className="host-label">Organizador</span>}
+            {(signup.authUid || signup.userId) === creatorAuthUid ? <span className="host-label">Creador</span> : null}
           </div>
         ))}
       </div>
@@ -305,17 +316,23 @@ export default function ReservationDetail({
         <div className="hero-badge">{reservation.durationMinutes} min</div>
         <h1>{reservation.courtName}</h1>
         <p className="hero-subtitle">{formatCompactDate(reservation.startDateTime)}</p>
+        <div className="hero-meta-chips">
+          <span className="hero-meta-chip">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+            <span>{formattedDate.replace(".", "").toUpperCase()}</span>
+          </span>
+          <span className="hero-meta-chip">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>
+            <span>{formattedTime}</span>
+          </span>
+          {reservation.groupName ? <span className="hero-meta-chip hero-meta-chip-accent">{reservation.groupName}</span> : null}
+          {reservation.venueName ? <span className="hero-meta-chip">{reservation.venueName}</span> : null}
+          {!reservation.groupName ? <span className="hero-meta-chip">Solo por link</span> : null}
+        </div>
         {reservation.status === "cancelled" ? (
           <p className="reservation-status-pill cancelled">Cancelada</p>
         ) : null}
-        {reservation.groupName ? <p className="private-hint">{reservation.groupName}</p> : null}
-        {!reservation.groupName ? <p className="private-hint">Solo por link</p> : null}
-        {reservation.venueName ? (
-          <p className="private-hint">
-            {reservation.venueName}
-            {reservation.venueAddress ? ` · ${reservation.venueAddress}` : ""}
-          </p>
-        ) : null}
+        {reservation.venueAddress ? <p className="private-hint">{reservation.venueAddress}</p> : null}
       </header>
 
       <div className="hero-stats-grid">
