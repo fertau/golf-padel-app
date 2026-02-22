@@ -1258,7 +1258,7 @@ export default function App() {
 
       {selectedReservation && (
         <div className="sheet-backdrop" onClick={() => setExpandedReservationId(null)}>
-          <section className="sheet" onClick={e => e.stopPropagation()}>
+          <section className="sheet sheet-detail" onClick={e => e.stopPropagation()}>
             <div className="sheet-handle" /><div className="sheet-head"><h3>Partido</h3><button className="sheet-close" onClick={() => setExpandedReservationId(null)}>Cerrar</button></div>
             <ReservationDetail
               reservation={selectedReservation} currentUser={currentUser} appUrl={shareBaseUrl}
