@@ -1113,6 +1113,12 @@ export default function App() {
                       const start = new Date(reservation.startDateTime);
                       const month = start.toLocaleDateString("es-AR", { month: "short" }).replace(".", "").toUpperCase();
                       const day = start.toLocaleDateString("es-AR", { day: "2-digit" });
+                      const weekday = start
+                        .toLocaleDateString("es-AR", { weekday: "short" })
+                        .replace(".", "")
+                        .toUpperCase();
+                      const dayGroup = getReservationDateGroup(reservation.startDateTime);
+                      const dayIndicator = dayGroup === "hoy" ? "HOY" : dayGroup === "manana" ? "MAÑANA" : weekday;
                       const time = start.toLocaleTimeString("es-AR", {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -1135,6 +1141,9 @@ export default function App() {
                             <div className="upcoming-date">
                               <span>{month}</span>
                               <strong className={isActive ? "upcoming-day-active" : ""}>{day}</strong>
+                              <small className={`upcoming-day-indicator ${dayGroup === "hoy" || dayGroup === "manana" ? "is-soon" : ""}`}>
+                                {dayIndicator}
+                              </small>
                             </div>
                             <div className="upcoming-content">
                               <div className="upcoming-details-line">
@@ -1143,13 +1152,13 @@ export default function App() {
                                   <span>{time}</span>
                                 </span>
                                 <span className="upcoming-court">{reservation.courtName}</span>
+                                <span className="upcoming-chip upcoming-chip-count">{confirmedCount}/4 jugando</span>
                               </div>
-                              <div className="upcoming-meta-chips">
-                                {activeGroupScope === "all" && reservation.groupName ? (
+                              {activeGroupScope === "all" && reservation.groupName ? (
+                                <div className="upcoming-meta-chips">
                                   <span className="upcoming-chip upcoming-chip-accent">{reservation.groupName}</span>
-                                ) : null}
-                                <span className="upcoming-chip">{confirmedCount}/4 jugando</span>
-                              </div>
+                                </div>
+                              ) : null}
                             </div>
                           </button>
                         </li>
