@@ -1145,23 +1145,17 @@ export default function App() {
                                 {dayIndicator}
                               </small>
                             </div>
-                            <div className="upcoming-main">
-                              <span className="upcoming-time">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>
-                                <span>{time}</span>
-                              </span>
-                              <span className="upcoming-court">{reservation.courtName}</span>
-                            </div>
-                            <div className="upcoming-right-chip-wrap">
-                              <span className="upcoming-chip upcoming-chip-count">{confirmedCount}/4 jugando</span>
-                            </div>
-                            <div className="upcoming-right-chip-wrap">
-                              {reservation.groupName ? (
-                                <span className="upcoming-chip upcoming-chip-accent">{reservation.groupName}</span>
-                              ) : (
-                                <span className="upcoming-chip upcoming-chip-muted">Sin grupo</span>
-                              )}
-                            </div>
+                            <span className="upcoming-time">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>
+                              <span>{time}</span>
+                            </span>
+                            <span className="upcoming-chip upcoming-chip-count">{confirmedCount}/4 jugando</span>
+                            <span className="upcoming-court">{reservation.courtName}</span>
+                            {reservation.groupName ? (
+                              <span className="upcoming-chip upcoming-chip-accent">{reservation.groupName}</span>
+                            ) : (
+                              <span className="upcoming-chip upcoming-chip-muted">Sin grupo</span>
+                            )}
                           </button>
                         </li>
                       );
