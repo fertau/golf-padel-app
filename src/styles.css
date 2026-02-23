@@ -1003,10 +1003,10 @@ body::before {
 .upcoming-row {
   width: 100%;
   display: grid;
-  grid-template-columns: 66px minmax(0, 1fr) auto auto;
-  gap: 0.62rem;
+  grid-template-columns: 72px minmax(0, 1fr) minmax(132px, max-content) minmax(96px, max-content);
+  gap: 0.72rem;
   align-items: center;
-  padding: 0.46rem 0.3rem;
+  padding: 0.58rem 0.34rem;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 14px;
@@ -1075,7 +1075,7 @@ body::before {
 
 .upcoming-main {
   display: grid;
-  gap: 0.28rem;
+  gap: 0.32rem;
   min-width: 0;
 }
 
@@ -1084,7 +1084,7 @@ body::before {
   align-items: center;
   gap: 0.35rem;
   color: #ebf3ff;
-  font-size: 1.12rem;
+  font-size: 1.16rem;
   font-weight: 900;
   line-height: 1;
   flex-shrink: 0;
@@ -1092,7 +1092,7 @@ body::before {
 
 .upcoming-court {
   color: var(--text-dim);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
   min-width: 0;
   max-width: 100%;
@@ -1100,7 +1100,7 @@ body::before {
   text-overflow: ellipsis;
   border: 1px solid rgba(179, 207, 255, 0.3);
   border-radius: 999px;
-  padding: 0.16rem 0.48rem;
+  padding: 0.18rem 0.52rem;
   white-space: nowrap;
   justify-self: start;
 }
@@ -1135,6 +1135,8 @@ body::before {
 .upcoming-right-chip-wrap {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .upcoming-chip-count {
@@ -1142,10 +1144,17 @@ body::before {
   border-color: rgba(214, 231, 255, 0.55);
   background: linear-gradient(145deg, rgba(35, 72, 130, 0.9), rgba(19, 51, 103, 0.95));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  min-width: 132px;
+  justify-content: center;
 }
 
 .upcoming-chip-muted {
   opacity: 0.72;
+}
+
+.upcoming-chip-accent {
+  min-width: 92px;
+  justify-content: center;
 }
 
 .section-title {
@@ -2008,6 +2017,14 @@ button.neutral {
   .upcoming-chip {
     font-size: 0.68rem;
     padding: 0.18rem 0.46rem;
+  }
+
+  .upcoming-chip-count {
+    min-width: 108px;
+  }
+
+  .upcoming-chip-accent {
+    min-width: 74px;
   }
 
   .history-toggle {
@@ -3414,6 +3431,11 @@ ul {
 
   .upcoming-chip {
     font-size: 0.64rem;
+  }
+
+  .upcoming-chip-count,
+  .upcoming-chip-accent {
+    min-width: 0;
   }
 
   .sheet.sheet-detail {
