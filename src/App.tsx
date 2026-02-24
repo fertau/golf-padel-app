@@ -521,15 +521,15 @@ export default function App() {
       currentUser && isReservationCreator(reservation, currentUser.id) ? "confirmed" : undefined
     );
     if (effectiveStatus === "confirmed") {
-      return { label: "Juego", badgeClass: "badge-confirmed" };
+      return { label: "JUEGO", badgeClass: "badge-confirmed" };
     }
     if (effectiveStatus === "maybe") {
-      return { label: "Quizás", badgeClass: "badge-maybe" };
+      return { label: "QUIZAS", badgeClass: "badge-maybe" };
     }
     if (effectiveStatus === "cancelled") {
-      return { label: "No juego", badgeClass: "badge-cancelled" };
+      return { label: "NO JUEGO", badgeClass: "badge-cancelled" };
     }
-    return { label: "Pendiente", badgeClass: "badge-pending" };
+    return { label: "PENDIENTE", badgeClass: "badge-pending" };
   };
 
   const upcomingWeekDays = useMemo(() => {
@@ -1107,7 +1107,6 @@ export default function App() {
                         currentUser={currentUser!}
                         onOpen={setExpandedReservationId}
                         isExpanded={expandedReservationId === r.id}
-                        variant={isActiveReservationsWidget ? "active" : "default"}
                       />
                     ))}
                   </div>
@@ -1122,7 +1121,6 @@ export default function App() {
                 currentUser={currentUser!}
                 onOpen={setExpandedReservationId}
                 isExpanded={expandedReservationId === r.id}
-                variant={isActiveReservationsWidget ? "active" : "default"}
               />
             ))
           )}
@@ -1200,9 +1198,9 @@ export default function App() {
           <>
             <section className="panel glass-panel-elite animate-fade-in inbox-panel">
               <div className="inbox-heading">
-                <h2 className="section-title">Inbox de respuestas</h2>
+                <h2 className="section-title">Nuevas reservas</h2>
                 <span className={`upcoming-chip ${myPendingResponseCount > 0 ? "upcoming-chip-accent" : "upcoming-chip-muted"}`}>
-                  {myPendingResponseCount} pendiente{myPendingResponseCount === 1 ? "" : "s"}
+                  {myPendingResponseCount} nueva{myPendingResponseCount === 1 ? "" : "s"}
                 </span>
               </div>
               {myPendingResponseCount === 0 ? (
@@ -1211,27 +1209,56 @@ export default function App() {
                 <ul className="inbox-list">
                   {inboxPendingReservations.map((reservation) => {
                     const start = new Date(reservation.startDateTime);
-                    const day = start.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
+                    const month = start.toLocaleDateString("es-AR", { month: "short" }).replace(".", "").toUpperCase();
+                    const day = start.toLocaleDateString("es-AR", { day: "2-digit" });
+                    const weekday = start
+                      .toLocaleDateString("es-AR", { weekday: "short" })
+                      .replace(".", "")
+                      .toUpperCase();
+                    const dayGroup = getReservationDateGroup(reservation.startDateTime);
+                    const dayIndicator = dayGroup === "hoy" ? "HOY" : dayGroup === "manana" ? "MAÑANA" : weekday;
                     const time = start.toLocaleTimeString("es-AR", {
                       hour: "2-digit",
                       minute: "2-digit",
                       hour12: false
                     });
+                    const confirmedCount = reservation.signups.filter(
+                      (signup) => signup.attendanceStatus === "confirmed"
+                    ).length;
+                    const isActive = expandedReservationId === reservation.id;
                     return (
                       <li key={`inbox-${reservation.id}`}>
                         <button
                           type="button"
-                          className="inbox-row"
+                          className={`upcoming-row upcoming-row-inbox ${isActive ? "active" : ""}`}
                           onClick={() => {
                             triggerHaptic("light");
-                            setExpandedReservationId(reservation.id);
+                            setExpandedReservationId(isActive ? null : reservation.id);
                           }}
                         >
-                          <span className="inbox-date">{day}</span>
-                          <strong className="inbox-time">{time}</strong>
-                          <span className="upcoming-chip upcoming-chip-muted">{reservation.courtName}</span>
-                          {reservation.groupName ? <span className="upcoming-chip upcoming-chip-accent">{reservation.groupName}</span> : null}
-                          <span className="inbox-cta">Responder</span>
+                          <div className="upcoming-date">
+                            <span>{month}</span>
+                            <strong className={isActive ? "upcoming-day-active" : ""}>{day}</strong>
+                            <small className={`upcoming-day-indicator ${dayGroup === "hoy" || dayGroup === "manana" ? "is-soon" : ""}`}>
+                              {dayIndicator}
+                            </small>
+                          </div>
+                          <div className="upcoming-time-court">
+                            <span className="upcoming-time">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>
+                              <span>{time}</span>
+                            </span>
+                            <span className="upcoming-court">{reservation.courtName}</span>
+                          </div>
+                          <span className="upcoming-chip upcoming-chip-count">{confirmedCount}/4 jugando</span>
+                          <div className="upcoming-chip-row">
+                            {reservation.groupName ? (
+                              <span className="upcoming-chip upcoming-chip-accent">{reservation.groupName}</span>
+                            ) : (
+                              <span className="upcoming-chip upcoming-chip-muted">Sin grupo</span>
+                            )}
+                            <span className="upcoming-chip upcoming-chip-accent inbox-respond-chip">Responder</span>
+                          </div>
                         </button>
                       </li>
                     );
