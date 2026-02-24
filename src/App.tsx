@@ -141,6 +141,7 @@ export default function App() {
 
   const [quickDateFilter, setQuickDateFilter] = useState<"all" | "hoy" | "manana" | "semana">("all");
   const [reservationsScope, setReservationsScope] = useState<"all" | "mine">("all");
+  const [upcomingView, setUpcomingView] = useState<"list" | "week">("list");
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -514,6 +515,42 @@ export default function App() {
 
   const visibleUpcoming = showAllUpcoming ? upcomingByScope : upcomingByScope.slice(0, 3);
 
+  const getUpcomingAttendanceMeta = (reservation: Reservation): { label: string; badgeClass: string } => {
+    const myAttendance = currentUser ? getUserAttendance(reservation, currentUser.id)?.attendanceStatus : undefined;
+    const effectiveStatus = myAttendance ?? (
+      currentUser && isReservationCreator(reservation, currentUser.id) ? "confirmed" : undefined
+    );
+    if (effectiveStatus === "confirmed") {
+      return { label: "Juego", badgeClass: "badge-confirmed" };
+    }
+    if (effectiveStatus === "maybe") {
+      return { label: "Quizás", badgeClass: "badge-maybe" };
+    }
+    if (effectiveStatus === "cancelled") {
+      return { label: "No juego", badgeClass: "badge-cancelled" };
+    }
+    return { label: "Pendiente", badgeClass: "badge-pending" };
+  };
+
+  const upcomingWeekDays = useMemo(() => {
+    const grouped = new Map<string, Reservation[]>();
+    for (const reservation of upcomingByScope) {
+      const key = toLocalDayKey(parseReservationDate(reservation.startDateTime));
+      const current = grouped.get(key) ?? [];
+      current.push(reservation);
+      grouped.set(key, current);
+    }
+    const today = getDayStart(new Date());
+    return Array.from({ length: 7 }, (_, offset) => {
+      const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset);
+      const key = toLocalDayKey(date);
+      const reservations = (grouped.get(key) ?? []).sort(
+        (a, b) => parseReservationDate(a.startDateTime).getTime() - parseReservationDate(b.startDateTime).getTime()
+      );
+      return { key, date, reservations };
+    });
+  }, [upcomingByScope]);
+
   const reservationListBase = useMemo(
     () =>
       activeReservations
@@ -763,6 +800,7 @@ export default function App() {
   useEffect(() => {
     setQuickDateFilter("all");
     setReservationsScope("all");
+    setUpcomingView("list");
     setShowAllUpcoming(false);
     setActiveGroupScope("all");
     setHistoryExpanded(false);
@@ -1016,52 +1054,82 @@ export default function App() {
     }
   };
 
-  const renderReservationList = (title: string, items: Reservation[], emptyText: string, groupByDate = false) => (
-    <section className="panel glass-panel-elite animate-fade-in">
-      <h2 className="section-title">{title}</h2>
-      {groupByDate && (
-        <FilterBar currentFilter={quickDateFilter} onFilterChange={setQuickDateFilter} />
-      )}
-      <div className="list">
-        {reservationsLoading ? (
-          <><ReservationSkeleton /><ReservationSkeleton /><ReservationSkeleton /></>
-        ) : items.length === 0 ? (
-          <div className="empty-state"><div className="empty-illustration">🎾</div><p>{emptyText}</p></div>
-        ) : groupByDate ? (
-          (["hoy", "manana", "esta-semana", "mas-adelante"] as const).map(g => {
-            const groupItems = items.filter(r => getReservationDateGroup(r.startDateTime) === g);
-            if (!groupItems.length) return null;
-            return (
-              <section key={g} className="group-block">
-                <h3 className="group-title">{GROUP_LABELS[g]}</h3>
-                <div className="group-list">
-                  {groupItems.map(r => (
-                    <ReservationCard
-                      key={r.id}
-                      reservation={r}
-                      currentUser={currentUser!}
-                      onOpen={setExpandedReservationId}
-                      isExpanded={expandedReservationId === r.id}
-                    />
-                  ))}
-                </div>
-              </section>
-            );
-          })
-        ) : (
-          items.map(r => (
-            <ReservationCard
-              key={r.id}
-              reservation={r}
-              currentUser={currentUser!}
-              onOpen={setExpandedReservationId}
-              isExpanded={expandedReservationId === r.id}
-            />
-          ))
+  const renderReservationList = (title: string, items: Reservation[], emptyText: string, groupByDate = false) => {
+    const isActiveReservationsWidget = title === "Reservas activas";
+    const confirmedCount = currentUser
+      ? items.filter((reservation) => getUserAttendance(reservation, currentUser.id)?.attendanceStatus === "confirmed").length
+      : 0;
+    const pendingCount = currentUser
+      ? items.filter((reservation) => !getUserAttendance(reservation, currentUser.id)).length
+      : 0;
+    const todayCount = items.filter((reservation) => getReservationDateGroup(reservation.startDateTime) === "hoy").length;
+    const tomorrowCount = items.filter((reservation) => getReservationDateGroup(reservation.startDateTime) === "manana").length;
+
+    return (
+      <section className={`panel glass-panel-elite animate-fade-in ${isActiveReservationsWidget ? "active-reservations-widget" : ""}`}>
+        <div className="reservation-list-head">
+          <h2 className="section-title">{title}</h2>
+          {isActiveReservationsWidget ? (
+            <span className="reservation-list-total-chip">{items.length} activas</span>
+          ) : null}
+        </div>
+        {groupByDate && (
+          <FilterBar currentFilter={quickDateFilter} onFilterChange={setQuickDateFilter} />
         )}
-      </div>
-    </section>
-  );
+        {isActiveReservationsWidget && !reservationsLoading && items.length > 0 ? (
+          <div className="active-reservations-summary-chips">
+            <span className="active-reservations-summary-chip">Hoy {todayCount}</span>
+            <span className="active-reservations-summary-chip">Mañana {tomorrowCount}</span>
+            <span className="active-reservations-summary-chip">Juego {confirmedCount}</span>
+            <span className="active-reservations-summary-chip">Pendientes {pendingCount}</span>
+          </div>
+        ) : null}
+        <div className="list">
+          {reservationsLoading ? (
+            <><ReservationSkeleton /><ReservationSkeleton /><ReservationSkeleton /></>
+          ) : items.length === 0 ? (
+            <div className="empty-state"><div className="empty-illustration">🎾</div><p>{emptyText}</p></div>
+          ) : groupByDate ? (
+            (["hoy", "manana", "esta-semana", "mas-adelante"] as const).map(g => {
+              const groupItems = items.filter(r => getReservationDateGroup(r.startDateTime) === g);
+              if (!groupItems.length) return null;
+              return (
+                <section key={g} className="group-block">
+                  <h3 className="group-title">
+                    <span>{GROUP_LABELS[g]}</span>
+                    <span className="group-title-chip">{groupItems.length}</span>
+                  </h3>
+                  <div className="group-list">
+                    {groupItems.map(r => (
+                      <ReservationCard
+                        key={r.id}
+                        reservation={r}
+                        currentUser={currentUser!}
+                        onOpen={setExpandedReservationId}
+                        isExpanded={expandedReservationId === r.id}
+                        variant={isActiveReservationsWidget ? "active" : "default"}
+                      />
+                    ))}
+                  </div>
+                </section>
+              );
+            })
+          ) : (
+            items.map(r => (
+              <ReservationCard
+                key={r.id}
+                reservation={r}
+                currentUser={currentUser!}
+                onOpen={setExpandedReservationId}
+                isExpanded={expandedReservationId === r.id}
+                variant={isActiveReservationsWidget ? "active" : "default"}
+              />
+            ))
+          )}
+        </div>
+      </section>
+    );
+  };
 
   const gatedContent = authLoading ? (
     <main className="app mobile-shell">
@@ -1133,7 +1201,7 @@ export default function App() {
             <section className="panel glass-panel-elite animate-fade-in inbox-panel">
               <div className="inbox-heading">
                 <h2 className="section-title">Inbox de respuestas</h2>
-                <span className={`upcoming-chip ${myPendingResponseCount > 0 ? "upcoming-chip-mine-pending" : "upcoming-chip-muted"}`}>
+                <span className={`upcoming-chip ${myPendingResponseCount > 0 ? "upcoming-chip-accent" : "upcoming-chip-muted"}`}>
                   {myPendingResponseCount} pendiente{myPendingResponseCount === 1 ? "" : "s"}
                 </span>
               </div>
@@ -1173,94 +1241,159 @@ export default function App() {
             </section>
 
             <section className="panel upcoming-widget glass-panel-elite animate-fade-in">
-              <h2 className="section-title">Próximos partidos</h2>
+              <div className="upcoming-header">
+                <h2 className="section-title">Próximos partidos</h2>
+                <div className="quick-chip-row quick-chip-row-tight upcoming-view-switch">
+                  <button
+                    type="button"
+                    className={`quick-chip ${upcomingView === "list" ? "active" : ""}`}
+                    onClick={() => setUpcomingView("list")}
+                  >
+                    Lista
+                  </button>
+                  <button
+                    type="button"
+                    className={`quick-chip ${upcomingView === "week" ? "active" : ""}`}
+                    onClick={() => setUpcomingView("week")}
+                  >
+                    7 días
+                  </button>
+                </div>
+              </div>
               {upcomingByScope.length === 0 ? (
                 <p className="private-hint">No hay próximos partidos en tu alcance actual.</p>
               ) : (
                 <>
-                  <ul className="upcoming-list">
-                    {visibleUpcoming.map((reservation) => {
-                      const start = new Date(reservation.startDateTime);
-                      const month = start.toLocaleDateString("es-AR", { month: "short" }).replace(".", "").toUpperCase();
-                      const day = start.toLocaleDateString("es-AR", { day: "2-digit" });
-                      const weekday = start
-                        .toLocaleDateString("es-AR", { weekday: "short" })
-                        .replace(".", "")
-                        .toUpperCase();
-                      const dayGroup = getReservationDateGroup(reservation.startDateTime);
-                      const dayIndicator = dayGroup === "hoy" ? "HOY" : dayGroup === "manana" ? "MAÑANA" : weekday;
-                      const time = start.toLocaleTimeString("es-AR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: false
-                      });
-                      const confirmedCount = reservation.signups.filter(
-                        (signup) => signup.attendanceStatus === "confirmed"
-                      ).length;
-                      const myAttendance = currentUser ? getUserAttendance(reservation, currentUser.id)?.attendanceStatus : undefined;
-                      const myAttendanceEffective = myAttendance ?? (
-                        currentUser && isReservationCreator(reservation, currentUser.id) ? "confirmed" : undefined
-                      );
-                      const myAttendanceLabel =
-                        myAttendanceEffective === "confirmed"
-                          ? "Mi juego"
-                          : myAttendanceEffective === "maybe"
-                              ? "Mi quizás"
-                              : myAttendanceEffective === "cancelled"
-                                ? "Mi no juego"
-                                : "Mi pendiente";
-                      const myAttendanceClass =
-                        myAttendanceEffective === "confirmed"
-                          ? "upcoming-chip-mine-confirmed"
-                          : myAttendanceEffective === "maybe"
-                            ? "upcoming-chip-mine-maybe"
-                            : myAttendanceEffective === "cancelled"
-                              ? "upcoming-chip-mine-cancelled"
-                              : "upcoming-chip-mine-pending";
-                      const isActive = expandedReservationId === reservation.id;
-                      return (
-                        <li key={`upcoming-${reservation.id}`}>
-                          <button
-                            type="button"
-                            className={`upcoming-row ${isActive ? "active" : ""}`}
-                            onClick={() => {
-                              triggerHaptic("light");
-                              setExpandedReservationId(isActive ? null : reservation.id);
-                            }}
-                          >
-                            <div className="upcoming-date">
+                  {upcomingView === "list" ? (
+                    <>
+                      <ul className="upcoming-list">
+                        {visibleUpcoming.map((reservation) => {
+                          const start = new Date(reservation.startDateTime);
+                          const month = start.toLocaleDateString("es-AR", { month: "short" }).replace(".", "").toUpperCase();
+                          const day = start.toLocaleDateString("es-AR", { day: "2-digit" });
+                          const weekday = start
+                            .toLocaleDateString("es-AR", { weekday: "short" })
+                            .replace(".", "")
+                            .toUpperCase();
+                          const dayGroup = getReservationDateGroup(reservation.startDateTime);
+                          const dayIndicator = dayGroup === "hoy" ? "HOY" : dayGroup === "manana" ? "MAÑANA" : weekday;
+                          const time = start.toLocaleTimeString("es-AR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false
+                          });
+                          const confirmedCount = reservation.signups.filter(
+                            (signup) => signup.attendanceStatus === "confirmed"
+                          ).length;
+                          const attendanceMeta = getUpcomingAttendanceMeta(reservation);
+                          const isActive = expandedReservationId === reservation.id;
+                          return (
+                            <li key={`upcoming-${reservation.id}`}>
+                              <button
+                                type="button"
+                                className={`upcoming-row ${isActive ? "active" : ""}`}
+                                onClick={() => {
+                                  triggerHaptic("light");
+                                  setExpandedReservationId(isActive ? null : reservation.id);
+                                }}
+                              >
+                                <div className="upcoming-date">
+                                  <span>{month}</span>
+                                  <strong className={isActive ? "upcoming-day-active" : ""}>{day}</strong>
+                                  <small className={`upcoming-day-indicator ${dayGroup === "hoy" || dayGroup === "manana" ? "is-soon" : ""}`}>
+                                    {dayIndicator}
+                                  </small>
+                                </div>
+                                <div className="upcoming-time-court">
+                                  <span className="upcoming-time">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>
+                                    <span>{time}</span>
+                                  </span>
+                                  <span className="upcoming-court">{reservation.courtName}</span>
+                                </div>
+                                <span className="upcoming-chip upcoming-chip-count">{confirmedCount}/4 jugando</span>
+                                <div className="upcoming-chip-row">
+                                  {reservation.groupName ? (
+                                    <span className="upcoming-chip upcoming-chip-accent">{reservation.groupName}</span>
+                                  ) : (
+                                    <span className="upcoming-chip upcoming-chip-muted">Sin grupo</span>
+                                  )}
+                                  <span className={`badge badge-mine badge-elevated ${attendanceMeta.badgeClass} upcoming-status-badge`}>
+                                    {attendanceMeta.label}
+                                  </span>
+                                </div>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      {upcomingByScope.length > 3 ? (
+                        <button className="btn-elite btn-elite-outline upcoming-more-btn" onClick={() => setShowAllUpcoming(!showAllUpcoming)}>
+                          {showAllUpcoming ? "Ver menos" : "Ver más"}
+                        </button>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className="upcoming-week-grid" role="list">
+                      {upcomingWeekDays.map((daySlot, index) => {
+                        const month = daySlot.date.toLocaleDateString("es-AR", { month: "short" }).replace(".", "").toUpperCase();
+                        const day = daySlot.date.toLocaleDateString("es-AR", { day: "2-digit" });
+                        const weekday = daySlot.date
+                          .toLocaleDateString("es-AR", { weekday: "short" })
+                          .replace(".", "")
+                          .toUpperCase();
+                        const dayTag = index === 0 ? "HOY" : index === 1 ? "MAÑANA" : weekday;
+                        return (
+                          <article key={`week-${daySlot.key}`} className="upcoming-week-day" role="listitem">
+                            <div className="upcoming-week-date">
                               <span>{month}</span>
-                              <strong className={isActive ? "upcoming-day-active" : ""}>{day}</strong>
-                              <small className={`upcoming-day-indicator ${dayGroup === "hoy" || dayGroup === "manana" ? "is-soon" : ""}`}>
-                                {dayIndicator}
-                              </small>
+                              <strong>{day}</strong>
+                              <small>{dayTag}</small>
                             </div>
-                            <div className="upcoming-time-court">
-                              <span className="upcoming-time">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>
-                                <span>{time}</span>
-                              </span>
-                              <span className="upcoming-court">{reservation.courtName}</span>
-                            </div>
-                            <span className="upcoming-chip upcoming-chip-count">{confirmedCount}/4 jugando</span>
-                            <div className="upcoming-chip-row">
-                              {reservation.groupName ? (
-                                <span className="upcoming-chip upcoming-chip-accent">{reservation.groupName}</span>
-                              ) : (
-                                <span className="upcoming-chip upcoming-chip-muted">Sin grupo</span>
-                              )}
-                              <span className={`upcoming-chip upcoming-chip-mine ${myAttendanceClass}`}>{myAttendanceLabel}</span>
-                            </div>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  {upcomingByScope.length > 3 ? (
-                    <button className="btn-elite btn-elite-outline upcoming-more-btn" onClick={() => setShowAllUpcoming(!showAllUpcoming)}>
-                      {showAllUpcoming ? "Ver menos" : "Ver más"}
-                    </button>
-                  ) : null}
+                            {daySlot.reservations.length === 0 ? (
+                              <p className="upcoming-week-empty">Sin partidos</p>
+                            ) : (
+                              <div className="upcoming-week-events">
+                                {daySlot.reservations.slice(0, 3).map((reservation) => {
+                                  const start = new Date(reservation.startDateTime);
+                                  const time = start.toLocaleTimeString("es-AR", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour12: false
+                                  });
+                                  const confirmedCount = reservation.signups.filter(
+                                    (signup) => signup.attendanceStatus === "confirmed"
+                                  ).length;
+                                  const attendanceMeta = getUpcomingAttendanceMeta(reservation);
+                                  return (
+                                    <button
+                                      key={`week-event-${reservation.id}`}
+                                      type="button"
+                                      className="upcoming-week-event"
+                                      onClick={() => {
+                                        triggerHaptic("light");
+                                        setExpandedReservationId(reservation.id);
+                                      }}
+                                    >
+                                      <span className="upcoming-week-time">{time}</span>
+                                      <span className="upcoming-chip upcoming-chip-muted">{reservation.courtName}</span>
+                                      <span className="upcoming-chip upcoming-chip-count-mini">{confirmedCount}/4</span>
+                                      <span className={`badge badge-mine ${attendanceMeta.badgeClass} upcoming-status-badge`}>
+                                        {attendanceMeta.label}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                                {daySlot.reservations.length > 3 ? (
+                                  <span className="upcoming-week-more">+{daySlot.reservations.length - 3} más</span>
+                                ) : null}
+                              </div>
+                            )}
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
                 </>
               )}
             </section>

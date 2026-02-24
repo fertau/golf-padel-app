@@ -818,6 +818,12 @@ body::before {
   color: white;
 }
 
+.badge-pending {
+  background: rgba(124, 145, 180, 0.3);
+  color: #e5f0ff;
+  border: 1px solid rgba(179, 207, 255, 0.35);
+}
+
 .badge-mine {
   white-space: nowrap;
 }
@@ -1113,7 +1119,18 @@ body::before {
 }
 
 .upcoming-widget {
-  gap: 0.65rem;
+  gap: 0.76rem;
+}
+
+.upcoming-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.upcoming-view-switch {
+  flex-shrink: 0;
 }
 
 .upcoming-list {
@@ -1142,9 +1159,9 @@ body::before {
     "date time players"
     "date time group";
   column-gap: 0.72rem;
-  row-gap: 0.34rem;
+  row-gap: 0.48rem;
   align-items: center;
-  padding: 0.68rem 0.34rem;
+  padding: 0.9rem 0.4rem;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 14px;
@@ -1189,7 +1206,7 @@ body::before {
 }
 
 .upcoming-date strong {
-  font-size: 2.02rem;
+  font-size: 2.16rem;
   line-height: 0.95;
   color: #ffffff;
   font-weight: 900;
@@ -1230,7 +1247,7 @@ body::before {
   align-items: center;
   gap: 0.35rem;
   color: #ebf3ff;
-  font-size: 1.24rem;
+  font-size: 1.34rem;
   font-weight: 900;
   line-height: 1;
   flex-shrink: 0;
@@ -1271,7 +1288,7 @@ body::before {
 
 .upcoming-chip-count {
   grid-area: players;
-  justify-self: stretch;
+  justify-self: center;
   align-self: center;
   color: #ffffff;
   border-color: rgba(214, 231, 255, 0.55);
@@ -1279,23 +1296,25 @@ body::before {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
   min-width: 0;
   justify-content: center;
-  width: 100%;
+  width: min(100%, 150px);
 }
 
 .upcoming-chip-row {
   grid-area: group;
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   justify-self: stretch;
   align-items: center;
   gap: 0.36rem;
   min-width: 0;
   width: 100%;
+  justify-items: center;
 }
 
 .upcoming-chip-muted {
   justify-self: auto;
   opacity: 0.72;
-  width: auto;
+  width: 100%;
   justify-content: center;
   min-width: 0;
 }
@@ -1304,42 +1323,118 @@ body::before {
   justify-self: auto;
   min-width: 0;
   justify-content: center;
-  width: auto;
+  width: 100%;
 }
 
-.upcoming-chip-mine {
-  justify-self: auto;
-  align-self: center;
-  width: auto;
+.upcoming-status-badge {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  font-size: 0.68rem;
-  letter-spacing: 0.02em;
+  width: 100%;
+  min-width: 0;
+  font-size: 0.67rem;
+  line-height: 1.1;
   text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0.26rem 0.5rem;
+}
+
+.upcoming-chip-count-mini {
+  font-size: 0.62rem;
+  padding: 0.14rem 0.34rem;
   min-width: 0;
 }
 
-.upcoming-chip-mine-confirmed {
-  color: #dff9ec;
-  border-color: rgba(45, 223, 134, 0.65);
-  background: rgba(45, 223, 134, 0.24);
+.upcoming-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(126px, 1fr));
+  gap: 0.55rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
 }
 
-.upcoming-chip-mine-maybe {
-  color: #f2f7ff;
-  border-color: rgba(172, 193, 226, 0.56);
-  background: rgba(124, 145, 180, 0.24);
+.upcoming-week-grid::-webkit-scrollbar {
+  height: 6px;
 }
 
-.upcoming-chip-mine-cancelled {
-  color: #ffe9ed;
-  border-color: rgba(248, 113, 113, 0.6);
-  background: rgba(248, 113, 113, 0.24);
+.upcoming-week-grid::-webkit-scrollbar-thumb {
+  background: rgba(179, 207, 255, 0.3);
+  border-radius: 999px;
 }
 
-.upcoming-chip-mine-pending {
-  color: #cde0ff;
-  border-color: rgba(179, 207, 255, 0.4);
-  background: rgba(255, 255, 255, 0.05);
+.upcoming-week-day {
+  border: 1px solid rgba(179, 207, 255, 0.24);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 0.58rem;
+  display: grid;
+  gap: 0.46rem;
+  min-height: 156px;
+}
+
+.upcoming-week-date {
+  display: grid;
+  gap: 0.06rem;
+}
+
+.upcoming-week-date span {
+  font-size: 0.56rem;
+  letter-spacing: 0.08em;
+  color: #c2d6f7;
+  font-weight: 800;
+}
+
+.upcoming-week-date strong {
+  font-size: 1.32rem;
+  line-height: 0.95;
+  color: #fff;
+  font-weight: 900;
+}
+
+.upcoming-week-date small {
+  font-size: 0.54rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.upcoming-week-empty {
+  margin: 0;
+  font-size: 0.65rem;
+  color: #9db6db;
+}
+
+.upcoming-week-events {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.upcoming-week-event {
+  width: 100%;
+  display: grid;
+  gap: 0.24rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(179, 207, 255, 0.22);
+  border-radius: 10px;
+  padding: 0.36rem;
+  box-shadow: none;
+  text-align: left;
+}
+
+.upcoming-week-time {
+  color: #eef4ff;
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+}
+
+.upcoming-week-more {
+  font-size: 0.62rem;
+  color: #aac3e9;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .section-title {
@@ -2109,6 +2204,12 @@ button.neutral {
     font-size: 1rem;
   }
 
+  .upcoming-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.45rem;
+  }
+
   .inbox-row {
     padding: 0.36rem 0.42rem;
     gap: 0.32rem;
@@ -2196,7 +2297,7 @@ button.neutral {
     grid-template-areas:
       "date time players"
       "date time group";
-    padding: 0.34rem 0.18rem;
+    padding: 0.5rem 0.22rem;
     gap: 0.5rem;
   }
 
@@ -2236,14 +2337,22 @@ button.neutral {
     min-width: 0;
   }
 
-  .upcoming-chip-mine {
-    font-size: 0.6rem;
-    padding: 0.16rem 0.36rem;
+  .upcoming-status-badge {
+    font-size: 0.58rem;
+    padding: 0.16rem 0.34rem;
   }
 
   .upcoming-chip-row {
     gap: 0.24rem;
-    flex-wrap: wrap;
+    grid-template-columns: 1fr;
+  }
+
+  .upcoming-week-day {
+    min-height: 144px;
+  }
+
+  .upcoming-week-time {
+    font-size: 0.74rem;
   }
 
   .history-toggle {
@@ -3656,8 +3765,17 @@ ul {
   }
 
   .upcoming-chip-row {
-    gap: 0.2rem;
-    flex-wrap: wrap;
+    gap: 0.18rem;
+    grid-template-columns: 1fr;
+  }
+
+  .upcoming-status-badge {
+    font-size: 0.54rem;
+    padding: 0.12rem 0.28rem;
+  }
+
+  .upcoming-week-grid {
+    grid-template-columns: repeat(7, minmax(112px, 1fr));
   }
 
   .sheet.sheet-detail {
