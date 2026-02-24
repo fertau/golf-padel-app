@@ -880,6 +880,63 @@ body::before {
   align-items: stretch;
 }
 
+.inbox-panel {
+  gap: 0.72rem;
+}
+
+.inbox-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+}
+
+.inbox-list {
+  list-style: none;
+  display: grid;
+  gap: 0.42rem;
+  margin: 0;
+  padding: 0;
+}
+
+.inbox-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.42rem 0.48rem;
+  border-radius: 12px;
+  border: 1px solid rgba(179, 207, 255, 0.24);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: none;
+  text-align: left;
+}
+
+.inbox-date {
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #c1d8fb;
+  font-weight: 700;
+  min-width: 44px;
+}
+
+.inbox-time {
+  color: #ecf3ff;
+  font-size: 0.95rem;
+  font-weight: 900;
+  min-width: 56px;
+}
+
+.inbox-cta {
+  margin-left: auto;
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .detail-kpis {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2050,6 +2107,21 @@ button.neutral {
 
   .section-title {
     font-size: 1rem;
+  }
+
+  .inbox-row {
+    padding: 0.36rem 0.42rem;
+    gap: 0.32rem;
+  }
+
+  .inbox-date {
+    font-size: 0.6rem;
+    min-width: 40px;
+  }
+
+  .inbox-time {
+    font-size: 0.84rem;
+    min-width: 50px;
   }
 
   .reservation-card {
@@ -3537,6 +3609,15 @@ ul {
 
   .actions-calendar {
     grid-template-columns: 1fr;
+  }
+
+  .inbox-row {
+    flex-wrap: wrap;
+    row-gap: 0.24rem;
+  }
+
+  .inbox-cta {
+    margin-left: 0;
   }
 
   .danger-actions {

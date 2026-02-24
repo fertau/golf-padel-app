@@ -488,8 +488,21 @@ export default function App() {
     [scopedActiveReservations]
   );
 
-  const myPendingResponseCount = activeUpcomingReservations.filter(r => !getUserAttendance(r, currentUser?.id ?? "")).length;
-  const myConfirmedCount = activeUpcomingReservations.filter(r => getUserAttendance(r, currentUser?.id ?? "")?.attendanceStatus === "confirmed").length;
+  const inboxPendingReservations = useMemo(
+    () =>
+      activeUpcomingReservations.filter((reservation) => {
+        if (!currentUser) {
+          return false;
+        }
+        if (isReservationCreator(reservation, currentUser.id)) {
+          return false;
+        }
+        return !getUserAttendance(reservation, currentUser.id);
+      }),
+    [activeUpcomingReservations, currentUser]
+  );
+
+  const myPendingResponseCount = inboxPendingReservations.length;
 
   const upcomingByScope = useMemo(
     () =>
@@ -1117,18 +1130,46 @@ export default function App() {
 
         {activeTab === "mis-partidos" && (
           <>
-            <section className="panel glass-panel-elite animate-fade-in my-summary">
-              <h2 className="section-title">Mis partidos</h2>
-              <div className="detail-kpis summary-kpis">
-                <div className="kpi-card">
-                  <span className="kpi-label">Por responder</span>
-                  <strong>{myPendingResponseCount}</strong>
-                </div>
-                <div className="kpi-card">
-                  <span className="kpi-label">Juego</span>
-                  <strong>{myConfirmedCount}</strong>
-                </div>
+            <section className="panel glass-panel-elite animate-fade-in inbox-panel">
+              <div className="inbox-heading">
+                <h2 className="section-title">Inbox de respuestas</h2>
+                <span className={`upcoming-chip ${myPendingResponseCount > 0 ? "upcoming-chip-mine-pending" : "upcoming-chip-muted"}`}>
+                  {myPendingResponseCount} pendiente{myPendingResponseCount === 1 ? "" : "s"}
+                </span>
               </div>
+              {myPendingResponseCount === 0 ? (
+                <p className="private-hint">No tenés partidos nuevos para confirmar asistencia.</p>
+              ) : (
+                <ul className="inbox-list">
+                  {inboxPendingReservations.map((reservation) => {
+                    const start = new Date(reservation.startDateTime);
+                    const day = start.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
+                    const time = start.toLocaleTimeString("es-AR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false
+                    });
+                    return (
+                      <li key={`inbox-${reservation.id}`}>
+                        <button
+                          type="button"
+                          className="inbox-row"
+                          onClick={() => {
+                            triggerHaptic("light");
+                            setExpandedReservationId(reservation.id);
+                          }}
+                        >
+                          <span className="inbox-date">{day}</span>
+                          <strong className="inbox-time">{time}</strong>
+                          <span className="upcoming-chip upcoming-chip-muted">{reservation.courtName}</span>
+                          {reservation.groupName ? <span className="upcoming-chip upcoming-chip-accent">{reservation.groupName}</span> : null}
+                          <span className="inbox-cta">Responder</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </section>
 
             <section className="panel upcoming-widget glass-panel-elite animate-fade-in">
@@ -1279,13 +1320,14 @@ export default function App() {
               </section>
             )}
             {renderReservationList(
-              reservationsScope === "all" ? "Reservas" : "Mis reservas",
+              reservationsScope === "all" ? "Reservas activas" : "Mis reservas activas",
               reservationsListItems,
               reservationsScope === "all"
                 ? "No hay reservas próximas en tu alcance actual."
                 : "Todavía no creaste reservas próximas.",
               true
             )}
+
           </>
         )}
 
