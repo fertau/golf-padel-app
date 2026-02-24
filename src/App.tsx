@@ -139,8 +139,8 @@ export default function App() {
     setActiveTab, setExpandedReservationId, setShowCreateForm, setIsOnline
   } = useUIStore();
 
-  const [matchesFilter, setMatchesFilter] = useState<"all" | "pending" | "confirmed">("all");
   const [quickDateFilter, setQuickDateFilter] = useState<"all" | "hoy" | "manana" | "semana">("all");
+  const [reservationsScope, setReservationsScope] = useState<"all" | "mine">("all");
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -501,19 +501,41 @@ export default function App() {
 
   const visibleUpcoming = showAllUpcoming ? upcomingByScope : upcomingByScope.slice(0, 3);
 
-  const filteredMatches = useMemo(() => {
-    let list = activeUpcomingReservations;
-    if (matchesFilter === "pending") list = list.filter(r => !getUserAttendance(r, currentUser?.id ?? ""));
-    if (matchesFilter === "confirmed") list = list.filter(r => getUserAttendance(r, currentUser?.id ?? "")?.attendanceStatus === "confirmed");
+  const reservationListBase = useMemo(
+    () =>
+      activeReservations
+        .filter((reservation) => parseReservationDate(reservation.startDateTime).getTime() >= Date.now())
+        .filter(
+          (reservation) =>
+            matchesActiveScope(reservation) ||
+            (!isReservationGroupScoped(reservation) && activeGroupScope === "all")
+        )
+        .sort(
+          (a, b) => parseReservationDate(a.startDateTime).getTime() - parseReservationDate(b.startDateTime).getTime()
+        ),
+    [activeReservations, activeGroupScope]
+  );
 
-    if (quickDateFilter === "all") return list;
-    return list.filter(r => {
-      const g = getReservationDateGroup(r.startDateTime);
+  const myCreatedReservationList = useMemo(
+    () =>
+      reservationListBase.filter((reservation) =>
+        isReservationCreator(reservation, currentUser?.id ?? "")
+      ),
+    [reservationListBase, currentUser?.id]
+  );
+
+  const reservationsListItems = useMemo(() => {
+    const source = reservationsScope === "mine" ? myCreatedReservationList : reservationListBase;
+    if (quickDateFilter === "all") {
+      return source;
+    }
+    return source.filter((reservation) => {
+      const g = getReservationDateGroup(reservation.startDateTime);
       if (quickDateFilter === "hoy") return g === "hoy";
       if (quickDateFilter === "manana") return g === "manana";
       return g !== "mas-adelante";
     });
-  }, [activeUpcomingReservations, matchesFilter, quickDateFilter, currentUser]);
+  }, [reservationsScope, myCreatedReservationList, reservationListBase, quickDateFilter]);
 
   const historySourceReservations = useMemo(() => {
     const merged = new Map<string, Reservation>();
@@ -726,8 +748,8 @@ export default function App() {
   }, [activeGroupScope, groups]);
 
   useEffect(() => {
-    setMatchesFilter("all");
     setQuickDateFilter("all");
+    setReservationsScope("all");
     setShowAllUpcoming(false);
     setActiveGroupScope("all");
     setHistoryExpanded(false);
@@ -1001,9 +1023,13 @@ export default function App() {
                 <h3 className="group-title">{GROUP_LABELS[g]}</h3>
                 <div className="group-list">
                   {groupItems.map(r => (
-                    <article key={r.id} className="panel reservation-item">
-                      <ReservationCard reservation={r} currentUser={currentUser!} onOpen={setExpandedReservationId} isExpanded={expandedReservationId === r.id} />
-                    </article>
+                    <ReservationCard
+                      key={r.id}
+                      reservation={r}
+                      currentUser={currentUser!}
+                      onOpen={setExpandedReservationId}
+                      isExpanded={expandedReservationId === r.id}
+                    />
                   ))}
                 </div>
               </section>
@@ -1011,9 +1037,13 @@ export default function App() {
           })
         ) : (
           items.map(r => (
-            <article key={r.id} className="panel reservation-item">
-              <ReservationCard reservation={r} currentUser={currentUser!} onOpen={setExpandedReservationId} isExpanded={expandedReservationId === r.id} />
-            </article>
+            <ReservationCard
+              key={r.id}
+              reservation={r}
+              currentUser={currentUser!}
+              onOpen={setExpandedReservationId}
+              isExpanded={expandedReservationId === r.id}
+            />
           ))
         )}
       </div>
@@ -1090,16 +1120,15 @@ export default function App() {
             <section className="panel glass-panel-elite animate-fade-in my-summary">
               <h2 className="section-title">Mis partidos</h2>
               <div className="detail-kpis summary-kpis">
-                <button className={`kpi-card kpi-action ${matchesFilter === "pending" ? "kpi-active" : ""}`} onClick={() => setMatchesFilter("pending")}>
+                <div className="kpi-card">
                   <span className="kpi-label">Por responder</span>
                   <strong>{myPendingResponseCount}</strong>
-                </button>
-                <button className={`kpi-card kpi-action ${matchesFilter === "confirmed" ? "kpi-active" : ""}`} onClick={() => setMatchesFilter("confirmed")}>
+                </div>
+                <div className="kpi-card">
                   <span className="kpi-label">Juego</span>
                   <strong>{myConfirmedCount}</strong>
-                </button>
+                </div>
               </div>
-              {matchesFilter !== "all" && <button className="link-btn active" onClick={() => setMatchesFilter("all")}>Ver todas</button>}
             </section>
 
             <section className="panel upcoming-widget glass-panel-elite animate-fade-in">
@@ -1127,6 +1156,26 @@ export default function App() {
                       const confirmedCount = reservation.signups.filter(
                         (signup) => signup.attendanceStatus === "confirmed"
                       ).length;
+                      const myAttendance = currentUser ? getUserAttendance(reservation, currentUser.id)?.attendanceStatus : undefined;
+                      const myAttendanceEffective = myAttendance ?? (
+                        currentUser && isReservationCreator(reservation, currentUser.id) ? "confirmed" : undefined
+                      );
+                      const myAttendanceLabel =
+                        myAttendanceEffective === "confirmed"
+                          ? "Mi juego"
+                          : myAttendanceEffective === "maybe"
+                              ? "Mi quizás"
+                              : myAttendanceEffective === "cancelled"
+                                ? "Mi no juego"
+                                : "Mi pendiente";
+                      const myAttendanceClass =
+                        myAttendanceEffective === "confirmed"
+                          ? "upcoming-chip-mine-confirmed"
+                          : myAttendanceEffective === "maybe"
+                            ? "upcoming-chip-mine-maybe"
+                            : myAttendanceEffective === "cancelled"
+                              ? "upcoming-chip-mine-cancelled"
+                              : "upcoming-chip-mine-pending";
                       const isActive = expandedReservationId === reservation.id;
                       return (
                         <li key={`upcoming-${reservation.id}`}>
@@ -1153,11 +1202,14 @@ export default function App() {
                               <span className="upcoming-court">{reservation.courtName}</span>
                             </div>
                             <span className="upcoming-chip upcoming-chip-count">{confirmedCount}/4 jugando</span>
-                            {reservation.groupName ? (
-                              <span className="upcoming-chip upcoming-chip-accent">{reservation.groupName}</span>
-                            ) : (
-                              <span className="upcoming-chip upcoming-chip-muted">Sin grupo</span>
-                            )}
+                            <div className="upcoming-chip-row">
+                              {reservation.groupName ? (
+                                <span className="upcoming-chip upcoming-chip-accent">{reservation.groupName}</span>
+                              ) : (
+                                <span className="upcoming-chip upcoming-chip-muted">Sin grupo</span>
+                              )}
+                              <span className={`upcoming-chip upcoming-chip-mine ${myAttendanceClass}`}>{myAttendanceLabel}</span>
+                            </div>
                           </button>
                         </li>
                       );
@@ -1171,8 +1223,6 @@ export default function App() {
                 </>
               )}
             </section>
-
-            {renderReservationList("Reservas activas", filteredMatches, "No hay reservas actualmente.", true)}
 
             <HistoryView
               historyExpanded={historyExpanded}
@@ -1204,22 +1254,37 @@ export default function App() {
           <>
             {!showCreateForm && (
               <section className="panel glass-panel-elite animate-fade-in">
-                <button className="btn-elite btn-elite-accent btn-block" onClick={() => setShowCreateForm(true)} disabled={busy}>
-                  + Reservá un partido
-                </button>
+                <div className="reservations-toolbar">
+                  <button className="btn-elite btn-elite-accent btn-block" onClick={() => setShowCreateForm(true)} disabled={busy}>
+                    + Reservá un partido
+                  </button>
+                </div>
+                <div className="quick-chip-row quick-chip-row-tight">
+                  <button
+                    type="button"
+                    className={`quick-chip ${reservationsScope === "all" ? "active" : ""}`}
+                    onClick={() => setReservationsScope("all")}
+                  >
+                    Todas ({reservationListBase.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`quick-chip ${reservationsScope === "mine" ? "active" : ""}`}
+                    onClick={() => setReservationsScope("mine")}
+                  >
+                    Mis reservas ({myCreatedReservationList.length})
+                  </button>
+                </div>
                 {groups.length === 0 ? <p className="private-hint">Podés reservar en modo solo link o crear/unirte a un grupo.</p> : null}
               </section>
             )}
             {renderReservationList(
-              "Mis reservas",
-              reservationsWithGroupContext.filter(
-                (reservation) =>
-                  reservation.status === "active" &&
-                  isReservationCreator(reservation, currentUser.id) &&
-                  (matchesActiveScope(reservation) ||
-                    (!isReservationGroupScoped(reservation) && activeGroupScope === "all"))
-              ),
-              "Todavía no reservaste nada."
+              reservationsScope === "all" ? "Reservas" : "Mis reservas",
+              reservationsListItems,
+              reservationsScope === "all"
+                ? "No hay reservas próximas en tu alcance actual."
+                : "Todavía no creaste reservas próximas.",
+              true
             )}
           </>
         )}
