@@ -890,11 +890,22 @@ body::before {
   gap: 0.72rem;
 }
 
+.inbox-panel-empty {
+  gap: 0.44rem;
+  padding-top: 0.9rem;
+  padding-bottom: 0.9rem;
+}
+
 .inbox-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.55rem;
+}
+
+.inbox-empty-hint {
+  margin: 0;
+  font-size: 0.76rem;
 }
 
 .inbox-list {
@@ -1103,6 +1114,24 @@ body::before {
 
 .upcoming-view-switch {
   flex-shrink: 0;
+}
+
+.section-group-filter {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.section-group-filter-top-separator {
+  border-top: 1px solid rgba(179, 207, 255, 0.2);
+  padding-top: 0.72rem;
+}
+
+.section-filter-label {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9fb7da;
 }
 
 .upcoming-list {
@@ -1317,96 +1346,139 @@ body::before {
   min-width: 0;
 }
 
+.upcoming-calendar-nav {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.upcoming-nav-btn {
+  min-width: 2.1rem;
+  min-height: 2rem;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.upcoming-calendar-range {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #bdd4f6;
+}
+
 .upcoming-week-grid {
   display: grid;
-  grid-template-columns: repeat(7, minmax(126px, 1fr));
-  gap: 0.55rem;
-  overflow-x: auto;
-  padding-bottom: 0.2rem;
-}
-
-.upcoming-week-grid::-webkit-scrollbar {
-  height: 6px;
-}
-
-.upcoming-week-grid::-webkit-scrollbar-thumb {
-  background: rgba(179, 207, 255, 0.3);
-  border-radius: 999px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.35rem;
 }
 
 .upcoming-week-day {
   border: 1px solid rgba(179, 207, 255, 0.24);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.035);
-  padding: 0.58rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.46rem 0.42rem;
   display: grid;
-  gap: 0.46rem;
-  min-height: 156px;
+  gap: 0.4rem;
+  min-height: 142px;
 }
 
 .upcoming-week-date {
   display: grid;
-  gap: 0.06rem;
+  gap: 0;
+  justify-items: center;
 }
 
 .upcoming-week-date span {
-  font-size: 0.56rem;
+  font-size: 0.5rem;
   letter-spacing: 0.08em;
-  color: #c2d6f7;
+  color: #bcd2f3;
   font-weight: 800;
 }
 
 .upcoming-week-date strong {
-  font-size: 1.32rem;
+  font-size: 1.18rem;
   line-height: 0.95;
   color: #fff;
   font-weight: 900;
 }
 
 .upcoming-week-date small {
-  font-size: 0.54rem;
+  font-size: 0.5rem;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: #9db8df;
   font-weight: 800;
 }
 
 .upcoming-week-empty {
   margin: 0;
-  font-size: 0.65rem;
-  color: #9db6db;
+  font-size: 0.56rem;
+  text-align: center;
+  color: #8ca8d3;
 }
 
 .upcoming-week-events {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.24rem;
 }
 
 .upcoming-week-event {
   width: 100%;
-  display: grid;
-  gap: 0.24rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.36rem;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(179, 207, 255, 0.22);
-  border-radius: 10px;
-  padding: 0.36rem;
+  border-radius: 9px;
+  padding: 0.24rem 0.34rem;
   box-shadow: none;
   text-align: left;
 }
 
 .upcoming-week-time {
   color: #eef4ff;
-  font-size: 0.8rem;
+  font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0.01em;
 }
 
+.upcoming-week-status-dot {
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+
+.upcoming-week-status-dot-confirmed {
+  background: #34d39a;
+}
+
+.upcoming-week-status-dot-maybe {
+  background: #9aa6bc;
+}
+
+.upcoming-week-status-dot-cancelled {
+  background: #ff6f7b;
+}
+
+.upcoming-week-status-dot-pending {
+  background: #85a5d8;
+}
+
 .upcoming-week-more {
-  font-size: 0.62rem;
+  font-size: 0.56rem;
   color: #aac3e9;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  text-align: center;
 }
 
 .section-title {
@@ -2309,11 +2381,11 @@ button.neutral {
   }
 
   .upcoming-week-day {
-    min-height: 144px;
+    min-height: 136px;
   }
 
   .upcoming-week-time {
-    font-size: 0.74rem;
+    font-size: 0.64rem;
   }
 
   .history-toggle {
@@ -3731,7 +3803,7 @@ ul {
   }
 
   .upcoming-week-grid {
-    grid-template-columns: repeat(7, minmax(112px, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .sheet.sheet-detail {

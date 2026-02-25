@@ -142,6 +142,7 @@ export default function App() {
   const [quickDateFilter, setQuickDateFilter] = useState<"all" | "hoy" | "manana" | "semana">("all");
   const [reservationsScope, setReservationsScope] = useState<"all" | "mine">("all");
   const [upcomingView, setUpcomingView] = useState<"list" | "week">("list");
+  const [calendarStartIndex, setCalendarStartIndex] = useState(0);
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -514,22 +515,25 @@ export default function App() {
   );
 
   const visibleUpcoming = showAllUpcoming ? upcomingByScope : upcomingByScope.slice(0, 3);
+  const calendarWindowSize = 5;
 
-  const getUpcomingAttendanceMeta = (reservation: Reservation): { label: string; badgeClass: string } => {
+  const getUpcomingAttendanceMeta = (
+    reservation: Reservation
+  ): { label: string; badgeClass: string; statusTone: "confirmed" | "maybe" | "cancelled" | "pending" } => {
     const myAttendance = currentUser ? getUserAttendance(reservation, currentUser.id)?.attendanceStatus : undefined;
     const effectiveStatus = myAttendance ?? (
       currentUser && isReservationCreator(reservation, currentUser.id) ? "confirmed" : undefined
     );
     if (effectiveStatus === "confirmed") {
-      return { label: "JUEGO", badgeClass: "badge-confirmed" };
+      return { label: "JUEGO", badgeClass: "badge-confirmed", statusTone: "confirmed" };
     }
     if (effectiveStatus === "maybe") {
-      return { label: "QUIZAS", badgeClass: "badge-maybe" };
+      return { label: "QUIZAS", badgeClass: "badge-maybe", statusTone: "maybe" };
     }
     if (effectiveStatus === "cancelled") {
-      return { label: "NO JUEGO", badgeClass: "badge-cancelled" };
+      return { label: "NO JUEGO", badgeClass: "badge-cancelled", statusTone: "cancelled" };
     }
-    return { label: "PENDIENTE", badgeClass: "badge-pending" };
+    return { label: "PENDIENTE", badgeClass: "badge-pending", statusTone: "pending" };
   };
 
   const upcomingWeekDays = useMemo(() => {
@@ -541,15 +545,40 @@ export default function App() {
       grouped.set(key, current);
     }
     const today = getDayStart(new Date());
-    return Array.from({ length: 7 }, (_, offset) => {
-      const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset);
+    return Array.from({ length: calendarWindowSize }, (_, offset) => {
+      const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + calendarStartIndex + offset);
       const key = toLocalDayKey(date);
       const reservations = (grouped.get(key) ?? []).sort(
         (a, b) => parseReservationDate(a.startDateTime).getTime() - parseReservationDate(b.startDateTime).getTime()
       );
       return { key, date, reservations };
     });
+  }, [upcomingByScope, calendarStartIndex]);
+
+  const calendarMaxStartIndex = useMemo(() => {
+    const last = upcomingByScope[upcomingByScope.length - 1];
+    if (!last) {
+      return 0;
+    }
+    const today = getDayStart(new Date());
+    const lastDate = getDayStart(parseReservationDate(last.startDateTime));
+    const diffDays = Math.max(
+      0,
+      Math.floor((lastDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000))
+    );
+    return Math.floor(diffDays / calendarWindowSize) * calendarWindowSize;
   }, [upcomingByScope]);
+
+  const calendarRangeLabel = useMemo(() => {
+    if (upcomingWeekDays.length === 0) {
+      return "";
+    }
+    const first = upcomingWeekDays[0].date;
+    const last = upcomingWeekDays[upcomingWeekDays.length - 1].date;
+    const firstLabel = first.toLocaleDateString("es-AR", { day: "2-digit", month: "short" }).replace(".", "");
+    const lastLabel = last.toLocaleDateString("es-AR", { day: "2-digit", month: "short" }).replace(".", "");
+    return `${firstLabel.toUpperCase()} - ${lastLabel.toUpperCase()}`;
+  }, [upcomingWeekDays]);
 
   const reservationListBase = useMemo(
     () =>
@@ -798,9 +827,17 @@ export default function App() {
   }, [activeGroupScope, groups]);
 
   useEffect(() => {
+    if (calendarStartIndex <= calendarMaxStartIndex) {
+      return;
+    }
+    setCalendarStartIndex(calendarMaxStartIndex);
+  }, [calendarStartIndex, calendarMaxStartIndex]);
+
+  useEffect(() => {
     setQuickDateFilter("all");
     setReservationsScope("all");
     setUpcomingView("list");
+    setCalendarStartIndex(0);
     setShowAllUpcoming(false);
     setActiveGroupScope("all");
     setHistoryExpanded(false);
@@ -1055,7 +1092,7 @@ export default function App() {
   };
 
   const renderReservationList = (title: string, items: Reservation[], emptyText: string, groupByDate = false) => {
-    const isActiveReservationsWidget = title === "Reservas activas";
+    const isActiveReservationsWidget = title.toLowerCase().includes("reservas activas");
     const confirmedCount = currentUser
       ? items.filter((reservation) => getUserAttendance(reservation, currentUser.id)?.attendanceStatus === "confirmed").length
       : 0;
@@ -1073,6 +1110,30 @@ export default function App() {
             <span className="reservation-list-total-chip">{items.length} activas</span>
           ) : null}
         </div>
+        {isActiveReservationsWidget ? (
+          <div className="section-group-filter">
+            <span className="section-filter-label">Filtrar por grupo</span>
+            <div className="quick-chip-row quick-chip-row-tight">
+              <button
+                type="button"
+                className={`quick-chip ${activeGroupScope === "all" ? "active" : ""}`}
+                onClick={() => setActiveGroupScope("all")}
+              >
+                Todos
+              </button>
+              {groups.map((group) => (
+                <button
+                  key={`reservations-scope-${group.id}`}
+                  type="button"
+                  className={`quick-chip ${activeGroupScope === group.id ? "active" : ""}`}
+                  onClick={() => setActiveGroupScope(group.id)}
+                >
+                  {group.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
         {groupByDate && (
           <FilterBar currentFilter={quickDateFilter} onFilterChange={setQuickDateFilter} />
         )}
@@ -1169,34 +1230,9 @@ export default function App() {
           </div>
         </header>
 
-        {activeTab !== "perfil" ? (
-          <section className="panel glass-panel-elite animate-fade-in">
-            <h2 className="section-title">Vista por grupo</h2>
-            <div className="quick-chip-row">
-              <button
-                type="button"
-                className={`quick-chip ${activeGroupScope === "all" ? "active" : ""}`}
-                onClick={() => setActiveGroupScope("all")}
-              >
-                Todos mis grupos
-              </button>
-              {groups.map((group) => (
-                <button
-                  key={`scope-${group.id}`}
-                  type="button"
-                  className={`quick-chip ${activeGroupScope === group.id ? "active" : ""}`}
-                  onClick={() => setActiveGroupScope(group.id)}
-                >
-                  {group.name}
-                </button>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
         {activeTab === "mis-partidos" && (
           <>
-            <section className="panel glass-panel-elite animate-fade-in inbox-panel">
+            <section className={`panel glass-panel-elite animate-fade-in inbox-panel ${myPendingResponseCount === 0 ? "inbox-panel-empty" : ""}`}>
               <div className="inbox-heading">
                 <h2 className="section-title">Nuevas reservas</h2>
                 <span className={`upcoming-chip ${myPendingResponseCount > 0 ? "upcoming-chip-accent" : "upcoming-chip-muted"}`}>
@@ -1204,7 +1240,7 @@ export default function App() {
                 </span>
               </div>
               {myPendingResponseCount === 0 ? (
-                <p className="private-hint">No tenés partidos nuevos para confirmar asistencia.</p>
+                <p className="private-hint inbox-empty-hint">No hay nuevas reservas para responder.</p>
               ) : (
                 <ul className="inbox-list">
                   {inboxPendingReservations.map((reservation) => {
@@ -1283,7 +1319,7 @@ export default function App() {
                     className={`quick-chip ${upcomingView === "week" ? "active" : ""}`}
                     onClick={() => setUpcomingView("week")}
                   >
-                    7 días
+                    Calendario
                   </button>
                 </div>
               </div>
@@ -1361,68 +1397,118 @@ export default function App() {
                       ) : null}
                     </>
                   ) : (
-                    <div className="upcoming-week-grid" role="list">
-                      {upcomingWeekDays.map((daySlot, index) => {
-                        const month = daySlot.date.toLocaleDateString("es-AR", { month: "short" }).replace(".", "").toUpperCase();
-                        const day = daySlot.date.toLocaleDateString("es-AR", { day: "2-digit" });
-                        const weekday = daySlot.date
-                          .toLocaleDateString("es-AR", { weekday: "short" })
-                          .replace(".", "")
-                          .toUpperCase();
-                        const dayTag = index === 0 ? "HOY" : index === 1 ? "MAÑANA" : weekday;
-                        return (
-                          <article key={`week-${daySlot.key}`} className="upcoming-week-day" role="listitem">
-                            <div className="upcoming-week-date">
-                              <span>{month}</span>
-                              <strong>{day}</strong>
-                              <small>{dayTag}</small>
-                            </div>
-                            {daySlot.reservations.length === 0 ? (
-                              <p className="upcoming-week-empty">Sin partidos</p>
-                            ) : (
-                              <div className="upcoming-week-events">
-                                {daySlot.reservations.slice(0, 3).map((reservation) => {
-                                  const start = new Date(reservation.startDateTime);
-                                  const time = start.toLocaleTimeString("es-AR", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: false
-                                  });
-                                  const confirmedCount = reservation.signups.filter(
-                                    (signup) => signup.attendanceStatus === "confirmed"
-                                  ).length;
-                                  const attendanceMeta = getUpcomingAttendanceMeta(reservation);
-                                  return (
-                                    <button
-                                      key={`week-event-${reservation.id}`}
-                                      type="button"
-                                      className="upcoming-week-event"
-                                      onClick={() => {
-                                        triggerHaptic("light");
-                                        setExpandedReservationId(reservation.id);
-                                      }}
-                                    >
-                                      <span className="upcoming-week-time">{time}</span>
-                                      <span className="upcoming-chip upcoming-chip-muted">{reservation.courtName}</span>
-                                      <span className="upcoming-chip upcoming-chip-count-mini">{confirmedCount}/4</span>
-                                      <span className={`badge badge-mine ${attendanceMeta.badgeClass} upcoming-status-badge`}>
-                                        {attendanceMeta.label}
-                                      </span>
-                                    </button>
-                                  );
-                                })}
-                                {daySlot.reservations.length > 3 ? (
-                                  <span className="upcoming-week-more">+{daySlot.reservations.length - 3} más</span>
-                                ) : null}
+                    <>
+                      <div className="upcoming-calendar-nav">
+                        <button
+                          type="button"
+                          className="btn-elite btn-elite-outline upcoming-nav-btn"
+                          onClick={() => {
+                            triggerHaptic("light");
+                            setCalendarStartIndex(Math.max(0, calendarStartIndex - calendarWindowSize));
+                          }}
+                          disabled={calendarStartIndex === 0}
+                        >
+                          ←
+                        </button>
+                        <span className="upcoming-calendar-range">{calendarRangeLabel}</span>
+                        <button
+                          type="button"
+                          className="btn-elite btn-elite-outline upcoming-nav-btn"
+                          onClick={() => {
+                            triggerHaptic("light");
+                            setCalendarStartIndex(
+                              Math.min(calendarMaxStartIndex, calendarStartIndex + calendarWindowSize)
+                            );
+                          }}
+                          disabled={calendarStartIndex >= calendarMaxStartIndex}
+                        >
+                          →
+                        </button>
+                      </div>
+                      <div className="upcoming-week-grid" role="list">
+                        {upcomingWeekDays.map((daySlot, index) => {
+                          const month = daySlot.date.toLocaleDateString("es-AR", { month: "short" }).replace(".", "");
+                          const day = daySlot.date.toLocaleDateString("es-AR", { day: "2-digit" });
+                          const weekday = daySlot.date
+                            .toLocaleDateString("es-AR", { weekday: "short" })
+                            .replace(".", "")
+                            .toUpperCase();
+                          const isToday = calendarStartIndex + index === 0;
+                          const isTomorrow = calendarStartIndex + index === 1;
+                          const dayTag = isToday ? "HOY" : isTomorrow ? "MAÑANA" : weekday;
+                          return (
+                            <article key={`week-${daySlot.key}`} className="upcoming-week-day" role="listitem">
+                              <div className="upcoming-week-date">
+                                <span>{dayTag}</span>
+                                <strong>{day}</strong>
+                                <small>{month.toUpperCase()}</small>
                               </div>
-                            )}
-                          </article>
-                        );
-                      })}
-                    </div>
+                              {daySlot.reservations.length === 0 ? (
+                                <p className="upcoming-week-empty">Sin partidos</p>
+                              ) : (
+                                <div className="upcoming-week-events">
+                                  {daySlot.reservations.slice(0, 5).map((reservation) => {
+                                    const start = new Date(reservation.startDateTime);
+                                    const time = start.toLocaleTimeString("es-AR", {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                      hour12: false
+                                    });
+                                    const attendanceMeta = getUpcomingAttendanceMeta(reservation);
+                                    return (
+                                      <button
+                                        key={`week-event-${reservation.id}`}
+                                        type="button"
+                                        className="upcoming-week-event"
+                                        onClick={() => {
+                                          triggerHaptic("light");
+                                          setExpandedReservationId(reservation.id);
+                                        }}
+                                      >
+                                        <span className="upcoming-week-time">{time}</span>
+                                        <span
+                                          className={`upcoming-week-status-dot upcoming-week-status-dot-${attendanceMeta.statusTone}`}
+                                          aria-label={attendanceMeta.label}
+                                          title={attendanceMeta.label}
+                                        />
+                                      </button>
+                                    );
+                                  })}
+                                  {daySlot.reservations.length > 5 ? (
+                                    <span className="upcoming-week-more">+{daySlot.reservations.length - 5}</span>
+                                  ) : null}
+                                </div>
+                              )}
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </>
                   )}
                 </>
               )}
+              <div className="section-group-filter section-group-filter-top-separator">
+                <span className="section-filter-label">Filtrar por grupo</span>
+                <div className="quick-chip-row quick-chip-row-tight">
+                  <button
+                    type="button"
+                    className={`quick-chip ${activeGroupScope === "all" ? "active" : ""}`}
+                    onClick={() => setActiveGroupScope("all")}
+                  >
+                    Todos
+                  </button>
+                  {groups.map((group) => (
+                    <button
+                      key={`upcoming-scope-${group.id}`}
+                      type="button"
+                      className={`quick-chip ${activeGroupScope === group.id ? "active" : ""}`}
+                      onClick={() => setActiveGroupScope(group.id)}
+                    >
+                      {group.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </section>
 
             <HistoryView
