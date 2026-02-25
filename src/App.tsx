@@ -20,7 +20,6 @@ import AuthView from "./components/AuthView";
 import Navbar from "./components/Navbar";
 import ProfileView from "./components/ProfileView";
 import SmartHandoff from "./components/SmartHandoff";
-import { FilterBar } from "./components/FilterBar";
 import { HistoryView } from "./components/HistoryView";
 import { ReservationSkeleton } from "./components/Skeletons";
 
@@ -139,7 +138,6 @@ export default function App() {
     setActiveTab, setExpandedReservationId, setShowCreateForm, setIsOnline
   } = useUIStore();
 
-  const [quickDateFilter, setQuickDateFilter] = useState<"all" | "hoy" | "manana" | "semana">("all");
   const [reservationsScope, setReservationsScope] = useState<"all" | "mine">("all");
   const [upcomingView, setUpcomingView] = useState<"list" | "week">("list");
   const [calendarStartIndex, setCalendarStartIndex] = useState(0);
@@ -603,18 +601,10 @@ export default function App() {
     [reservationListBase, currentUser?.id]
   );
 
-  const reservationsListItems = useMemo(() => {
-    const source = reservationsScope === "mine" ? myCreatedReservationList : reservationListBase;
-    if (quickDateFilter === "all") {
-      return source;
-    }
-    return source.filter((reservation) => {
-      const g = getReservationDateGroup(reservation.startDateTime);
-      if (quickDateFilter === "hoy") return g === "hoy";
-      if (quickDateFilter === "manana") return g === "manana";
-      return g !== "mas-adelante";
-    });
-  }, [reservationsScope, myCreatedReservationList, reservationListBase, quickDateFilter]);
+  const reservationsListItems = useMemo(
+    () => (reservationsScope === "mine" ? myCreatedReservationList : reservationListBase),
+    [reservationsScope, myCreatedReservationList, reservationListBase]
+  );
 
   const historySourceReservations = useMemo(() => {
     const merged = new Map<string, Reservation>();
@@ -834,7 +824,6 @@ export default function App() {
   }, [calendarStartIndex, calendarMaxStartIndex]);
 
   useEffect(() => {
-    setQuickDateFilter("all");
     setReservationsScope("all");
     setUpcomingView("list");
     setCalendarStartIndex(0);
@@ -1093,14 +1082,6 @@ export default function App() {
 
   const renderReservationList = (title: string, items: Reservation[], emptyText: string, groupByDate = false) => {
     const isActiveReservationsWidget = title.toLowerCase().includes("reservas activas");
-    const confirmedCount = currentUser
-      ? items.filter((reservation) => getUserAttendance(reservation, currentUser.id)?.attendanceStatus === "confirmed").length
-      : 0;
-    const pendingCount = currentUser
-      ? items.filter((reservation) => !getUserAttendance(reservation, currentUser.id)).length
-      : 0;
-    const todayCount = items.filter((reservation) => getReservationDateGroup(reservation.startDateTime) === "hoy").length;
-    const tomorrowCount = items.filter((reservation) => getReservationDateGroup(reservation.startDateTime) === "manana").length;
 
     return (
       <section className={`panel glass-panel-elite animate-fade-in ${isActiveReservationsWidget ? "active-reservations-widget" : ""}`}>
@@ -1134,17 +1115,6 @@ export default function App() {
             </div>
           </div>
         ) : null}
-        {groupByDate && (
-          <FilterBar currentFilter={quickDateFilter} onFilterChange={setQuickDateFilter} />
-        )}
-        {isActiveReservationsWidget && !reservationsLoading && items.length > 0 ? (
-          <div className="active-reservations-summary-chips">
-            <span className="active-reservations-summary-chip">Hoy {todayCount}</span>
-            <span className="active-reservations-summary-chip">Mañana {tomorrowCount}</span>
-            <span className="active-reservations-summary-chip">Juego {confirmedCount}</span>
-            <span className="active-reservations-summary-chip">Pendientes {pendingCount}</span>
-          </div>
-        ) : null}
         <div className="list">
           {reservationsLoading ? (
             <><ReservationSkeleton /><ReservationSkeleton /><ReservationSkeleton /></>
@@ -1158,7 +1128,6 @@ export default function App() {
                 <section key={g} className="group-block">
                   <h3 className="group-title">
                     <span>{GROUP_LABELS[g]}</span>
-                    <span className="group-title-chip">{groupItems.length}</span>
                   </h3>
                   <div className="group-list">
                     {groupItems.map(r => (
@@ -1429,19 +1398,16 @@ export default function App() {
                         {upcomingWeekDays.map((daySlot, index) => {
                           const month = daySlot.date.toLocaleDateString("es-AR", { month: "short" }).replace(".", "");
                           const day = daySlot.date.toLocaleDateString("es-AR", { day: "2-digit" });
-                          const weekday = daySlot.date
-                            .toLocaleDateString("es-AR", { weekday: "short" })
-                            .replace(".", "")
-                            .toUpperCase();
                           const isToday = calendarStartIndex + index === 0;
-                          const isTomorrow = calendarStartIndex + index === 1;
-                          const dayTag = isToday ? "HOY" : isTomorrow ? "MAÑANA" : weekday;
                           return (
-                            <article key={`week-${daySlot.key}`} className="upcoming-week-day" role="listitem">
+                            <article
+                              key={`week-${daySlot.key}`}
+                              className={`upcoming-week-day ${isToday ? "is-today" : ""}`}
+                              role="listitem"
+                            >
                               <div className="upcoming-week-date">
-                                <span>{dayTag}</span>
+                                <span>{month.toUpperCase()}</span>
                                 <strong>{day}</strong>
-                                <small>{month.toUpperCase()}</small>
                               </div>
                               {daySlot.reservations.length === 0 ? (
                                 <p className="upcoming-week-empty">Sin partidos</p>
