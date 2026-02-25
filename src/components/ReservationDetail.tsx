@@ -61,6 +61,7 @@ export default function ReservationDetail({
   const reservationUrl = `${appUrl}/r/${reservation.id}`;
   const message = buildWhatsAppMessage(reservation, appUrl);
   const creatorAuthUid = reservation.createdByAuthUid || reservation.createdBy.id;
+  const locationLabel = reservation.venueAddress || reservation.venueName || reservation.courtName;
 
   const handleSetAttendance = async (status: AttendanceStatus) => {
     setPendingAttendanceStatus(status);
@@ -91,24 +92,10 @@ export default function ReservationDetail({
     window.open(`https://wa.me/?text=${encodedMessage}`, "_blank", "noopener,noreferrer");
   };
 
-  const share = async () => {
+  const openMaps = () => {
     triggerHaptic("light");
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "Reserva de padel", text: message });
-        onFeedback("Compartido.");
-        return;
-      } catch (e) {
-        // Fallback
-      }
-    }
-    const copied = await copyTextWithFallback(message);
-    if (copied) {
-      onFeedback("Mensaje copiado.");
-    } else {
-      window.prompt("Copiá el mensaje manualmente:", message);
-      onFeedback("Copiá el mensaje manualmente.");
-    }
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationLabel)}`;
+    window.open(mapsUrl, "_blank", "noopener,noreferrer");
   };
 
   const isCreator = isReservationCreator(reservation, currentUser.id);
@@ -147,6 +134,7 @@ export default function ReservationDetail({
     reservation.visibilityScope === "group" && reservation.groupId !== "default-group" ? reservation.groupId : ""
   );
   const [pendingAttendanceStatus, setPendingAttendanceStatus] = useState<AttendanceStatus | null>(null);
+  const [activeRoster, setActiveRoster] = useState<AttendanceStatus>("confirmed");
 
   useEffect(() => {
     setEditCourtName(reservation.courtName);
@@ -156,6 +144,7 @@ export default function ReservationDetail({
     setEditGroupId(reservation.visibilityScope === "group" && reservation.groupId !== "default-group" ? reservation.groupId : "");
     setReassignTargetAuthUid("");
     setPendingAttendanceStatus(null);
+    setActiveRoster("confirmed");
   }, [reservation.id, reservation.courtName, reservation.startDateTime, reservation.durationMinutes, reservation.visibilityScope, reservation.groupId]);
 
   const confirmed = getSignupsByStatus(reservation, "confirmed");
@@ -213,7 +202,7 @@ export default function ReservationDetail({
     triggerHaptic("medium");
   };
 
-  const inviteGuest = async (channel: "whatsapp" | "email" | "link") => {
+  const inviteGuest = async (channel: "whatsapp" | "link") => {
     try {
       setGuestInviteBusy(true);
       const inviteLink = await onCreateGuestInvite(reservation.id, channel);
@@ -226,19 +215,13 @@ export default function ReservationDetail({
       if (channel === "whatsapp") {
         window.open(`https://wa.me/?text=${encodedMessage}`, "_blank", "noopener,noreferrer");
         onFeedback("Abriendo WhatsApp...");
-      } else if (channel === "email") {
-        const emailTo = window.prompt("Email del invitado (opcional):", "")?.trim() ?? "";
-        const subject = encodeURIComponent("Invitación a partido de pádel");
-        const recipient = encodeURIComponent(emailTo);
-        window.open(`mailto:${recipient}?subject=${subject}&body=${encodedMessage}`, "_self");
-        onFeedback("Abriendo email...");
       } else {
-        const copied = await copyTextWithFallback(inviteLink);
+        const copied = await copyTextWithFallback(guestMessage);
         if (copied) {
-          onFeedback("Link copiado.");
+          onFeedback("Invitación copiada.");
         } else {
-          window.prompt("Copiá el link manualmente:", inviteLink);
-          onFeedback("Copiá el link manualmente.");
+          window.prompt("Copiá la invitación manualmente:", guestMessage);
+          onFeedback("Copiá la invitación manualmente.");
         }
       }
       triggerHaptic("medium");
@@ -278,27 +261,6 @@ export default function ReservationDetail({
     }
   };
 
-  const renderPlayerList = (list: Signup[], label: string, isOpen = false) => (
-    <details className="player-collapse-elite" open={isOpen}>
-      <summary>
-        <div className="summary-content">
-          <span>{label}</span>
-          <div className="summary-badge">{list.length}</div>
-        </div>
-      </summary>
-      <div className="player-list-elite">
-        {list.length === 0 ? <p className="empty-state-list">Sin registros aún.</p> : null}
-        {list.map((signup) => (
-          <div key={signup.id} className="player-row-elite">
-            <div className="player-avatar-mini">{formatSignupName(signup).charAt(0).toUpperCase()}</div>
-            <span className="player-name">{formatSignupName(signup)}</span>
-            {(signup.authUid || signup.userId) === creatorAuthUid ? <span className="host-label">Creador</span> : null}
-          </div>
-        ))}
-      </div>
-    </details>
-  );
-
   const formatSignupName = (signup: Signup): string => {
     if (!isGenericDisplayName(signup.userName)) {
       return signup.userName;
@@ -329,22 +291,19 @@ export default function ReservationDetail({
           {reservation.venueName ? <span className="hero-meta-chip">{reservation.venueName}</span> : null}
           {!reservation.groupName ? <span className="hero-meta-chip">Solo por link</span> : null}
         </div>
+        <div className="hero-location-row">
+          <p className="hero-location">{locationLabel}</p>
+          <button type="button" className="icon-action-btn" onClick={openMaps} title="Cómo llegar" aria-label="Cómo llegar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s7-5.2 7-12a7 7 0 1 0-14 0c0 6.8 7 12 7 12Z" />
+              <circle cx="12" cy="10" r="2.4" />
+            </svg>
+          </button>
+        </div>
         {reservation.status === "cancelled" ? (
           <p className="reservation-status-pill cancelled">Cancelada</p>
         ) : null}
-        {reservation.venueAddress ? <p className="private-hint">{reservation.venueAddress}</p> : null}
       </header>
-
-      <div className="hero-stats-grid">
-        <div className="hero-stat-card">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-          <div className="stat-info"><strong>{confirmed.length}</strong><span>Juego</span></div>
-        </div>
-        <div className="hero-stat-card">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-          <div className="stat-info"><strong>{reservation.durationMinutes}m</strong><span>Duración</span></div>
-        </div>
-      </div>
 
       {reservation.status !== "cancelled" ? (
         <section className="attendance-section-elite animate-fade-in">
@@ -385,47 +344,89 @@ export default function ReservationDetail({
         </section>
       ) : null}
 
-      <div className="players-section-elite glass-panel-elite animate-fade-in players-section-compact">
-        {renderPlayerList(confirmed, "Juego", true)}
-        {renderPlayerList(maybe, "Quizás")}
-        {renderPlayerList(cancelled, "No juego")}
-      </div>
+      <section className="attendance-summary-section glass-panel-elite animate-fade-in">
+        <div className="attendance-summary-grid">
+          <button
+            type="button"
+            className={`attendance-summary-card ${activeRoster === "confirmed" ? "active confirmed" : ""}`}
+            onClick={() => setActiveRoster("confirmed")}
+          >
+            <strong>{confirmed.length}</strong>
+            <span>JUEGO</span>
+          </button>
+          <button
+            type="button"
+            className={`attendance-summary-card ${activeRoster === "maybe" ? "active maybe" : ""}`}
+            onClick={() => setActiveRoster("maybe")}
+          >
+            <strong>{maybe.length}</strong>
+            <span>QUIZÁS</span>
+          </button>
+          <button
+            type="button"
+            className={`attendance-summary-card ${activeRoster === "cancelled" ? "active cancelled" : ""}`}
+            onClick={() => setActiveRoster("cancelled")}
+          >
+            <strong>{cancelled.length}</strong>
+            <span>NO JUEGO</span>
+          </button>
+        </div>
+        <div className="players-section-elite players-section-compact">
+          <div className="summary-content">
+            <span>{activeRoster === "confirmed" ? "Juego" : activeRoster === "maybe" ? "Quizás" : "No juego"}</span>
+            <div className="summary-badge">
+              {activeRoster === "confirmed" ? confirmed.length : activeRoster === "maybe" ? maybe.length : cancelled.length}
+            </div>
+          </div>
+          <div className="player-list-elite">
+            {(activeRoster === "confirmed" ? confirmed : activeRoster === "maybe" ? maybe : cancelled).length === 0 ? (
+              <p className="empty-state-list">Sin registros aún.</p>
+            ) : null}
+            {(activeRoster === "confirmed" ? confirmed : activeRoster === "maybe" ? maybe : cancelled).map((signup) => (
+              <div key={signup.id} className="player-row-elite">
+                <div className="player-avatar-mini">{formatSignupName(signup).charAt(0).toUpperCase()}</div>
+                <span className="player-name">{formatSignupName(signup)}</span>
+                {(signup.authUid || signup.userId) === creatorAuthUid ? <span className="host-label">Creador</span> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <div className="actions-section-elite animate-fade-in">
-        <button className="btn-secondary-elite" onClick={openGoogleCalendar}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
-          Google Calendar
-        </button>
+        <div className="actions-primary-row">
+          <button className="btn-secondary-elite" onClick={openGoogleCalendar}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+            Google Calendar
+          </button>
+          <button className="btn-secondary-elite" onClick={openWhatsApp}>
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M12 2a10 10 0 0 0-8.7 14.9L2 22l5.3-1.4A10 10 0 1 0 12 2Zm5.8 14.4c-.2.6-1.2 1.1-1.8 1.2s-1.2.2-4-.9a13.4 13.4 0 0 1-4.4-3.9 5 5 0 0 1-1.1-2.7c0-1.2.7-1.8 1-2.1.2-.2.5-.3.8-.3h.6c.2 0 .5-.1.7.5.2.7.8 2.4.9 2.6.1.2.1.4 0 .6s-.2.4-.4.6-.3.4-.5.6c-.2.2-.3.4-.1.7.2.3 1 1.7 2.2 2.8 1.5 1.3 2.7 1.7 3.1 1.9.3.2.5.1.7-.1.2-.2.8-.9 1-1.2.2-.4.4-.3.7-.2.3.1 2 .9 2.3 1 .3.2.6.2.7.4.1.3.1 1.3-.1 1.9Z"/>
+            </svg>
+            Compartir por WhatsApp
+          </button>
+        </div>
 
         {canManageReservation && (
           <div className="creator-actions-elite compact">
-            <button className="btn-secondary-elite" onClick={openWhatsApp}>
-              Compartir por WhatsApp
-            </button>
+            {isCreator ? (
+              <details className="action-menu-elite invite-menu-elite">
+                <summary>Invitar fuera del grupo</summary>
+                <div className="action-menu-content">
+                  <button className="btn-secondary-elite" onClick={() => inviteGuest("whatsapp")} disabled={guestInviteBusy}>
+                    {guestInviteBusy ? "Generando..." : "WhatsApp"}
+                  </button>
+                  <button className="btn-secondary-elite" onClick={() => inviteGuest("link")} disabled={guestInviteBusy}>
+                    Copiar texto
+                  </button>
+                </div>
+              </details>
+            ) : null}
             <details className="action-menu-elite">
-              <summary>Más acciones</summary>
+              <summary>{editing ? "Cerrar edición" : "Modificar reserva"}</summary>
               <div className="action-menu-content">
-                {isCreator ? (
-                  <>
-                    <button className="btn-secondary-elite" onClick={() => inviteGuest("whatsapp")} disabled={guestInviteBusy}>
-                      {guestInviteBusy ? "Generando..." : "Invitar externo WA"}
-                    </button>
-                    <button className="btn-secondary-elite" onClick={() => inviteGuest("email")} disabled={guestInviteBusy}>
-                      Invitar externo por email
-                    </button>
-                    <button className="btn-secondary-elite" onClick={() => inviteGuest("link")} disabled={guestInviteBusy}>
-                      Copiar link externo
-                    </button>
-                  </>
-                ) : null}
-                <button className="btn-secondary-elite" onClick={share}>
-                  Compartir (sistema)
-                </button>
                 <button className="btn-outline-danger-elite" onClick={() => setEditing(!editing)}>
-                  {editing ? "Cerrar edición" : "Modificar reserva"}
-                </button>
-                <button className="btn-link-danger-elite" onClick={confirmCancelReservation}>
-                  Eliminar reserva
+                  {editing ? "Cerrar edición" : "Abrir edición"}
                 </button>
               </div>
             </details>
@@ -503,6 +504,12 @@ export default function ReservationDetail({
           <button className="btn-elite btn-elite-accent btn-block" onClick={submitEdit}>Guardar cambios</button>
         </div>
       )}
+
+      {canManageReservation ? (
+        <button className="btn-link-danger-elite btn-delete-reservation" onClick={confirmCancelReservation}>
+          Eliminar reserva
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -1888,33 +1888,67 @@ button.neutral {
 .hero-meta-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.34rem;
-  margin-top: 0.12rem;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
 }
 
 .hero-meta-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.24rem;
-  padding: 0.2rem 0.48rem;
+  gap: 0.28rem;
+  padding: 0.28rem 0.64rem;
   border-radius: 999px;
   border: 1px solid rgba(179, 207, 255, 0.26);
   background: rgba(255, 255, 255, 0.04);
   color: #d6e8ff;
-  font-size: 0.66rem;
-  font-weight: 700;
+  font-size: 0.74rem;
+  font-weight: 800;
   letter-spacing: 0.02em;
   line-height: 1.2;
 }
 
 .hero-meta-chip svg {
-  opacity: 0.86;
+  opacity: 0.9;
+  width: 14px;
+  height: 14px;
 }
 
 .hero-meta-chip-accent {
   color: var(--accent);
   border-color: rgba(232, 255, 61, 0.42);
   background: rgba(232, 255, 61, 0.08);
+}
+
+.hero-location-row {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.56rem;
+  margin-top: 0.2rem;
+}
+
+.hero-location {
+  margin: 0;
+  color: #9fb8de;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.icon-action-btn {
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(179, 207, 255, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  color: #d8eaff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-shadow: none;
 }
 
 .hero-badge {
@@ -2055,6 +2089,57 @@ button.neutral {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
+.attendance-summary-section {
+  display: grid;
+  gap: 0.72rem;
+  padding: 0.72rem;
+  border-radius: 14px;
+}
+
+.attendance-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.46rem;
+}
+
+.attendance-summary-card {
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+  padding: 0.54rem 0.4rem;
+  border-radius: 12px;
+  border: 1px solid rgba(179, 207, 255, 0.26);
+  background: rgba(255, 255, 255, 0.04);
+  color: #d6e7ff;
+  box-shadow: none;
+}
+
+.attendance-summary-card strong {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.attendance-summary-card span {
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.attendance-summary-card.active.confirmed {
+  border-color: rgba(52, 211, 154, 0.7);
+  background: rgba(52, 211, 154, 0.16);
+}
+
+.attendance-summary-card.active.maybe {
+  border-color: rgba(156, 163, 175, 0.65);
+  background: rgba(156, 163, 175, 0.16);
+}
+
+.attendance-summary-card.active.cancelled {
+  border-color: rgba(255, 111, 123, 0.74);
+  background: rgba(255, 111, 123, 0.16);
+}
+
 .player-collapse-elite {
   border-bottom: 1px solid var(--glass-stroke);
 }
@@ -2139,6 +2224,12 @@ button.neutral {
   gap: 0.58rem;
 }
 
+.actions-primary-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.46rem;
+}
+
 .btn-secondary-elite {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--glass-border);
@@ -2165,10 +2256,6 @@ button.neutral {
   grid-template-columns: 1fr;
 }
 
-.creator-actions-elite button:nth-child(n+3) {
-  grid-column: span 2;
-}
-
 .action-menu-elite {
   border: 1px solid var(--glass-border);
   border-radius: 10px;
@@ -2193,6 +2280,15 @@ button.neutral {
   display: grid;
   gap: 8px;
   padding: 0 10px 10px;
+}
+
+.btn-delete-reservation {
+  width: 100%;
+  margin-top: 0.22rem;
+  opacity: 0.85;
+  border: 1px solid rgba(248, 113, 113, 0.42);
+  border-radius: 10px;
+  padding: 0.5rem 0.72rem;
 }
 
 .floating-toast {
@@ -2429,9 +2525,22 @@ button.neutral {
   }
 
   .hero-meta-chip {
-    font-size: 0.62rem;
-    padding: 0.18rem 0.42rem;
+    font-size: 0.68rem;
+    padding: 0.22rem 0.5rem;
   }
+
+  .hero-location {
+    font-size: 0.72rem;
+  }
+
+  .attendance-summary-grid {
+    gap: 0.34rem;
+  }
+
+  .attendance-summary-card {
+    padding: 0.46rem 0.28rem;
+  }
+
 
   .floating-toast {
     width: calc(100% - 1.2rem);
