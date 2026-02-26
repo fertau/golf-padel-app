@@ -1,14 +1,21 @@
-import type { Reservation, User } from "../lib/types";
-import { getSignupsByStatus, getUserAttendance, triggerHaptic } from "../lib/utils";
+import type { AttendanceStatus, Reservation, User } from "../lib/types";
+import { getSignupsByStatus, getUserAttendance, isReservationCreator, triggerHaptic } from "../lib/utils";
 
 type Props = {
   reservation: Reservation;
   currentUser: User;
+  attendanceStatusOverride?: AttendanceStatus;
   onOpen: (id: string) => void;
   isExpanded: boolean;
 };
 
-export default function ReservationCard({ reservation, currentUser, onOpen, isExpanded }: Props) {
+export default function ReservationCard({
+  reservation,
+  currentUser,
+  attendanceStatusOverride,
+  onOpen,
+  isExpanded
+}: Props) {
   const confirmed = getSignupsByStatus(reservation, "confirmed");
   const mine = getUserAttendance(reservation, currentUser.id);
   const startDate = new Date(reservation.startDateTime);
@@ -18,6 +25,10 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
   const groupLabel = reservation.groupName?.trim() || "Sin grupo";
   const venueLabel = reservation.venueName?.trim() || "Sin complejo";
   const shouldMarqueeVenue = venueLabel.length > 24;
+  const effectiveAttendanceStatus =
+    attendanceStatusOverride ??
+    mine?.attendanceStatus ??
+    (isReservationCreator(reservation, currentUser.id) ? "confirmed" : null);
 
   const visibleConfirmed = confirmed.slice(0, 3);
 
@@ -101,11 +112,11 @@ export default function ReservationCard({ reservation, currentUser, onOpen, isEx
           </div>
 
           <div className="card-badges">
-            {mine && (
-              <span className={`badge badge-mine badge-${mine.attendanceStatus} badge-elevated`}>
-                {mine.attendanceStatus === "confirmed"
+            {effectiveAttendanceStatus && (
+              <span className={`badge badge-mine badge-${effectiveAttendanceStatus} badge-elevated`}>
+                {effectiveAttendanceStatus === "confirmed"
                   ? "Juego"
-                  : mine.attendanceStatus === "maybe"
+                  : effectiveAttendanceStatus === "maybe"
                     ? "Quizás"
                     : "No juego"}
               </span>

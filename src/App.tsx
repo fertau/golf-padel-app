@@ -53,7 +53,7 @@ import {
   updateReservationDetails
 } from "./lib/dataStore";
 import { registerPushToken } from "./lib/push";
-import type { Court, Group, Reservation, Venue } from "./lib/types";
+import type { AttendanceStatus, Court, Group, Reservation, Venue } from "./lib/types";
 import {
   getUserAttendance,
   isGenericDisplayName,
@@ -165,8 +165,10 @@ export default function App() {
   const [savingName, setSavingName] = useState(false);
   const [contextNotice, setContextNotice] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [attendanceOverrides, setAttendanceOverrides] = useState<Record<string, AttendanceStatus>>({});
   const processedInviteTokensRef = useRef<Set<string>>(new Set());
   const inFlightInviteTokenRef = useRef<string | null>(null);
+  const upcomingSectionRef = useRef<HTMLElement | null>(null);
   const shareBaseUrl = getShareBaseUrl();
 
   // 1. Connectivity & Cleanup
@@ -448,6 +450,31 @@ export default function App() {
   );
 
   useEffect(() => {
+    if (!currentUser) {
+      setAttendanceOverrides({});
+      return;
+    }
+    setAttendanceOverrides((previous) => {
+      const next = { ...previous };
+      let changed = false;
+      for (const [reservationId, override] of Object.entries(previous)) {
+        const reservation = reservationsWithGroupContext.find((item) => item.id === reservationId);
+        if (!reservation) {
+          delete next[reservationId];
+          changed = true;
+          continue;
+        }
+        const liveStatus = getUserAttendance(reservation, currentUser.id)?.attendanceStatus;
+        if (liveStatus === override) {
+          delete next[reservationId];
+          changed = true;
+        }
+      }
+      return changed ? next : previous;
+    });
+  }, [reservationsWithGroupContext, currentUser]);
+
+  useEffect(() => {
     if (!expandedReservationId || activeGroupScope !== "all") return;
     const selected = reservationsWithGroupContext.find((reservation) => reservation.id === expandedReservationId);
     if (selected?.groupId) {
@@ -519,16 +546,18 @@ export default function App() {
     reservation: Reservation
   ): { label: string; badgeClass: string; statusTone: "confirmed" | "maybe" | "cancelled" | "pending" } => {
     const myAttendance = currentUser ? getUserAttendance(reservation, currentUser.id)?.attendanceStatus : undefined;
+    const overridden = attendanceOverrides[reservation.id];
     const effectiveStatus = myAttendance ?? (
       currentUser && isReservationCreator(reservation, currentUser.id) ? "confirmed" : undefined
     );
-    if (effectiveStatus === "confirmed") {
+    const resolvedStatus = overridden ?? effectiveStatus;
+    if (resolvedStatus === "confirmed") {
       return { label: "JUEGO", badgeClass: "badge-confirmed", statusTone: "confirmed" };
     }
-    if (effectiveStatus === "maybe") {
+    if (resolvedStatus === "maybe") {
       return { label: "QUIZAS", badgeClass: "badge-maybe", statusTone: "maybe" };
     }
-    if (effectiveStatus === "cancelled") {
+    if (resolvedStatus === "cancelled") {
       return { label: "NO JUEGO", badgeClass: "badge-cancelled", statusTone: "cancelled" };
     }
     return { label: "PENDIENTE", badgeClass: "badge-pending", statusTone: "pending" };
@@ -1080,7 +1109,36 @@ export default function App() {
     }
   };
 
-  const renderReservationList = (title: string, items: Reservation[], emptyText: string, groupByDate = false) => {
+  const handleSetAttendanceStatus = async (reservationId: string, status: AttendanceStatus) => {
+    if (!currentUser) {
+      return;
+    }
+    setAttendanceOverrides((previous) => ({ ...previous, [reservationId]: status }));
+    try {
+      await setAttendanceStatus(reservationId, currentUser, status);
+    } catch (error) {
+      setAttendanceOverrides((previous) => {
+        const next = { ...previous };
+        delete next[reservationId];
+        return next;
+      });
+      throw error;
+    }
+  };
+
+  const openCreateReservationFromEmpty = () => {
+    triggerHaptic("light");
+    setActiveTab("mis-reservas");
+    setShowCreateForm(true);
+  };
+
+  const renderReservationList = (
+    title: string,
+    items: Reservation[],
+    emptyText: string,
+    groupByDate = false,
+    emptyAction?: { label: string; onClick: () => void }
+  ) => {
     const isActiveReservationsWidget = title.toLowerCase().includes("reservas activas");
 
     return (
@@ -1119,7 +1177,17 @@ export default function App() {
           {reservationsLoading ? (
             <><ReservationSkeleton /><ReservationSkeleton /><ReservationSkeleton /></>
           ) : items.length === 0 ? (
-            <div className="empty-state"><div className="empty-illustration">🎾</div><p>{emptyText}</p></div>
+            <div className="empty-state">
+              <div className="empty-illustration">🎾</div>
+              <p>{emptyText}</p>
+              {emptyAction ? (
+                <div className="empty-state-actions">
+                  <button type="button" className="quick-chip action-chip active" onClick={emptyAction.onClick}>
+                    {emptyAction.label}
+                  </button>
+                </div>
+              ) : null}
+            </div>
           ) : groupByDate ? (
             (["hoy", "manana", "esta-semana", "mas-adelante"] as const).map(g => {
               const groupItems = items.filter(r => getReservationDateGroup(r.startDateTime) === g);
@@ -1135,6 +1203,7 @@ export default function App() {
                         key={r.id}
                         reservation={r}
                         currentUser={currentUser!}
+                        attendanceStatusOverride={attendanceOverrides[r.id]}
                         onOpen={setExpandedReservationId}
                         isExpanded={expandedReservationId === r.id}
                       />
@@ -1149,6 +1218,7 @@ export default function App() {
                 key={r.id}
                 reservation={r}
                 currentUser={currentUser!}
+                attendanceStatusOverride={attendanceOverrides[r.id]}
                 onOpen={setExpandedReservationId}
                 isExpanded={expandedReservationId === r.id}
               />
@@ -1205,11 +1275,23 @@ export default function App() {
               <div className="inbox-heading">
                 <h2 className="section-title">Nuevas reservas</h2>
                 <span className={`upcoming-chip ${myPendingResponseCount > 0 ? "upcoming-chip-accent" : "upcoming-chip-muted"}`}>
-                  {myPendingResponseCount} nueva{myPendingResponseCount === 1 ? "" : "s"}
+                  {myPendingResponseCount} por responder
                 </span>
               </div>
               {myPendingResponseCount === 0 ? (
-                <p className="private-hint inbox-empty-hint">No hay nuevas reservas para responder.</p>
+                <div className="inbox-empty-state">
+                  <p className="private-hint inbox-empty-hint">No tenés reservas pendientes de respuesta.</p>
+                  <button
+                    type="button"
+                    className="quick-chip action-chip"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      upcomingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                  >
+                    Ver próximos partidos
+                  </button>
+                </div>
               ) : (
                 <ul className="inbox-list">
                   {inboxPendingReservations.map((reservation) => {
@@ -1272,7 +1354,7 @@ export default function App() {
               )}
             </section>
 
-            <section className="panel upcoming-widget glass-panel-elite animate-fade-in">
+            <section ref={upcomingSectionRef} className="panel upcoming-widget glass-panel-elite animate-fade-in">
               <div className="upcoming-header">
                 <h2 className="section-title">Próximos partidos</h2>
                 <div className="quick-chip-row quick-chip-row-tight upcoming-view-switch">
@@ -1293,7 +1375,18 @@ export default function App() {
                 </div>
               </div>
               {upcomingByScope.length === 0 ? (
-                <p className="private-hint">No hay próximos partidos en tu alcance actual.</p>
+                <div className="empty-state empty-state-inline">
+                  <p>No hay próximos partidos en tu alcance actual.</p>
+                  <div className="empty-state-actions">
+                    <button
+                      type="button"
+                      className="quick-chip action-chip active"
+                      onClick={openCreateReservationFromEmpty}
+                    >
+                      + Crear reserva
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <>
                   {upcomingView === "list" ? (
@@ -1537,7 +1630,11 @@ export default function App() {
               reservationsScope === "all"
                 ? "No hay reservas próximas en tu alcance actual."
                 : "Todavía no creaste reservas próximas.",
-              true
+              true,
+              {
+                label: "+ Crear reserva",
+                onClick: openCreateReservationFromEmpty
+              }
             )}
 
           </>
@@ -1590,7 +1687,8 @@ export default function App() {
               reservation={selectedReservation} currentUser={currentUser} appUrl={shareBaseUrl}
               groups={groups}
               signupNameByAuthUid={signupNameByAuthUid}
-              onSetAttendanceStatus={(rid, s) => setAttendanceStatus(rid, currentUser, s)}
+              attendanceStatusOverride={attendanceOverrides[selectedReservation.id]}
+              onSetAttendanceStatus={handleSetAttendanceStatus}
               onCancel={handleCancelReservation}
               onCreateGuestInvite={handleCreateGuestInviteLink}
               onReassignCreator={handleReassignReservationCreator}

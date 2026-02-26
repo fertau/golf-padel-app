@@ -908,6 +908,14 @@ body::before {
   font-size: 0.76rem;
 }
 
+.inbox-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .inbox-list {
   list-style: none;
   display: grid;
@@ -3461,6 +3469,29 @@ button.neutral {
 
 .empty-state p {
   margin: 0;
+}
+
+.empty-state-actions {
+  display: flex;
+  gap: 0.42rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+
+.empty-state-inline {
+  justify-items: flex-start;
+  text-align: left;
+  gap: 0.55rem;
+  padding: 0.85rem 0.8rem;
+}
+
+.empty-state-inline .empty-illustration {
+  display: none;
+}
+
+.empty-state-inline .empty-state-actions {
+  justify-content: flex-start;
 }
 
 .empty-illustration {

@@ -17,6 +17,7 @@ type Props = {
   groups: Group[];
   appUrl: string;
   signupNameByAuthUid: Record<string, string>;
+  attendanceStatusOverride?: AttendanceStatus;
   onSetAttendanceStatus: (reservationId: string, status: AttendanceStatus) => Promise<void>;
   onCancel: (reservationId: string) => Promise<void>;
   onCreateGuestInvite: (
@@ -44,6 +45,7 @@ export default function ReservationDetail({
   groups,
   appUrl,
   signupNameByAuthUid,
+  attendanceStatusOverride,
   onSetAttendanceStatus,
   onCancel,
   onCreateGuestInvite,
@@ -152,16 +154,16 @@ export default function ReservationDetail({
   const cancelled = getSignupsByStatus(reservation, "cancelled");
   const myAttendance = getUserAttendance(reservation, currentUser.id);
   const myAttendanceStatus = myAttendance?.attendanceStatus;
-  const effectiveAttendanceStatus = pendingAttendanceStatus ?? myAttendanceStatus;
+  const effectiveAttendanceStatus = pendingAttendanceStatus ?? attendanceStatusOverride ?? myAttendanceStatus;
 
   useEffect(() => {
     if (!pendingAttendanceStatus) {
       return;
     }
-    if (myAttendanceStatus === pendingAttendanceStatus) {
+    if (myAttendanceStatus === pendingAttendanceStatus || attendanceStatusOverride === pendingAttendanceStatus) {
       setPendingAttendanceStatus(null);
     }
-  }, [myAttendanceStatus, pendingAttendanceStatus]);
+  }, [myAttendanceStatus, pendingAttendanceStatus, attendanceStatusOverride]);
 
   const formatCompactDate = (iso: string): string => {
     const date = new Date(iso);
