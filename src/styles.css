@@ -924,6 +924,11 @@ body::before {
   padding: 0;
 }
 
+.inbox-skeleton-list {
+  display: grid;
+  gap: 0.48rem;
+}
+
 .upcoming-row-inbox {
   min-height: 112px;
 }
@@ -1181,6 +1186,11 @@ body::before {
 .upcoming-list li+li {
   border-top: 1px solid rgba(179, 207, 255, 0.18);
   padding-top: 0.72rem;
+}
+
+.upcoming-skeleton-list {
+  display: grid;
+  gap: 0.62rem;
 }
 
 .upcoming-row {

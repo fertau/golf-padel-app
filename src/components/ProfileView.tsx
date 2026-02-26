@@ -17,6 +17,7 @@ type Props = {
   onLogout: () => void;
   onRequestNotifications: () => void;
   onUpdateDisplayName: (nextName: string) => Promise<void>;
+  onFeedback: (message: string) => void;
   busy?: boolean;
 };
 
@@ -39,6 +40,7 @@ export default function ProfileView({
   onLogout,
   onRequestNotifications,
   onUpdateDisplayName,
+  onFeedback,
   busy
 }: Props) {
   const [nameDraft, setNameDraft] = useState(user.name);
@@ -123,7 +125,7 @@ export default function ProfileView({
       setAuditByGroupId((prev) => ({ ...prev, [groupId]: events }));
       setAuditLoadedByGroupId((prev) => ({ ...prev, [groupId]: true }));
     } catch (error) {
-      alert((error as Error).message);
+      onFeedback((error as Error).message || "No se pudo cargar la actividad.");
     } finally {
       setAuditLoadingGroupId(null);
     }
@@ -132,16 +134,16 @@ export default function ProfileView({
   const saveDisplayName = async () => {
     const normalized = normalizeDisplayName(nameDraft);
     if (!isValidDisplayName(normalized)) {
-      alert("Ingresá un nombre válido (2-32 caracteres, no genérico).");
+      onFeedback("Ingresá un nombre válido (2-32 caracteres, no genérico).");
       return;
     }
     try {
       setSavingName(true);
       await onUpdateDisplayName(normalized);
       triggerHaptic("medium");
-      alert("Nombre actualizado.");
+      onFeedback("Nombre actualizado.");
     } catch (error) {
-      alert((error as Error).message);
+      onFeedback((error as Error).message || "No se pudo guardar el nombre.");
     } finally {
       setSavingName(false);
     }
@@ -149,7 +151,7 @@ export default function ProfileView({
 
   const createGroup = async () => {
     if (groupDraft.trim().length < 2) {
-      alert("Ingresá un nombre de grupo.");
+      onFeedback("Ingresá un nombre de grupo.");
       return;
     }
     try {
@@ -158,8 +160,9 @@ export default function ProfileView({
       setGroupDraft("");
       setShowCreateGroupForm(false);
       triggerHaptic("medium");
+      onFeedback("Grupo creado.");
     } catch (error) {
-      alert((error as Error).message);
+      onFeedback((error as Error).message || "No se pudo crear el grupo.");
     } finally {
       setCreatingGroup(false);
     }
@@ -185,14 +188,15 @@ export default function ProfileView({
       } else {
         const copied = await copyTextWithFallback(message);
         if (copied) {
-          alert("Invitación copiada.");
+          onFeedback("Invitación copiada.");
         } else {
           window.prompt("Copiá la invitación manualmente:", message);
+          onFeedback("Copiá la invitación manualmente.");
         }
       }
       triggerHaptic("medium");
     } catch (error) {
-      alert((error as Error).message);
+      onFeedback((error as Error).message || "No se pudo generar la invitación.");
     } finally {
       setInviteBusyGroupId(null);
     }
@@ -204,8 +208,9 @@ export default function ProfileView({
       setRoleBusyKey(key);
       await onSetGroupMemberAdmin(groupId, targetAuthUid, makeAdmin);
       triggerHaptic("medium");
+      onFeedback(makeAdmin ? "Miembro promovido a admin." : "Admin removido.");
     } catch (error) {
-      alert((error as Error).message);
+      onFeedback((error as Error).message || "No se pudo actualizar el rol.");
     } finally {
       setRoleBusyKey(null);
     }
@@ -217,8 +222,9 @@ export default function ProfileView({
       setRoleBusyKey(key);
       await onRemoveGroupMember(groupId, targetAuthUid);
       triggerHaptic("medium");
+      onFeedback("Miembro quitado del grupo.");
     } catch (error) {
-      alert((error as Error).message);
+      onFeedback((error as Error).message || "No se pudo quitar el miembro.");
     } finally {
       setRoleBusyKey(null);
     }
@@ -232,8 +238,9 @@ export default function ProfileView({
       setGroupActionBusyId(groupId);
       await onLeaveGroup(groupId);
       triggerHaptic("medium");
+      onFeedback("Saliste del grupo.");
     } catch (error) {
-      alert((error as Error).message);
+      onFeedback((error as Error).message || "No se pudo salir del grupo.");
     } finally {
       setGroupActionBusyId(null);
     }
@@ -247,8 +254,9 @@ export default function ProfileView({
       setGroupActionBusyId(groupId);
       await onDeleteGroup(groupId);
       triggerHaptic("heavy");
+      onFeedback("Grupo eliminado.");
     } catch (error) {
-      alert((error as Error).message);
+      onFeedback((error as Error).message || "No se pudo eliminar el grupo.");
     } finally {
       setGroupActionBusyId(null);
     }
@@ -265,8 +273,9 @@ export default function ProfileView({
       setEditingGroupId(null);
       setGroupNameDraft("");
       triggerHaptic("medium");
+      onFeedback("Grupo renombrado.");
     } catch (error) {
-      alert((error as Error).message);
+      onFeedback((error as Error).message || "No se pudo renombrar el grupo.");
     }
   };
 

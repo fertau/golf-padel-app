@@ -170,6 +170,10 @@ export default function App() {
   const inFlightInviteTokenRef = useRef<string | null>(null);
   const upcomingSectionRef = useRef<HTMLElement | null>(null);
   const shareBaseUrl = getShareBaseUrl();
+  const notifyError = (error: unknown, fallback: string) => {
+    const message = (error as Error | undefined)?.message?.trim();
+    setToastMessage(message && message.length > 0 ? message : fallback);
+  };
 
   // 1. Connectivity & Cleanup
   useEffect(() => {
@@ -334,6 +338,20 @@ export default function App() {
   }, [setActiveTab, setExpandedReservationId]);
 
   useEffect(() => {
+    const handlePopState = () => {
+      const reservationPathMatch = window.location.pathname.match(/^\/r\/([a-zA-Z0-9-]+)$/);
+      if (reservationPathMatch) {
+        setExpandedReservationId(reservationPathMatch[1]);
+        setActiveTab("mis-partidos");
+        return;
+      }
+      setExpandedReservationId(null);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [setActiveTab, setExpandedReservationId]);
+
+  useEffect(() => {
     if (!currentUser || groups.length === 0) return;
     const fallbackGroup =
       groups.find((group) => group.name.trim().toLowerCase() === "mi grupo") ??
@@ -481,6 +499,20 @@ export default function App() {
       setActiveGroupScope(selected.groupId);
     }
   }, [expandedReservationId, activeGroupScope, reservationsWithGroupContext]);
+
+  useEffect(() => {
+    const pathMatch = window.location.pathname.match(/^\/r\/([a-zA-Z0-9-]+)$/);
+    if (expandedReservationId) {
+      const targetPath = `/r/${expandedReservationId}`;
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({}, "", targetPath);
+      }
+      return;
+    }
+    if (pathMatch) {
+      window.history.pushState({}, "", "/");
+    }
+  }, [expandedReservationId]);
 
   const activeReservations = useMemo(
     () => reservationsWithGroupContext.filter((reservation) => reservation.status === "active"),
@@ -866,6 +898,19 @@ export default function App() {
   }, [currentUser?.id]);
 
   useEffect(() => {
+    if (!expandedReservationId || reservationsLoading) {
+      return;
+    }
+    if (!selectedReservation) {
+      setExpandedReservationId(null);
+      if (window.location.pathname.match(/^\/r\/([a-zA-Z0-9-]+)$/)) {
+        window.history.replaceState({}, "", "/");
+      }
+      setToastMessage("No encontramos ese partido o ya no tenés acceso.");
+    }
+  }, [expandedReservationId, reservationsLoading, selectedReservation, setExpandedReservationId]);
+
+  useEffect(() => {
     setHistoryApiReservations([]);
     setHistoryApiLoaded(false);
     setHistoryLoading(false);
@@ -931,8 +976,8 @@ export default function App() {
       await signOut(auth);
       setExpandedReservationId(null);
       triggerHaptic("medium");
-    } catch (err: any) {
-      alert(err.message);
+    } catch (error) {
+      notifyError(error, "No se pudo cerrar sesión.");
     } finally {
       setBusy(false);
     }
@@ -945,8 +990,9 @@ export default function App() {
       await createReservation(payload, currentUser);
       setShowCreateForm(false);
       setActiveTab("mis-reservas");
-    } catch (err: any) {
-      alert(err.message);
+      setToastMessage("Reserva creada.");
+    } catch (error) {
+      notifyError(error, "No se pudo crear la reserva.");
     } finally {
       setBusy(false);
     }
@@ -1041,7 +1087,7 @@ export default function App() {
       await cancelReservation(reservationId, currentUser);
       setToastMessage("Reserva cancelada.");
     } catch (error) {
-      alert((error as Error).message || "No se pudo eliminar la reserva.");
+      notifyError(error, "No se pudo eliminar la reserva.");
     } finally {
       setBusy(false);
     }
@@ -1065,7 +1111,7 @@ export default function App() {
       triggerHaptic("medium");
       setToastMessage("Reserva actualizada.");
     } catch (error) {
-      alert((error as Error).message || "No se pudo modificar la reserva.");
+      notifyError(error, "No se pudo modificar la reserva.");
     } finally {
       setBusy(false);
     }
@@ -1085,7 +1131,7 @@ export default function App() {
       triggerHaptic("medium");
       setToastMessage("Creador de reserva actualizado.");
     } catch (error) {
-      alert((error as Error).message || "No se pudo reasignar el creador.");
+      notifyError(error, "No se pudo reasignar el creador.");
     } finally {
       setBusy(false);
     }
@@ -1278,7 +1324,12 @@ export default function App() {
                   {myPendingResponseCount} por responder
                 </span>
               </div>
-              {myPendingResponseCount === 0 ? (
+              {reservationsLoading ? (
+                <div className="inbox-skeleton-list">
+                  <ReservationSkeleton />
+                  <ReservationSkeleton />
+                </div>
+              ) : myPendingResponseCount === 0 ? (
                 <div className="inbox-empty-state">
                   <p className="private-hint inbox-empty-hint">No tenés reservas pendientes de respuesta.</p>
                   <button
@@ -1374,7 +1425,13 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              {upcomingByScope.length === 0 ? (
+              {reservationsLoading ? (
+                <div className="upcoming-skeleton-list">
+                  <ReservationSkeleton />
+                  <ReservationSkeleton />
+                  <ReservationSkeleton />
+                </div>
+              ) : upcomingByScope.length === 0 ? (
                 <div className="empty-state empty-state-inline">
                   <p>No hay próximos partidos en tu alcance actual.</p>
                   <div className="empty-state-actions">
@@ -1656,6 +1713,7 @@ export default function App() {
             onLogout={handleLogout}
             onRequestNotifications={registerPushToken}
             onUpdateDisplayName={handleUpdateDisplayName}
+            onFeedback={setToastMessage}
             busy={busy}
           />
         )}
