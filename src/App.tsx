@@ -1214,7 +1214,7 @@ export default function App() {
             <><ReservationSkeleton /><ReservationSkeleton /><ReservationSkeleton /></>
           ) : items.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-illustration">🎾</div>
+              <div className="empty-illustration"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20M2 12h20"/></svg></div>
               <p>{emptyText}</p>
               {emptyAction ? (
                 <div className="empty-state-actions">

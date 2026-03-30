@@ -1691,9 +1691,10 @@ button.neutral {
 }
 
 .btn-elite-accent {
-  background: linear-gradient(145deg, rgba(168, 255, 61, 0.2), rgba(168, 255, 61, 0.1));
+  background: linear-gradient(145deg, rgba(168, 255, 61, 0.25), rgba(168, 255, 61, 0.15));
   color: var(--accent);
-  border-color: rgba(168, 255, 61, 0.45);
+  border-color: rgba(168, 255, 61, 0.5);
+  font-weight: 700;
 }
 
 .btn-elite-outline {
@@ -4148,7 +4149,7 @@ ul {
   color: var(--text-muted, #94a3b8);
   font-size: 13px;
   text-align: center;
-  padding: 12px 0;
+  padding: 4px 0;
 }
 
 .notification-list {
