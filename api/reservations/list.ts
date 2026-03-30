@@ -670,7 +670,7 @@ const handleGet = async (
         if (!isRelatedToUser(reservation, authUid)) {
           return;
         }
-        const timestamp = toTimestamp(reservation.startDateTime);
+        const timestamp = toTimestamp((reservation as Record<string, unknown>).startDateTime);
         if (timestamp === null || timestamp >= now) {
           return;
         }

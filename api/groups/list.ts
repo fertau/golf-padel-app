@@ -5,6 +5,7 @@ import type { VercelRequestLike, VercelResponseLike } from "../_lib/http.js";
 const normalizeGroup = (docId: string, data: Record<string, unknown>) => ({
   id: docId,
   ...data,
+  name: (typeof data.name === "string" ? data.name : "") as string,
   memberAuthUids: Array.isArray(data.memberAuthUids) ? data.memberAuthUids : [],
   adminAuthUids: Array.isArray(data.adminAuthUids) ? data.adminAuthUids : [],
   memberNamesByAuthUid:

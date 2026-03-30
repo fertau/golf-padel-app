@@ -56,7 +56,7 @@ export default async function handler(
     const snapshot = await adminDb.collection("groupAuditEvents").where("groupId", "==", groupId).limit(200).get();
 
     const events = snapshot.docs
-      .map((snapshotDoc) => ({ id: snapshotDoc.id, ...(snapshotDoc.data() ?? {}) }))
+      .map((snapshotDoc) => ({ id: snapshotDoc.id, ...(snapshotDoc.data() ?? {}) } as Record<string, unknown>))
       .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")))
       .slice(0, limit);
     res.status(200).json({ events });

@@ -26,6 +26,7 @@ type NotificationTemplate = {
   title: string;
   body: string;
   vibrate?: number[];
+  data?: Record<string, string>;
 };
 
 const formatCourt = (court: string) => (court ? ` en ${court}` : "");
