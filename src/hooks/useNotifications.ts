@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { registerPushToken, unregisterPushTokens, isPushGranted, setBadgeCount } from "../lib/push";
 import { checkAndTrigger2hReminders, shouldShowIOSInstallBanner } from "../lib/notifications";
+import { auth } from "../lib/firebase";
 import type { Reservation } from "../lib/types";
 
 type NotificationItem = {
@@ -21,7 +22,7 @@ type PushPreferences = {
 const PREFS_KEY = "golf-padel-push-prefs";
 const IOS_BANNER_KEY = "golf-padel-ios-banner-dismissed";
 
-function loadPushPrefs(): PushPreferences {
+function loadLocalPrefs(): PushPreferences {
   try {
     const stored = localStorage.getItem(PREFS_KEY);
     if (stored) return JSON.parse(stored);
@@ -38,8 +39,33 @@ export function useNotifications(
   const [showIOSBanner, setShowIOSBanner] = useState(
     () => shouldShowIOSInstallBanner() && localStorage.getItem(IOS_BANNER_KEY) !== "1"
   );
-  const [pushPrefs, setPushPrefs] = useState<PushPreferences>(loadPushPrefs);
+  const [pushPrefs, setPushPrefs] = useState<PushPreferences>(loadLocalPrefs);
   const [inAppNotifications, setInAppNotifications] = useState<NotificationItem[]>([]);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+
+  // Load preferences from server on login
+  useEffect(() => {
+    if (!isLoggedIn || prefsLoaded) return;
+    const loadFromServer = async () => {
+      try {
+        const firebaseAuth = auth;
+        if (!firebaseAuth?.currentUser) return;
+        const idToken = await firebaseAuth.currentUser.getIdToken();
+        const res = await fetch("/api/push/preferences", {
+          headers: { Authorization: `Bearer ${idToken}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setPushPrefs(data);
+          localStorage.setItem(PREFS_KEY, JSON.stringify(data));
+        }
+      } catch {
+        // Fall back to localStorage
+      }
+      setPrefsLoaded(true);
+    };
+    loadFromServer();
+  }, [isLoggedIn, prefsLoaded]);
 
   // Check 2h reminders on app open (best-effort)
   useEffect(() => {
@@ -60,7 +86,6 @@ export function useNotifications(
     const handleSWMessage = (event: MessageEvent) => {
       if (event.data?.type === "NOTIFICATION_CLICK" && event.data.url) {
         const url = event.data.url as string;
-        // Extract reservationId from /partidos/:id
         const match = url.match(/\/partidos\/([a-zA-Z0-9-]+)/);
         if (match && onNavigateToMatch) {
           onNavigateToMatch(match[1]);
@@ -76,31 +101,44 @@ export function useNotifications(
     };
   }, [onNavigateToMatch]);
 
-  const dismissIOSBanner = () => {
+  const dismissIOSBanner = useCallback(() => {
     setShowIOSBanner(false);
     localStorage.setItem(IOS_BANNER_KEY, "1");
-  };
+  }, []);
 
-  const updatePushPreferences = (update: Partial<PushPreferences>) => {
+  const updatePushPreferences = useCallback(async (update: Partial<PushPreferences>) => {
     const next = { ...pushPrefs, ...update };
     if (update.notifications) {
       next.notifications = { ...pushPrefs.notifications, ...update.notifications };
     }
     setPushPrefs(next);
+    // Local cache
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify(next)); } catch { /* silent */ }
+    // Persist to server (fire-and-forget)
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify(next));
+      const firebaseAuth = auth;
+      if (!firebaseAuth?.currentUser) return;
+      const idToken = await firebaseAuth.currentUser.getIdToken();
+      fetch("/api/push/preferences", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify(update),
+      }).catch(() => null);
     } catch { /* silent */ }
-  };
+  }, [pushPrefs]);
 
-  const markAllRead = () => {
+  const markAllRead = useCallback(() => {
     setInAppNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  };
+  }, []);
 
-  const handleTapNotification = (item: NotificationItem) => {
+  const handleTapNotification = useCallback((item: NotificationItem) => {
     if (item.reservationId && onNavigateToMatch) {
       onNavigateToMatch(item.reservationId);
     }
-  };
+  }, [onNavigateToMatch]);
 
   return {
     showIOSBanner,
