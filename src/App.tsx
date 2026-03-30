@@ -52,9 +52,8 @@ import {
   subscribeVenues,
   updateReservationDetails
 } from "./lib/dataStore";
-import { registerPushToken, unregisterPushTokens, isPushGranted, setBadgeCount } from "./lib/push";
-import { triggerPushNotification, checkAndTrigger2hReminders, shouldShowIOSInstallBanner } from "./lib/notifications";
 import NotificationCenter from "./components/NotificationCenter";
+import { useNotifications } from "./hooks/useNotifications";
 import type { AttendanceStatus, Court, Group, Reservation, Venue } from "./lib/types";
 import {
   getUserAttendance,
@@ -168,14 +167,20 @@ export default function App() {
   const [contextNotice, setContextNotice] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [attendanceOverrides, setAttendanceOverrides] = useState<Record<string, AttendanceStatus>>({});
-  const [showIOSBanner, setShowIOSBanner] = useState(() =>
-    shouldShowIOSInstallBanner() && localStorage.getItem("golf-padel-ios-banner-dismissed") !== "1"
+
+  const {
+    showIOSBanner, dismissIOSBanner,
+    pushPrefs, updatePushPreferences,
+    inAppNotifications, markAllRead, handleTapNotification,
+    isPushGranted: pushGranted,
+    registerPushToken: doRegisterPush,
+    unregisterPushTokens: doUnregisterPush,
+  } = useNotifications(
+    !!firebaseUser,
+    reservations,
+    activeTab,
+    (reservationId) => setExpandedReservationId(reservationId)
   );
-  const [pushPrefs, setPushPrefs] = useState<{ pushEnabled: boolean; notifications?: Record<string, boolean> }>({ pushEnabled: true });
-  const [inAppNotifications, setInAppNotifications] = useState<Array<{
-    id: string; eventType: string; title: string; body: string;
-    reservationId?: string; createdAt: string; read: boolean;
-  }>>([]);
   const processedInviteTokensRef = useRef<Set<string>>(new Set());
   const inFlightInviteTokenRef = useRef<string | null>(null);
   const upcomingSectionRef = useRef<HTMLElement | null>(null);
@@ -200,21 +205,10 @@ export default function App() {
 
     const splashTimer = setTimeout(() => setShowSplash(false), 3200);
 
-    // Listen for SW notification clicks (deep link)
-    const handleSWMessage = (event: MessageEvent) => {
-      if (event.data?.type === "NOTIFICATION_CLICK" && event.data.url) {
-        const url = event.data.url as string;
-        window.history.pushState(null, "", url);
-        window.dispatchEvent(new PopStateEvent("popstate"));
-      }
-    };
-    navigator.serviceWorker?.addEventListener("message", handleSWMessage);
-
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
       clearTimeout(splashTimer);
-      navigator.serviceWorker?.removeEventListener("message", handleSWMessage);
     };
   }, []);
 
@@ -333,20 +327,6 @@ export default function App() {
       document.removeEventListener("visibilitychange", runVisibleSync);
     };
   }, [firebaseUser, setReservations]);
-
-  // 3b. Check 2h reminders on app open (best-effort)
-  useEffect(() => {
-    if (!firebaseUser || reservations.length === 0) return;
-    checkAndTrigger2hReminders(reservations).catch(() => null);
-  }, [firebaseUser, reservations.length > 0]);
-
-  // 3c. Clear badge when opening Partidos tab
-  useEffect(() => {
-    if (activeTab === "mis-partidos") {
-      setBadgeCount(0);
-      setInAppNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    }
-  }, [activeTab]);
 
   // 4. Initial Path Detection
   useEffect(() => {
@@ -1009,7 +989,7 @@ export default function App() {
     if (!auth) return;
     try {
       setBusy(true);
-      await unregisterPushTokens();
+      await doUnregisterPush();
       await signOut(auth);
       setExpandedReservationId(null);
       triggerHaptic("medium");
@@ -1210,17 +1190,7 @@ export default function App() {
   };
 
   const handleUpdatePushPreferences = async (update: { pushEnabled?: boolean; notifications?: Record<string, boolean> }) => {
-    const next = { ...pushPrefs, ...update };
-    if (update.notifications) {
-      next.notifications = { ...pushPrefs.notifications, ...update.notifications };
-    }
-    setPushPrefs(next);
-    // Persist to Firestore (via API would be ideal, but for now store locally)
-    try {
-      localStorage.setItem("golf-padel-push-prefs", JSON.stringify(next));
-    } catch {
-      // silent
-    }
+    updatePushPreferences(update);
   };
 
   const openCreateReservationFromEmpty = () => {
@@ -1376,10 +1346,7 @@ export default function App() {
                 <button
                   type="button"
                   className="ios-install-banner-close"
-                  onClick={() => {
-                    setShowIOSBanner(false);
-                    localStorage.setItem("golf-padel-ios-banner-dismissed", "1");
-                  }}
+                  onClick={dismissIOSBanner}
                 >
                   ✕
                 </button>
@@ -1388,16 +1355,9 @@ export default function App() {
 
             <NotificationCenter
               notifications={inAppNotifications}
-              onTapNotification={(item) => {
-                if (item.reservationId) {
-                  setExpandedReservationId(item.reservationId);
-                }
-              }}
-              onMarkAllRead={() => setInAppNotifications(prev => prev.map(n => ({ ...n, read: true })))}
-              onViewAll={() => {
-                // For now, just mark all read
-                setInAppNotifications(prev => prev.map(n => ({ ...n, read: true })));
-              }}
+              onTapNotification={handleTapNotification}
+              onMarkAllRead={markAllRead}
+              onViewAll={markAllRead}
             />
 
             <section className={`panel glass-panel-elite animate-fade-in inbox-panel ${myPendingResponseCount === 0 ? "inbox-panel-empty" : ""}`}>
@@ -1794,13 +1754,13 @@ export default function App() {
             onDeleteGroup={handleDeleteGroup}
             onLoadGroupAudit={handleLoadGroupAudit}
             onLogout={handleLogout}
-            onRequestNotifications={registerPushToken}
+            onRequestNotifications={doRegisterPush}
             onUpdateDisplayName={handleUpdateDisplayName}
             onFeedback={setToastMessage}
             busy={busy}
             pushPreferences={pushPrefs}
             onUpdatePushPreferences={handleUpdatePushPreferences}
-            isPushGranted={isPushGranted()}
+            isPushGranted={pushGranted}
           />
         )}
 
