@@ -7,9 +7,9 @@
   --blue-700: #052a75;
   --blue-600: #0070f3;
   --blue-500: #0088ff;
-  --accent: #e8ff3d;
-  --accent-soft: rgba(232, 255, 61, 0.12);
-  --accent-light: rgba(232, 255, 61, 0.3);
+  --accent: #a8ff3d;
+  --accent-soft: rgba(168, 255, 61, 0.12);
+  --accent-light: rgba(168, 255, 61, 0.3);
   --text: #ffffff;
   --text-dim: #94b2e6;
   --success: #34d399;
@@ -43,7 +43,7 @@ body,
 
 body {
   color: var(--text);
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: 'Manrope', -apple-system, sans-serif;
   background-color: var(--blue-950);
   background-image:
     radial-gradient(at 0% 0%, hsla(222, 47%, 11%, 1) 0, transparent 50%),
@@ -137,7 +137,7 @@ body::before {
 }
 
 .splash-subtitle {
-  font-family: "Inter", sans-serif;
+  font-family: "Manrope", -apple-system, sans-serif;
   font-size: 0.85rem;
   letter-spacing: 0.5em;
   text-transform: uppercase;
@@ -629,8 +629,8 @@ body::before {
 
 .card-meta-chip-group {
   color: var(--accent);
-  border-color: rgba(232, 255, 61, 0.4);
-  background: rgba(232, 255, 61, 0.09);
+  border-color: rgba(168, 255, 61, 0.4);
+  background: rgba(168, 255, 61, 0.09);
 }
 
 .card-meta-chip-venue {
@@ -1267,8 +1267,8 @@ body::before {
 
 .upcoming-day-indicator.is-soon {
   color: var(--accent);
-  background: rgba(232, 255, 61, 0.18);
-  border: 1px solid rgba(232, 255, 61, 0.54);
+  background: rgba(168, 255, 61, 0.18);
+  border: 1px solid rgba(168, 255, 61, 0.54);
   border-radius: 999px;
   padding: 0.13rem 0.44rem;
   max-width: 100%;
@@ -1686,9 +1686,9 @@ button.neutral {
 }
 
 .btn-elite-accent {
-  background: linear-gradient(145deg, rgba(232, 255, 61, 0.2), rgba(232, 255, 61, 0.1));
+  background: linear-gradient(145deg, rgba(168, 255, 61, 0.2), rgba(168, 255, 61, 0.1));
   color: var(--accent);
-  border-color: rgba(232, 255, 61, 0.45);
+  border-color: rgba(168, 255, 61, 0.45);
 }
 
 .btn-elite-outline {
@@ -1933,8 +1933,8 @@ button.neutral {
 
 .hero-meta-chip-accent {
   color: var(--accent);
-  border-color: rgba(232, 255, 61, 0.42);
-  background: rgba(232, 255, 61, 0.08);
+  border-color: rgba(168, 255, 61, 0.42);
+  background: rgba(168, 255, 61, 0.08);
 }
 
 .hero-location-row {
@@ -1978,7 +1978,7 @@ button.neutral {
   border-radius: 999px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  border: 1px solid rgba(232, 255, 61, 0.2);
+  border: 1px solid rgba(168, 255, 61, 0.2);
 }
 
 .hero-header h1 {
@@ -3179,9 +3179,9 @@ button.neutral {
 }
 
 .role-tag-owner {
-  background: linear-gradient(145deg, rgba(232, 255, 61, 0.28), rgba(232, 255, 61, 0.14));
-  border-color: rgba(232, 255, 61, 0.6);
-  color: #e8ff3d;
+  background: linear-gradient(145deg, rgba(168, 255, 61, 0.28), rgba(168, 255, 61, 0.14));
+  border-color: rgba(168, 255, 61, 0.6);
+  color: #a8ff3d;
 }
 
 .role-tag-admin {
@@ -3309,9 +3309,9 @@ button.neutral {
 }
 
 .member-role-chip.owner {
-  background: linear-gradient(145deg, rgba(232, 255, 61, 0.28), rgba(232, 255, 61, 0.14));
-  border-color: rgba(232, 255, 61, 0.62);
-  color: #e8ff3d;
+  background: linear-gradient(145deg, rgba(168, 255, 61, 0.28), rgba(168, 255, 61, 0.14));
+  border-color: rgba(168, 255, 61, 0.62);
+  color: #a8ff3d;
 }
 
 .member-role-chip.admin {
