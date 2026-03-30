@@ -1,15 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  browserLocalPersistence,
-  getRedirectResult,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  setPersistence,
-  signInWithPopup,
-  signInWithRedirect,
-  signOut,
-  updateProfile
-} from "firebase/auth";
+import { updateProfile } from "firebase/auth";
 
 // Components
 import ReservationCard from "./components/ReservationCard";
@@ -54,6 +44,7 @@ import {
 } from "./lib/dataStore";
 import NotificationCenter from "./components/NotificationCenter";
 import { useNotifications } from "./hooks/useNotifications";
+import { useFirebaseAuth } from "./hooks/useFirebaseAuth";
 import type { AttendanceStatus, Court, Group, Reservation, Venue } from "./lib/types";
 import {
   getUserAttendance,
@@ -65,10 +56,7 @@ import {
 } from "./lib/utils";
 import { auth } from "./lib/firebase";
 
-const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: "select_account" });
 const ONE_TIME_CLEANUP_KEY = "golf-padel-cleanup-v1";
-const LOGIN_PENDING_KEY = "golf-padel-google-login-pending";
 
 const getDayStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 const toLocalDayKey = (date: Date): string =>
@@ -132,7 +120,8 @@ export default function App() {
   const [busy, setBusy] = useState(false);
 
   // Zustand Stores
-  const { firebaseUser, currentUser, authLoading, authError, setFirebaseUser, setAuthLoading, setAuthError } = useAuthStore();
+  const { currentUser, authLoading, authError, setFirebaseUser } = useAuthStore();
+  const { firebaseUser, loginGoogle, logout: handleLogout } = useFirebaseAuth();
   const { reservations, loading: reservationsLoading, setReservations } = useReservationStore();
   const {
     activeTab, expandedReservationId, showCreateForm, isOnline,
@@ -174,7 +163,6 @@ export default function App() {
     inAppNotifications, markAllRead, handleTapNotification,
     isPushGranted: pushGranted,
     registerPushToken: doRegisterPush,
-    unregisterPushTokens: doUnregisterPush,
   } = useNotifications(
     !!firebaseUser,
     reservations,
@@ -212,49 +200,7 @@ export default function App() {
     };
   }, []);
 
-  // 2. Firebase Auth Flow
-  useEffect(() => {
-    const firebaseAuth = auth;
-    if (!firebaseAuth) {
-      setAuthLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    const setupRedirect = async () => {
-      try {
-        await setPersistence(firebaseAuth, browserLocalPersistence);
-        const result = await getRedirectResult(firebaseAuth);
-        if (result?.user && !cancelled) {
-          setFirebaseUser(result.user);
-          sessionStorage.removeItem(LOGIN_PENDING_KEY);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setAuthError((error as Error).message);
-          sessionStorage.removeItem(LOGIN_PENDING_KEY);
-        }
-      }
-    };
-
-    setupRedirect();
-
-    const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
-      if (cancelled) return;
-      setFirebaseUser(user);
-      setAuthLoading(false);
-      if (user) {
-        setAuthError(null);
-        sessionStorage.removeItem(LOGIN_PENDING_KEY);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
-  }, []);
+  // 2. Firebase Auth Flow — handled by useFirebaseAuth hook
 
   // 3. Subscriptions
   useEffect(() => {
@@ -964,41 +910,7 @@ export default function App() {
     };
   }, [currentUser, historyExpanded, historyApiLoaded, historyLoading]);
 
-  // 6. Actions
-  const loginGoogle = async () => {
-    if (!auth) return;
-    try {
-      setBusy(true);
-      setAuthError(null);
-      await setPersistence(auth, browserLocalPersistence);
-      sessionStorage.setItem(LOGIN_PENDING_KEY, "1");
-      await signInWithPopup(auth, googleProvider);
-      sessionStorage.removeItem(LOGIN_PENDING_KEY);
-    } catch (err: any) {
-      if (["auth/popup-blocked", "auth/cancelled-popup-request", "auth/popup-closed-by-user"].includes(err.code)) {
-        await signInWithRedirect(auth!, googleProvider);
-      } else {
-        setAuthError(err.message);
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    if (!auth) return;
-    try {
-      setBusy(true);
-      await doUnregisterPush();
-      await signOut(auth);
-      setExpandedReservationId(null);
-      triggerHaptic("medium");
-    } catch (error) {
-      notifyError(error, "No se pudo cerrar sesión.");
-    } finally {
-      setBusy(false);
-    }
-  };
+  // 6. Actions (loginGoogle and handleLogout from useFirebaseAuth hook)
 
   const handleCreate = async (payload: any) => {
     if (!currentUser) return;
