@@ -188,7 +188,7 @@ body::before {
   margin: 0 auto 1.5rem;
   padding: 1rem;
   background: var(--panel);
-  border-radius: 40px;
+  border-radius: 24px;
   border: 1px solid var(--stroke);
   box-shadow: var(--shadow-strong);
 }
@@ -268,7 +268,7 @@ body::before {
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border-top: 1px solid rgba(179, 207, 255, 0.1);
-  border-radius: 36px 36px 0 0;
+  border-radius: 24px 24px 0 0;
   display: flex;
   align-items: center;
   z-index: 1000;
@@ -281,7 +281,7 @@ body::before {
     right: 16px;
     transform: none;
     bottom: calc(16px + env(safe-area-inset-bottom));
-    border-radius: 28px;
+    border-radius: 24px;
     padding: 0.6rem 1rem;
     border: 1px solid rgba(179, 207, 255, 0.15);
     background: rgba(8, 15, 30, 0.85);
@@ -358,7 +358,7 @@ body::before {
 .profile-avatar-large {
   width: 80px;
   height: 80px;
-  border-radius: 20px;
+  border-radius: 18px;
   overflow: hidden;
   border: 2px solid var(--blue-500);
   background: var(--blue-900);
@@ -414,7 +414,7 @@ body::before {
 .court-header {
   background: var(--panel);
   border: 1px solid var(--stroke);
-  border-radius: 20px;
+  border-radius: 18px;
   padding: 0.68rem 0.88rem;
 }
 
@@ -445,7 +445,7 @@ body::before {
 .brand-icon {
   width: 42px;
   height: 42px;
-  border-radius: 10px;
+  border-radius: 12px;
   object-fit: cover;
   flex: 0 0 42px;
 }
@@ -454,7 +454,7 @@ body::before {
   font-size: 0.72rem;
   font-weight: 700;
   padding: 0.35rem 0.65rem;
-  border-radius: 999px;
+  border-radius: 9999px;
   border: 1px solid var(--glass-border);
   background: var(--glass-panel);
   backdrop-filter: blur(12px);
@@ -490,7 +490,7 @@ body::before {
   position: relative;
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  border-radius: 20px;
+  border-radius: 18px;
   padding: 0;
   text-align: left;
   overflow: hidden;
@@ -591,7 +591,7 @@ body::before {
   background: rgba(255, 255, 255, 0.07);
   color: var(--text-dim);
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: 9999px;
   font-size: 0.72rem;
   font-weight: 800;
   white-space: nowrap;
@@ -611,7 +611,7 @@ body::before {
   display: inline-flex;
   align-items: center;
   gap: 0.26rem;
-  border-radius: 999px;
+  border-radius: 9999px;
   border: 1px solid rgba(179, 207, 255, 0.28);
   background: rgba(255, 255, 255, 0.04);
   color: #d8e8ff;
@@ -695,7 +695,7 @@ body::before {
 .mini-avatar {
   width: 32px;
   height: 32px;
-  border-radius: 11px;
+  border-radius: 12px;
   background: var(--blue-700);
   border: 2px solid var(--blue-950);
   display: flex;
@@ -743,7 +743,7 @@ body::before {
   font-size: 0.72rem;
   font-weight: 800;
   padding: 5px 12px;
-  border-radius: 10px;
+  border-radius: 12px;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
@@ -799,7 +799,7 @@ body::before {
   font-size: 0.7rem;
   font-weight: 800;
   padding: 5px 12px;
-  border-radius: 10px;
+  border-radius: 12px;
   text-transform: uppercase;
 }
 
@@ -854,7 +854,7 @@ body::before {
   width: 24px;
   height: 24px;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -870,7 +870,7 @@ body::before {
 .panel {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  border-radius: 28px;
+  border-radius: 24px;
   padding: 1.15rem;
   display: grid;
   gap: 0.95rem;
@@ -948,7 +948,7 @@ body::before {
 
 .kpi-card {
   border: 1px solid rgba(179, 207, 255, 0.28);
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.05);
   min-height: 84px;
   padding: 0.75rem;
@@ -1027,7 +1027,7 @@ body::before {
 
 .history-select {
   width: 100%;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid rgba(179, 207, 255, 0.35);
   background: rgba(255, 255, 255, 0.07);
   color: #e8f1ff;
@@ -1095,7 +1095,7 @@ body::before {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(179, 207, 255, 0.2);
-  border-radius: 999px;
+  border-radius: 9999px;
   padding: 10px 16px;
   color: #fff;
   font-size: 0.85rem;
@@ -1106,7 +1106,7 @@ body::before {
 .toast-close {
   background: rgba(255, 255, 255, 0.1);
   border: none;
-  border-radius: 999px;
+  border-radius: 9999px;
   padding: 4px 10px;
   font-size: 0.75rem;
   color: #fff;
@@ -1158,7 +1158,7 @@ body::before {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  border-radius: 9999px;
   border: 1px solid rgba(179, 207, 255, 0.35);
   background: rgba(255, 255, 255, 0.08);
   color: #e8f2ff;
@@ -1206,7 +1206,7 @@ body::before {
   padding: 0.9rem 0.4rem;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 14px;
+  border-radius: 12px;
   box-shadow: none;
   text-align: left;
 }
@@ -1214,7 +1214,7 @@ body::before {
 .upcoming-row:hover {
   transform: none;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 10px;
+  border-radius: 12px;
 }
 
 .upcoming-row.active {
@@ -1269,7 +1269,7 @@ body::before {
   color: var(--accent);
   background: rgba(168, 255, 61, 0.18);
   border: 1px solid rgba(168, 255, 61, 0.54);
-  border-radius: 999px;
+  border-radius: 9999px;
   padding: 0.13rem 0.44rem;
   max-width: 100%;
   box-sizing: border-box;
@@ -1307,7 +1307,7 @@ body::before {
   overflow: hidden;
   text-overflow: ellipsis;
   border: 1px solid rgba(179, 207, 255, 0.3);
-  border-radius: 999px;
+  border-radius: 9999px;
   padding: 0.14rem 0.42rem;
   white-space: nowrap;
   width: max-content;
@@ -1318,7 +1318,7 @@ body::before {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  border-radius: 999px;
+  border-radius: 9999px;
   padding: 0.24rem 0.62rem;
   font-size: 0.79rem;
   font-weight: 800;
@@ -1377,7 +1377,7 @@ body::before {
   font-size: 0.67rem;
   line-height: 1.1;
   text-transform: uppercase;
-  border-radius: 999px;
+  border-radius: 9999px;
   padding: 0.26rem 0.5rem;
 }
 
@@ -1398,7 +1398,7 @@ body::before {
   min-width: 2.1rem;
   min-height: 2rem;
   padding: 0;
-  border-radius: 999px;
+  border-radius: 9999px;
   font-size: 0.9rem;
   font-weight: 900;
 }
@@ -1491,7 +1491,7 @@ body::before {
 .upcoming-week-status-dot {
   width: 0.48rem;
   height: 0.48rem;
-  border-radius: 999px;
+  border-radius: 9999px;
   border: 1px solid rgba(255, 255, 255, 0.3);
   flex-shrink: 0;
 }
@@ -1531,7 +1531,7 @@ body::before {
 
 input,
 select {
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid var(--stroke);
   background: rgba(255, 255, 255, 0.05);
   color: var(--text);
@@ -1605,7 +1605,7 @@ button.neutral {
   width: 100%;
   max-height: 290px;
   object-fit: cover;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid rgba(169, 200, 255, 0.3);
 }
 
@@ -1634,7 +1634,7 @@ button.neutral {
   border: 1px solid var(--glass-border);
   color: #dbe9ff;
   padding: 0.45rem 0.8rem;
-  border-radius: 999px;
+  border-radius: 9999px;
   font-size: 0.76rem;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -1846,7 +1846,7 @@ button.neutral {
 
 .btn-logout {
   padding: 1rem;
-  border-radius: 15px;
+  border-radius: 12px;
   background: var(--danger);
   color: #fff;
 }
@@ -1915,7 +1915,7 @@ button.neutral {
   align-items: center;
   gap: 0.28rem;
   padding: 0.28rem 0.64rem;
-  border-radius: 999px;
+  border-radius: 9999px;
   border: 1px solid rgba(179, 207, 255, 0.26);
   background: rgba(255, 255, 255, 0.04);
   color: #d6e8ff;
@@ -1958,7 +1958,7 @@ button.neutral {
   width: 2rem;
   height: 2rem;
   min-width: 2rem;
-  border-radius: 999px;
+  border-radius: 9999px;
   border: 1px solid rgba(179, 207, 255, 0.35);
   background: rgba(255, 255, 255, 0.06);
   color: #d8eaff;
@@ -1975,7 +1975,7 @@ button.neutral {
   font-size: 0.62rem;
   font-weight: 700;
   padding: 0.18rem 0.48rem;
-  border-radius: 999px;
+  border-radius: 9999px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   border: 1px solid rgba(168, 255, 61, 0.2);
@@ -2000,7 +2000,7 @@ button.neutral {
   margin: 0;
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
+  border-radius: 9999px;
   padding: 0.26rem 0.66rem;
   font-size: 0.7rem;
   font-weight: 800;
@@ -2023,7 +2023,7 @@ button.neutral {
 .hero-stat-card {
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid var(--glass-border);
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 0.72rem 0.78rem;
   display: flex;
   align-items: center;
@@ -2058,7 +2058,7 @@ button.neutral {
 
 .attendance-section-elite {
   background: rgba(255, 255, 255, 0.028);
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 0.9rem;
   border: 1px solid var(--glass-border);
 }
@@ -2081,7 +2081,7 @@ button.neutral {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid transparent;
   padding: 0.46rem 0.25rem;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 0.74rem;
   font-weight: 700;
   color: var(--text-dim);
@@ -2111,7 +2111,7 @@ button.neutral {
   display: grid;
   gap: 0.72rem;
   padding: 0.72rem;
-  border-radius: 14px;
+  border-radius: 12px;
 }
 
 .attendance-summary-grid {
@@ -2203,7 +2203,7 @@ button.neutral {
   gap: 10px;
   background: rgba(255, 255, 255, 0.03);
   padding: 0.44rem 0.62rem;
-  border-radius: 10px;
+  border-radius: 12px;
 }
 
 .player-row-elite .player-name {
@@ -2215,7 +2215,7 @@ button.neutral {
   width: 32px;
   /* Aumentado */
   height: 32px;
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--blue-800);
   display: flex;
   align-items: center;
@@ -2231,7 +2231,7 @@ button.neutral {
   background: var(--accent-soft);
   color: var(--accent);
   padding: 2px 7px;
-  border-radius: 6px;
+  border-radius: 12px;
   font-weight: 750;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -2256,7 +2256,7 @@ button.neutral {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 0.54rem 0.7rem;
   font-size: 0.78rem;
   font-weight: 700;
@@ -2276,7 +2276,7 @@ button.neutral {
 
 .action-menu-elite {
   border: 1px solid var(--glass-border);
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.03);
 }
@@ -2305,7 +2305,7 @@ button.neutral {
   margin-top: 0.22rem;
   opacity: 0.85;
   border: 1px solid rgba(248, 113, 113, 0.42);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 0.5rem 0.72rem;
 }
 
@@ -2318,7 +2318,7 @@ button.neutral {
   background: rgba(5, 18, 45, 0.92);
   color: #f3f8ff;
   border: 1px solid rgba(179, 207, 255, 0.38);
-  border-radius: 999px;
+  border-radius: 9999px;
   padding: 0.52rem 0.86rem;
   font-size: 0.82rem;
   font-weight: 700;
@@ -2358,7 +2358,7 @@ button.neutral {
   .sheet.sheet-detail .player-avatar-mini {
     width: 28px;
     height: 28px;
-    border-radius: 9px;
+    border-radius: 12px;
     font-size: 0.76rem;
   }
 
@@ -2376,7 +2376,7 @@ button.neutral {
   }
 
   .panel {
-    border-radius: 22px;
+    border-radius: 24px;
     padding: 1rem 0.92rem;
   }
 
@@ -2395,7 +2395,7 @@ button.neutral {
   }
 
   .reservation-card {
-    border-radius: 16px;
+    border-radius: 18px;
     margin-bottom: 0.58rem;
   }
 
@@ -2439,7 +2439,7 @@ button.neutral {
   .mini-avatar {
     width: 28px;
     height: 28px;
-    border-radius: 9px;
+    border-radius: 12px;
     margin-left: -7px;
     font-size: 0.74rem;
   }
@@ -2565,7 +2565,7 @@ button.neutral {
     max-width: 430px;
     text-align: center;
     font-size: 0.78rem;
-    border-radius: 14px;
+    border-radius: 12px;
     bottom: calc(82px + env(safe-area-inset-bottom));
   }
 }
@@ -2594,7 +2594,7 @@ button.neutral {
   gap: 1rem;
   background: rgba(255, 255, 255, 0.05);
   padding: 1.5rem;
-  border-radius: 20px;
+  border-radius: 18px;
   border: 1px solid var(--glass-border);
 }
 
@@ -2652,7 +2652,7 @@ button.neutral {
   text-align: left;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(179, 207, 255, 0.26);
-  border-radius: 10px;
+  border-radius: 12px;
   box-shadow: none;
   padding: 0.5rem 0.62rem;
   display: grid;
@@ -2703,7 +2703,7 @@ button.neutral {
   border: 1px solid var(--glass-border);
   color: var(--text);
   padding: 12px;
-  border-radius: 14px;
+  border-radius: 12px;
   font-weight: 700;
   font-size: 0.85rem;
   transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
@@ -2730,7 +2730,7 @@ button.neutral {
   border: 1px solid var(--glass-border) !important;
   color: white !important;
   padding: 14px !important;
-  border-radius: 14px !important;
+  border-radius: 12px !important;
   font-family: inherit !important;
   font-size: 0.95rem !important;
   width: 100%;
@@ -2765,7 +2765,7 @@ button.neutral {
   margin-top: 8px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--glass-border);
-  border-radius: 16px;
+  border-radius: 18px;
   padding: 8px;
 }
 
@@ -2808,7 +2808,7 @@ button.neutral {
   font-size: 0.65rem;
   font-weight: 800;
   padding: 2px 8px;
-  border-radius: 6px;
+  border-radius: 12px;
   pointer-events: none;
   text-transform: uppercase;
 }
@@ -2843,7 +2843,7 @@ button.neutral {
 .avatar-initials {
   width: 100%;
   height: 100%;
-  border-radius: 32px;
+  border-radius: 24px;
   object-fit: cover;
   border: 3px solid var(--blue-500);
   box-shadow: 0 0 30px rgba(59, 130, 246, 0.3);
@@ -2886,7 +2886,7 @@ button.neutral {
   background: var(--accent-soft);
   color: var(--accent);
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: 9999px;
   font-size: 0.62rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -2917,7 +2917,7 @@ button.neutral {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 12px;
   font-size: 1rem;
   flex-shrink: 0;
 }
@@ -2932,7 +2932,7 @@ button.neutral {
 .section-icon-groups {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: 12px;
 }
 
 .section-icon-groups svg {
@@ -3136,7 +3136,7 @@ button.neutral {
 
 .group-card {
   border: 1px solid rgba(179, 207, 255, 0.2);
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 0.72rem;
   background: rgba(255, 255, 255, 0.03);
   display: grid;
@@ -3169,7 +3169,7 @@ button.neutral {
 .role-tag {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
+  border-radius: 9999px;
   padding: 0.26rem 0.56rem;
   font-size: 0.7rem;
   font-weight: 800;
@@ -3299,7 +3299,7 @@ button.neutral {
 .member-role-chip {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
+  border-radius: 9999px;
   padding: 0.2rem 0.5rem;
   font-size: 0.72rem;
   font-weight: 800;
@@ -3375,7 +3375,7 @@ button.neutral {
 }
 
 .tag {
-  border-radius: 999px;
+  border-radius: 9999px;
   padding: 0.2rem 0.56rem;
   font-size: 0.76rem;
   font-weight: 700;
@@ -3472,7 +3472,7 @@ button.neutral {
   text-align: center;
   color: var(--text-dim);
   border: 1px dashed rgba(172, 201, 255, 0.32);
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 1rem 0.8rem;
   background: rgba(5, 29, 84, 0.35);
 }
@@ -3587,7 +3587,7 @@ button.neutral {
 .sheet-handle {
   width: 42px;
   height: 5px;
-  border-radius: 999px;
+  border-radius: 9999px;
   background: rgba(211, 227, 255, 0.48);
   margin: 0.25rem auto 0.7rem;
 }
@@ -3651,7 +3651,7 @@ button.neutral {
 .danger-zone {
   border: 1px solid rgba(255, 126, 139, 0.45);
   background: linear-gradient(180deg, rgba(255, 98, 115, 0.11), rgba(255, 98, 115, 0.04));
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 0.7rem;
   display: grid;
   gap: 0.55rem;
@@ -3788,7 +3788,7 @@ button.neutral {
 
 .player-collapse summary strong {
   font-size: 0.8rem;
-  border-radius: 999px;
+  border-radius: 9999px;
   padding: 0.12rem 0.42rem;
   background: rgba(6, 35, 98, 0.64);
   border: 1px solid rgba(146, 181, 247, 0.35);
@@ -3801,7 +3801,7 @@ button.neutral {
   gap: 0.44rem;
   border: 1px solid rgba(160, 191, 252, 0.24);
   background: rgba(5, 27, 81, 0.55);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 0.35rem 0.5rem;
 }
 
@@ -3853,7 +3853,7 @@ ul {
 }
 
 .account-card {
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid rgba(165, 198, 255, 0.3);
   background: rgba(4, 24, 73, 0.72);
   padding: 0.55rem;
@@ -4125,7 +4125,7 @@ ul {
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
-  border-radius: 9px;
+  border-radius: 12px;
   background: var(--accent-red, #ef4444);
   color: white;
   font-size: 11px;
@@ -4140,7 +4140,7 @@ ul {
   font-weight: 500;
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: 12px;
 }
 
 .notification-view-all:active {
@@ -4165,7 +4165,7 @@ ul {
   align-items: flex-start;
   gap: 10px;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: 12px;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -4259,7 +4259,7 @@ ul {
   height: 22px;
   appearance: none;
   background: rgba(255, 255, 255, 0.15);
-  border-radius: 11px;
+  border-radius: 12px;
   position: relative;
   cursor: pointer;
   transition: background 0.2s;
