@@ -100,3 +100,4 @@ export function shouldShowIOSInstallBanner(): boolean {
 
   return isIOS && isSafari && !isStandalone;
 }
+// Build trigger 1774911007
