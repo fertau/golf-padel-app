@@ -162,7 +162,7 @@ const buildAuthHeader = async () => {
 
 const fetchGroupsCloudFallback = async (): Promise<Group[]> => {
   const headers = await buildAuthHeader();
-  const response = await fetch("/api/groups/list", {
+  const response = await fetch("/api/groups?action=list", {
     method: "GET",
     headers
   });
@@ -182,7 +182,7 @@ const dispatchGroupsRefresh = () => {
 
 const fetchReservationsCloudFallback = async (): Promise<Reservation[]> => {
   const headers = await buildAuthHeader();
-  const response = await fetch("/api/reservations/list", {
+  const response = await fetch("/api/reservations", {
     method: "GET",
     headers
   });
@@ -236,7 +236,7 @@ export const listMyReservationHistory = async (limit = 200): Promise<Reservation
     mode: "history",
     limit: String(Math.min(Math.max(limit, 1), 500))
   });
-  const response = await fetch(`/api/reservations/list?${params.toString()}`, {
+  const response = await fetch(`/api/reservations?${params.toString()}`, {
     method: "GET",
     headers
   });
@@ -267,7 +267,7 @@ export const listGroupAuditEvents = async (groupId: string, limit = 30): Promise
     groupId: normalizedGroupId,
     limit: String(Math.min(Math.max(limit, 1), 100))
   });
-  const response = await fetch(`/api/groups/audit?${params.toString()}`, {
+  const response = await fetch(`/api/groups?action=audit&${params.toString()}`, {
     method: "GET",
     headers
   });
@@ -280,7 +280,7 @@ export const listGroupAuditEvents = async (groupId: string, limit = 30): Promise
 
 const removeGroupMemberCloudFallback = async (groupId: string, targetAuthUid: string) => {
   const headers = await buildAuthHeader();
-  const response = await fetch("/api/groups/remove-member", {
+  const response = await fetch("/api/groups?action=remove-member", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -300,7 +300,7 @@ const setGroupMemberAdminCloudFallback = async (
   makeAdmin: boolean
 ) => {
   const headers = await buildAuthHeader();
-  const response = await fetch("/api/groups/set-admin", {
+  const response = await fetch("/api/groups?action=set-admin", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -320,13 +320,13 @@ const reassignReservationCreatorCloudFallback = async (
   targetName: string
 ) => {
   const headers = await buildAuthHeader();
-  const response = await fetch("/api/reservations/reassign-owner", {
+  const response = await fetch("/api/reservations", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...headers
     },
-    body: JSON.stringify({ reservationId, targetAuthUid, targetName })
+    body: JSON.stringify({ action: "reassign-owner", reservationId, targetAuthUid, targetName })
   });
   const payload = (await response.json().catch(() => null)) as { error?: string } | null;
   if (!response.ok) {
@@ -336,7 +336,7 @@ const reassignReservationCreatorCloudFallback = async (
 
 const renameGroupCloudFallback = async (groupId: string, name: string) => {
   const headers = await buildAuthHeader();
-  const response = await fetch("/api/groups/rename", {
+  const response = await fetch("/api/groups?action=rename", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -352,7 +352,7 @@ const renameGroupCloudFallback = async (groupId: string, name: string) => {
 
 const createReservationCloudFallback = async (input: ReservationInput, currentUser: User): Promise<{ id: string } | undefined> => {
   const headers = await buildAuthHeader();
-  const response = await fetch("/api/reservations/list", {
+  const response = await fetch("/api/reservations", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -378,7 +378,7 @@ const setAttendanceStatusCloudFallback = async (
   status: AttendanceStatus
 ) => {
   const headers = await buildAuthHeader();
-  const response = await fetch("/api/reservations/list", {
+  const response = await fetch("/api/reservations", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -399,7 +399,7 @@ const setAttendanceStatusCloudFallback = async (
 
 const cancelReservationCloudFallback = async (reservationId: string) => {
   const headers = await buildAuthHeader();
-  const response = await fetch("/api/reservations/list", {
+  const response = await fetch("/api/reservations", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -432,7 +432,7 @@ const updateReservationDetailsCloudFallback = async (
   }
 ) => {
   const headers = await buildAuthHeader();
-  const response = await fetch("/api/reservations/list", {
+  const response = await fetch("/api/reservations", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -1770,7 +1770,7 @@ export const createGroupInviteLink = async (
     throw new Error("Necesitás iniciar sesión.");
   }
   const headers = await buildAuthHeader();
-  const response = await fetch("/api/invites/create", {
+  const response = await fetch("/api/invites?action=create", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -1807,7 +1807,7 @@ export const createReservationInviteLink = async (
     throw new Error("Necesitás iniciar sesión.");
   }
   const headers = await buildAuthHeader();
-  const response = await fetch("/api/invites/create", {
+  const response = await fetch("/api/invites?action=create", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -1973,7 +1973,7 @@ export const acceptInviteToken = async (
 
   let apiErrorMessage: string | null = null;
   try {
-    const response = await fetch("/api/invites/accept", {
+    const response = await fetch("/api/invites?action=accept", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

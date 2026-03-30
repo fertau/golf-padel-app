@@ -52,7 +52,7 @@ export function useNotifications(
         const firebaseAuth = auth;
         if (!firebaseAuth?.currentUser) return;
         const idToken = await firebaseAuth.currentUser.getIdToken();
-        const res = await fetch("/api/push/preferences", {
+        const res = await fetch("/api/push?action=preferences", {
           headers: { Authorization: `Bearer ${idToken}` },
         });
         if (res.ok) {
@@ -143,7 +143,7 @@ export function useNotifications(
       const firebaseAuth = auth;
       if (!firebaseAuth?.currentUser) return;
       const idToken = await firebaseAuth.currentUser.getIdToken();
-      fetch("/api/push/preferences", {
+      fetch("/api/push?action=preferences", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

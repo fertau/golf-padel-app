@@ -27,7 +27,7 @@ export async function triggerPushNotification(payload: TriggerPayload): Promise<
     if (!firebaseAuth?.currentUser) return;
 
     const idToken = await firebaseAuth.currentUser.getIdToken();
-    fetch("/api/push/trigger", {
+    fetch("/api/push?action=trigger", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -70,7 +70,7 @@ export async function checkAndTrigger2hReminders(
         if (!firebaseAuth?.currentUser) return;
 
         const idToken = await firebaseAuth.currentUser.getIdToken();
-        await fetch("/api/push/reminder-2h", {
+        await fetch("/api/push?action=reminder-2h", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

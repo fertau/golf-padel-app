@@ -54,7 +54,7 @@ async function sendTokenToServer(token: string) {
     if (!firebaseAuth?.currentUser) return;
 
     const idToken = await firebaseAuth.currentUser.getIdToken();
-    await fetch("/api/push/register", {
+    await fetch("/api/push?action=register", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -81,7 +81,7 @@ export async function unregisterPushTokens() {
     if (!firebaseAuth?.currentUser) return;
 
     const idToken = await firebaseAuth.currentUser.getIdToken();
-    await fetch("/api/push/register", {
+    await fetch("/api/push?action=register", {
       method: "DELETE",
       headers: { Authorization: `Bearer ${idToken}` },
     });

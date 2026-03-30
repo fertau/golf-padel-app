@@ -16,7 +16,7 @@ const parseError = async (response: Response): Promise<string> => {
 };
 
 export const searchAccountByName = async (name: string): Promise<AccountProfile | null> => {
-  const response = await fetch(`/api/auth/search?name=${encodeURIComponent(name)}`);
+  const response = await fetch(`/api/auth?action=search&name=${encodeURIComponent(name)}`);
   if (response.status === 404) {
     return null;
   }
@@ -31,7 +31,7 @@ export const loginWithPin = async (
   playerId: string,
   pin: string
 ): Promise<{ customToken: string; profile: AccountProfile }> => {
-  const response = await fetch("/api/auth/login", {
+  const response = await fetch("/api/auth?action=login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ playerId, pin })
@@ -45,7 +45,7 @@ export const loginWithPin = async (
 };
 
 export const registerAccount = async (name: string, pin: string): Promise<RegisterResponse> => {
-  const response = await fetch("/api/auth/register", {
+  const response = await fetch("/api/auth?action=register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, pin })
@@ -81,7 +81,7 @@ export const fetchAccountsByIds = async (ids: string[]): Promise<AccountProfile[
     return [];
   }
 
-  const response = await fetch("/api/auth/search", {
+  const response = await fetch("/api/auth?action=search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ids })
