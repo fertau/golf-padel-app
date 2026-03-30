@@ -52,7 +52,7 @@ import {
   subscribeVenues,
   updateReservationDetails
 } from "./lib/dataStore";
-import { registerPushToken } from "./lib/push";
+import { registerPushToken, unregisterPushTokens } from "./lib/push";
 import type { AttendanceStatus, Court, Group, Reservation, Venue } from "./lib/types";
 import {
   getUserAttendance,
@@ -973,6 +973,7 @@ export default function App() {
     if (!auth) return;
     try {
       setBusy(true);
+      await unregisterPushTokens();
       await signOut(auth);
       setExpandedReservationId(null);
       triggerHaptic("medium");
