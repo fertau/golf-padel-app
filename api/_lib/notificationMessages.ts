@@ -5,6 +5,7 @@
 
 export type NotificationEventType =
   | "match_created"
+  | "match_updated"
   | "attendance_change"
   | "need_players"
   | "match_full"
@@ -56,6 +57,11 @@ export function buildNotification(
       return {
         title: "¡Partido completo!",
         body: `Ya están los 4 para ${info.day} ${info.time}. ¡Nos vemos!`,
+      };
+    case "match_updated":
+      return {
+        title: "Partido modificado",
+        body: `Se actualizó el partido del ${info.day} ${info.time}${courtStr}`,
       };
     case "match_cancelled":
       return {

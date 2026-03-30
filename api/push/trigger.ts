@@ -151,6 +151,13 @@ export default async function handler(
         break;
       }
 
+      case "match_updated": {
+        // Notify all confirmed + maybe players except the editor
+        recipients = [...confirmedUids, ...maybeUids].filter(uid => uid !== actorUid);
+        notification = buildNotification("match_updated", matchInfo);
+        break;
+      }
+
       case "match_cancelled": {
         recipients = [...confirmedUids, ...maybeUids].filter(uid => uid !== actorUid);
         notification = buildNotification("match_cancelled", matchInfo);

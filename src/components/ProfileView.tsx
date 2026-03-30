@@ -638,6 +638,7 @@ export default function ProfileView({
                 <>
                   {[
                     { key: "match_created", label: "Nuevo partido" },
+                    { key: "match_updated", label: "Partido modificado" },
                     { key: "attendance_change", label: "Cambio de asistencia" },
                     { key: "need_players", label: "Faltan jugadores" },
                     { key: "match_full", label: "Partido completo" },
