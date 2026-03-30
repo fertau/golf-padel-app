@@ -929,7 +929,7 @@ export default function App() {
         triggerPushNotification({
           eventType: "match_created",
           reservationId: created.id,
-          playerName: currentUser.displayName ?? currentUser.name ?? "Alguien",
+          playerName: currentUser.name ?? "Alguien",
         });
       }
     } catch (error) {
@@ -1124,7 +1124,7 @@ export default function App() {
       await setAttendanceStatus(reservationId, currentUser, status);
 
       // Fire-and-forget: notify about attendance change
-      const playerName = currentUser.displayName ?? currentUser.name ?? "Alguien";
+      const playerName = currentUser.name ?? "Alguien";
       const attendanceAction = status === "confirmed" ? "confirmed" : "cancelled";
       triggerPushNotification({
         eventType: "attendance_change",
