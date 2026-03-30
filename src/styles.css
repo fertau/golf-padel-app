@@ -2825,23 +2825,18 @@ button.neutral {
 }
 
 .profile-hero-elite {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-areas:
-    "avatar name"
-    "avatar badge";
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  column-gap: 0.7rem;
-  row-gap: 0.16rem;
-  padding: 0.18rem 0;
+  text-align: center;
+  gap: 0.5rem;
+  padding: 1rem 0;
 }
 
 .profile-avatar-wrapper {
-  grid-area: avatar;
   position: relative;
-  width: 68px;
-  height: 68px;
-  margin-bottom: 0;
+  width: 80px;
+  height: 80px;
 }
 
 .profile-avatar-wrapper img,
@@ -2877,17 +2872,14 @@ button.neutral {
 }
 
 .profile-hero-elite h2 {
-  grid-area: name;
   font-family: 'Sora', sans-serif;
-  font-size: 1.22rem;
+  font-size: 1.5rem;
   margin: 0;
   font-weight: 800;
   line-height: 1.1;
 }
 
 .profile-level-badge {
-  grid-area: badge;
-  justify-self: start;
   background: var(--accent-soft);
   color: var(--accent);
   padding: 3px 10px;
