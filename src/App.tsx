@@ -53,6 +53,7 @@ import {
   updateReservationDetails
 } from "./lib/dataStore";
 import { registerPushToken, unregisterPushTokens } from "./lib/push";
+import { triggerPushNotification } from "./lib/notifications";
 import type { AttendanceStatus, Court, Group, Reservation, Venue } from "./lib/types";
 import {
   getUserAttendance,

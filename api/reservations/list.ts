@@ -3,6 +3,8 @@ import { adminDb } from "../_lib/firebaseAdmin.js";
 import { requireAuthUid } from "../_lib/auth.js";
 import { parseBody, type VercelRequestLike, type VercelResponseLike } from "../_lib/http.js";
 import { recordGroupAuditEvent, resolveMemberName } from "../_lib/groupAudit.js";
+import { sendPushToUsers } from "../_lib/pushSend.js";
+import { buildNotification, buildMatchInfo } from "../_lib/notificationMessages.js";
 
 const parseQueryValue = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
@@ -243,6 +245,19 @@ const handleCreate = async (
         startDateTime: payload.startDateTime
       }
     }).catch(() => null);
+
+    // Push notification: match_created → group members except creator
+    const groupDoc = await adminDb.collection("groups").doc(auditGroupId).get().catch(() => null);
+    if (groupDoc?.exists) {
+      const members: string[] = groupDoc.data()?.memberAuthUids ?? [];
+      const recipients = members.filter(uid => uid !== authUid);
+      if (recipients.length > 0) {
+        const matchInfo = buildMatchInfo(payload, reservationId);
+        const notification = buildNotification("match_created", { ...matchInfo, playerName: actorName });
+        notification.data = { url: `/partidos/${reservationId}`, eventType: "match_created" };
+        sendPushToUsers(recipients, notification, "match_created").catch(() => null);
+      }
+    }
   }
 
   res.status(200).json({ ok: true, reservationId });
@@ -347,6 +362,60 @@ const handleAttendanceUpdate = async (
     );
   });
 
+  // Push notifications after attendance change (fire-and-forget)
+  const resDoc = await adminDb.collection("reservations").doc(reservationId).get().catch(() => null);
+  if (resDoc?.exists) {
+    const reservation = resDoc.data()!;
+    const matchInfo = buildMatchInfo(reservation, reservationId);
+    const creatorUid = reservation.createdByAuthUid as string | undefined;
+    const maxPlayers = reservation.rules?.maxPlayersAccepted ?? 4;
+
+    // Count confirmed players after this change
+    const signupsAfter: Array<{ authUid?: string; attendanceStatus?: string }> = reservation.signups ?? [];
+    const confirmedCount = signupsAfter.filter(s => s.attendanceStatus === "confirmed" || s.attendanceStatus === "accepted").length;
+
+    // attendance_change → notify creator (except self-change)
+    if (creatorUid && creatorUid !== authUid) {
+      const action = nextStatus === "confirmed" ? "confirmed" : "cancelled";
+      const notif = buildNotification("attendance_change", { ...matchInfo, playerName: actorName });
+      if (action === "cancelled") {
+        notif.body = `${actorName} se bajó de ${matchInfo.day}`;
+      }
+      notif.data = { url: `/partidos/${reservationId}`, eventType: "attendance_change" };
+      sendPushToUsers([creatorUid], notif, "attendance_change").catch(() => null);
+    }
+
+    // match_full → all confirmed when count reaches max
+    if (confirmedCount >= maxPlayers && !(reservation.notificationsSent?.match_full)) {
+      const confirmedUids = signupsAfter.filter(s => s.attendanceStatus === "confirmed" || s.attendanceStatus === "accepted").map(s => s.authUid).filter(Boolean) as string[];
+      const notif = buildNotification("match_full", matchInfo);
+      notif.data = { url: `/partidos/${reservationId}`, eventType: "match_full" };
+      sendPushToUsers(confirmedUids, notif, "match_full").catch(() => null);
+      adminDb.collection("reservations").doc(reservationId).update({ "notificationsSent.match_full": true }).catch(() => null);
+    }
+
+    // need_players → when count drops below max (only on cancel/maybe)
+    if (nextStatus !== "confirmed" && confirmedCount < maxPlayers) {
+      const groupId = reservation.groupId as string | undefined;
+      if (groupId && groupId !== "default-group") {
+        const groupDoc = await adminDb.collection("groups").doc(groupId).get().catch(() => null);
+        if (groupDoc?.exists) {
+          const members: string[] = groupDoc.data()?.memberAuthUids ?? [];
+          const confirmedSet = new Set(signupsAfter.filter(s => s.attendanceStatus === "confirmed" || s.attendanceStatus === "accepted").map(s => s.authUid));
+          const maybeUids = signupsAfter.filter(s => s.attendanceStatus === "maybe").map(s => s.authUid).filter(Boolean) as string[];
+          const unconfirmedUids = members.filter(uid => !confirmedSet.has(uid) && !maybeUids.includes(uid));
+          const recipients = [...maybeUids, ...unconfirmedUids];
+          if (recipients.length > 0) {
+            const needed = maxPlayers - confirmedCount;
+            const notif = buildNotification("need_players", { ...matchInfo, playersNeeded: needed });
+            notif.data = { url: `/partidos/${reservationId}`, eventType: "need_players" };
+            sendPushToUsers(recipients, notif, "need_players").catch(() => null);
+          }
+        }
+      }
+    }
+  }
+
   res.status(200).json({ ok: true });
 };
 
@@ -416,6 +485,23 @@ const handleCancel = async (
         reservationId
       }
     }).catch(() => null);
+  }
+
+  // Push notification: match_cancelled → confirmed + maybe players
+  const cancelledDoc = await adminDb.collection("reservations").doc(reservationId).get().catch(() => null);
+  if (cancelledDoc?.exists) {
+    const reservation = cancelledDoc.data()!;
+    const matchInfo = buildMatchInfo(reservation, reservationId);
+    const signups: Array<{ authUid?: string; attendanceStatus?: string }> = reservation.signups ?? [];
+    const recipients = signups
+      .filter(s => s.attendanceStatus === "confirmed" || s.attendanceStatus === "accepted" || s.attendanceStatus === "maybe")
+      .map(s => s.authUid)
+      .filter((uid): uid is string => !!uid && uid !== authUid);
+    if (recipients.length > 0) {
+      const notif = buildNotification("match_cancelled", matchInfo);
+      notif.data = { url: `/partidos/${reservationId}`, eventType: "match_cancelled" };
+      sendPushToUsers(recipients, notif, "match_cancelled").catch(() => null);
+    }
   }
 
   res.status(200).json({ ok: true });
