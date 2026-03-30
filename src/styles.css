@@ -4088,3 +4088,229 @@ ul {
   display: flex;
   gap: 8px;
 }
+
+/* ═══════════════════════════════════════════════════
+   Notification Center (Novedades)
+   ═══════════════════════════════════════════════════ */
+
+.notification-center {
+  padding: 12px 16px;
+  margin-bottom: 8px;
+}
+
+.notification-center-empty {
+  padding: 16px;
+}
+
+.notification-center-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.notification-center-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #e2e8f0);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.notification-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent-red, #ef4444);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.notification-view-all {
+  background: none;
+  border: none;
+  color: var(--accent-blue, #60a5fa);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.notification-view-all:active {
+  opacity: 0.7;
+}
+
+.notification-empty-text {
+  color: var(--text-muted, #94a3b8);
+  font-size: 13px;
+  text-align: center;
+  padding: 12px 0;
+}
+
+.notification-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.notification-item:active {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.notification-item-unread {
+  background: rgba(96, 165, 250, 0.06);
+}
+
+.notification-dot {
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  border-radius: 50%;
+  margin-top: 5px;
+}
+
+.notification-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-body {
+  font-size: 13px;
+  color: var(--text-primary, #e2e8f0);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notification-time {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+}
+
+/* ═══════════════════════════════════════════════════
+   Push Notification Preferences (Profile)
+   ═══════════════════════════════════════════════════ */
+
+.notification-prefs-section {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.notification-prefs-section .section-icon {
+  align-self: flex-start;
+}
+
+.push-prefs-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.push-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-primary, #e2e8f0);
+}
+
+.push-toggle-row:last-child {
+  border-bottom: none;
+}
+
+.push-toggle-sub {
+  padding-left: 12px;
+  font-size: 13px;
+  color: var(--text-secondary, #cbd5e1);
+}
+
+.push-toggle-row input[type="checkbox"] {
+  width: 40px;
+  height: 22px;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 11px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.push-toggle-row input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.2s;
+}
+
+.push-toggle-row input[type="checkbox"]:checked {
+  background: var(--accent-blue, #60a5fa);
+}
+
+.push-toggle-row input[type="checkbox"]:checked::after {
+  transform: translateX(18px);
+}
+
+/* ═══════════════════════════════════════════════════
+   iOS Install Banner
+   ═══════════════════════════════════════════════════ */
+
+.ios-install-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(59, 130, 246, 0.12);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+  font-size: 13px;
+  color: var(--text-primary, #e2e8f0);
+}
+
+.ios-install-banner-text {
+  flex: 1;
+}
+
+.ios-install-banner-close {
+  background: none;
+  border: none;
+  color: var(--text-muted, #94a3b8);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}

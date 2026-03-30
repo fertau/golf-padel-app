@@ -1,15 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  browserLocalPersistence,
-  getRedirectResult,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  setPersistence,
-  signInWithPopup,
-  signInWithRedirect,
-  signOut,
-  updateProfile
-} from "firebase/auth";
+import { updateProfile } from "firebase/auth";
 
 // Components
 import ReservationCard from "./components/ReservationCard";
@@ -52,7 +42,9 @@ import {
   subscribeVenues,
   updateReservationDetails
 } from "./lib/dataStore";
-import { registerPushToken } from "./lib/push";
+import NotificationCenter from "./components/NotificationCenter";
+import { useNotifications } from "./hooks/useNotifications";
+import { useFirebaseAuth } from "./hooks/useFirebaseAuth";
 import type { AttendanceStatus, Court, Group, Reservation, Venue } from "./lib/types";
 import {
   getUserAttendance,
@@ -64,10 +56,7 @@ import {
 } from "./lib/utils";
 import { auth } from "./lib/firebase";
 
-const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: "select_account" });
 const ONE_TIME_CLEANUP_KEY = "golf-padel-cleanup-v1";
-const LOGIN_PENDING_KEY = "golf-padel-google-login-pending";
 
 const getDayStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 const toLocalDayKey = (date: Date): string =>
@@ -131,7 +120,8 @@ export default function App() {
   const [busy, setBusy] = useState(false);
 
   // Zustand Stores
-  const { firebaseUser, currentUser, authLoading, authError, setFirebaseUser, setAuthLoading, setAuthError } = useAuthStore();
+  const { currentUser, authLoading, authError, setFirebaseUser } = useAuthStore();
+  const { firebaseUser, loginGoogle, logout: handleLogout } = useFirebaseAuth();
   const { reservations, loading: reservationsLoading, setReservations } = useReservationStore();
   const {
     activeTab, expandedReservationId, showCreateForm, isOnline,
@@ -166,6 +156,19 @@ export default function App() {
   const [contextNotice, setContextNotice] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [attendanceOverrides, setAttendanceOverrides] = useState<Record<string, AttendanceStatus>>({});
+
+  const {
+    showIOSBanner, dismissIOSBanner,
+    pushPrefs, updatePushPreferences,
+    inAppNotifications, markAllRead, handleTapNotification,
+    isPushGranted: pushGranted,
+    registerPushToken: doRegisterPush,
+  } = useNotifications(
+    !!firebaseUser,
+    reservations,
+    activeTab,
+    (reservationId) => setExpandedReservationId(reservationId)
+  );
   const processedInviteTokensRef = useRef<Set<string>>(new Set());
   const inFlightInviteTokenRef = useRef<string | null>(null);
   const upcomingSectionRef = useRef<HTMLElement | null>(null);
@@ -189,6 +192,7 @@ export default function App() {
     }
 
     const splashTimer = setTimeout(() => setShowSplash(false), 3200);
+
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
@@ -196,49 +200,7 @@ export default function App() {
     };
   }, []);
 
-  // 2. Firebase Auth Flow
-  useEffect(() => {
-    const firebaseAuth = auth;
-    if (!firebaseAuth) {
-      setAuthLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    const setupRedirect = async () => {
-      try {
-        await setPersistence(firebaseAuth, browserLocalPersistence);
-        const result = await getRedirectResult(firebaseAuth);
-        if (result?.user && !cancelled) {
-          setFirebaseUser(result.user);
-          sessionStorage.removeItem(LOGIN_PENDING_KEY);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setAuthError((error as Error).message);
-          sessionStorage.removeItem(LOGIN_PENDING_KEY);
-        }
-      }
-    };
-
-    setupRedirect();
-
-    const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
-      if (cancelled) return;
-      setFirebaseUser(user);
-      setAuthLoading(false);
-      if (user) {
-        setAuthError(null);
-        sessionStorage.removeItem(LOGIN_PENDING_KEY);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
-  }, []);
+  // 2. Firebase Auth Flow — handled by useFirebaseAuth hook
 
   // 3. Subscriptions
   useEffect(() => {
@@ -948,40 +910,7 @@ export default function App() {
     };
   }, [currentUser, historyExpanded, historyApiLoaded, historyLoading]);
 
-  // 6. Actions
-  const loginGoogle = async () => {
-    if (!auth) return;
-    try {
-      setBusy(true);
-      setAuthError(null);
-      await setPersistence(auth, browserLocalPersistence);
-      sessionStorage.setItem(LOGIN_PENDING_KEY, "1");
-      await signInWithPopup(auth, googleProvider);
-      sessionStorage.removeItem(LOGIN_PENDING_KEY);
-    } catch (err: any) {
-      if (["auth/popup-blocked", "auth/cancelled-popup-request", "auth/popup-closed-by-user"].includes(err.code)) {
-        await signInWithRedirect(auth!, googleProvider);
-      } else {
-        setAuthError(err.message);
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    if (!auth) return;
-    try {
-      setBusy(true);
-      await signOut(auth);
-      setExpandedReservationId(null);
-      triggerHaptic("medium");
-    } catch (error) {
-      notifyError(error, "No se pudo cerrar sesión.");
-    } finally {
-      setBusy(false);
-    }
-  };
+  // 6. Actions (loginGoogle and handleLogout from useFirebaseAuth hook)
 
   const handleCreate = async (payload: any) => {
     if (!currentUser) return;
@@ -1172,6 +1101,10 @@ export default function App() {
     }
   };
 
+  const handleUpdatePushPreferences = async (update: { pushEnabled?: boolean; notifications?: Record<string, boolean> }) => {
+    updatePushPreferences(update);
+  };
+
   const openCreateReservationFromEmpty = () => {
     triggerHaptic("light");
     setActiveTab("mis-reservas");
@@ -1317,6 +1250,28 @@ export default function App() {
 
         {activeTab === "mis-partidos" && (
           <>
+            {showIOSBanner && (
+              <div className="ios-install-banner">
+                <span className="ios-install-banner-text">
+                  Agregá a pantalla de inicio para recibir notificaciones
+                </span>
+                <button
+                  type="button"
+                  className="ios-install-banner-close"
+                  onClick={dismissIOSBanner}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            <NotificationCenter
+              notifications={inAppNotifications}
+              onTapNotification={handleTapNotification}
+              onMarkAllRead={markAllRead}
+              onViewAll={markAllRead}
+            />
+
             <section className={`panel glass-panel-elite animate-fade-in inbox-panel ${myPendingResponseCount === 0 ? "inbox-panel-empty" : ""}`}>
               <div className="inbox-heading">
                 <h2 className="section-title">Nuevas reservas</h2>
@@ -1711,10 +1666,13 @@ export default function App() {
             onDeleteGroup={handleDeleteGroup}
             onLoadGroupAudit={handleLoadGroupAudit}
             onLogout={handleLogout}
-            onRequestNotifications={registerPushToken}
+            onRequestNotifications={doRegisterPush}
             onUpdateDisplayName={handleUpdateDisplayName}
             onFeedback={setToastMessage}
             busy={busy}
+            pushPreferences={pushPrefs}
+            onUpdatePushPreferences={handleUpdatePushPreferences}
+            isPushGranted={pushGranted}
           />
         )}
 

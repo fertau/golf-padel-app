@@ -19,6 +19,12 @@ type Props = {
   onUpdateDisplayName: (nextName: string) => Promise<void>;
   onFeedback: (message: string) => void;
   busy?: boolean;
+  pushPreferences?: {
+    pushEnabled: boolean;
+    notifications?: Record<string, boolean>;
+  };
+  onUpdatePushPreferences?: (prefs: { pushEnabled?: boolean; notifications?: Record<string, boolean> }) => Promise<void>;
+  isPushGranted?: boolean;
 };
 
 const CardIcon = ({ children, className = "" }: { children: ReactNode; className?: string }) => (
@@ -41,7 +47,10 @@ export default function ProfileView({
   onRequestNotifications,
   onUpdateDisplayName,
   onFeedback,
-  busy
+  busy,
+  pushPreferences,
+  onUpdatePushPreferences,
+  isPushGranted
 }: Props) {
   const [nameDraft, setNameDraft] = useState(user.name);
   const [savingName, setSavingName] = useState(false);
@@ -598,7 +607,7 @@ export default function ProfileView({
           </div>
         </section>
 
-        <section className="profile-section-elite glass-panel-elite">
+        <section className="profile-section-elite glass-panel-elite notification-prefs-section">
           <CardIcon>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 2a7 7 0 0 0-7 7v2.3A3.8 3.8 0 0 0 3 15v1a3.9 3.9 0 0 0 4 4h1.2a3 3 0 0 0 5.6 0H17a3.9 3.9 0 0 0 4-4v-1a3.8 3.8 0 0 0-2-3.4V9a7 7 0 0 0-7-7Zm0 19a1 1 0 0 1-.9-.6h1.8a1 1 0 0 1-.9.6Z" />
@@ -607,9 +616,57 @@ export default function ProfileView({
           <div className="section-info">
             <h3>Notificaciones</h3>
           </div>
-          <button className="btn-elite btn-elite-outline" onClick={() => handleAction(onRequestNotifications)} disabled={busy}>
-            Configurar
-          </button>
+          {!isPushGranted ? (
+            <button className="btn-elite btn-elite-outline" onClick={() => handleAction(onRequestNotifications)} disabled={busy}>
+              Activar
+            </button>
+          ) : (
+            <div className="push-prefs-toggles">
+              <label className="push-toggle-row">
+                <span>Push notifications</span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={pushPreferences?.pushEnabled ?? true}
+                  onChange={(e) => {
+                    triggerHaptic("light");
+                    onUpdatePushPreferences?.({ pushEnabled: e.target.checked });
+                  }}
+                />
+              </label>
+              {(pushPreferences?.pushEnabled ?? true) && (
+                <>
+                  {[
+                    { key: "match_created", label: "Nuevo partido" },
+                    { key: "attendance_change", label: "Cambio de asistencia" },
+                    { key: "need_players", label: "Faltan jugadores" },
+                    { key: "match_full", label: "Partido completo" },
+                    { key: "match_cancelled", label: "Partido cancelado" },
+                    { key: "reminder_24h", label: "Recordatorio 24h" },
+                    { key: "reminder_2h", label: "Recordatorio 2h" },
+                  ].map(({ key, label }) => (
+                    <label key={key} className="push-toggle-row push-toggle-sub">
+                      <span>{label}</span>
+                      <input
+                        type="checkbox"
+                        role="switch"
+                        checked={pushPreferences?.notifications?.[key] ?? true}
+                        onChange={(e) => {
+                          triggerHaptic("light");
+                          onUpdatePushPreferences?.({
+                            notifications: {
+                              ...pushPreferences?.notifications,
+                              [key]: e.target.checked,
+                            },
+                          });
+                        }}
+                      />
+                    </label>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
         </section>
 
         <footer className="profile-footer-elite animate-fade-in">
