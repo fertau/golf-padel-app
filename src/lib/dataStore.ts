@@ -350,7 +350,7 @@ const renameGroupCloudFallback = async (groupId: string, name: string) => {
   }
 };
 
-const createReservationCloudFallback = async (input: ReservationInput, currentUser: User) => {
+const createReservationCloudFallback = async (input: ReservationInput, currentUser: User): Promise<{ id: string } | undefined> => {
   const headers = await buildAuthHeader();
   const response = await fetch("/api/reservations/list", {
     method: "POST",
@@ -369,6 +369,7 @@ const createReservationCloudFallback = async (input: ReservationInput, currentUs
   if (!response.ok) {
     throw new Error(payload?.error ?? "No se pudo crear la reserva.");
   }
+  return payload?.reservationId ? { id: payload.reservationId } : undefined;
 };
 
 const setAttendanceStatusCloudFallback = async (
@@ -1325,7 +1326,7 @@ export const deleteGroup = async (groupId: string, currentUser: User) => {
   }));
 };
 
-export const createReservation = async (input: ReservationInput, currentUser: User) => {
+export const createReservation = async (input: ReservationInput, currentUser: User): Promise<{ id: string } | undefined> => {
   const cloudDb = db;
   const requestedScope: ReservationVisibilityScope =
     input.visibilityScope ??
@@ -1371,14 +1372,14 @@ export const createReservation = async (input: ReservationInput, currentUser: Us
   }
 
   try {
-    await createReservationCloudFallback(
+    const cloudResult = await createReservationCloudFallback(
       {
         ...input,
         visibilityScope: requestedScope
       },
       currentUser
     );
-    return;
+    return cloudResult;
   } catch (apiError) {
     const message = (apiError as Error).message || "";
     const canTryClientFallback =
@@ -1436,6 +1437,7 @@ export const createReservation = async (input: ReservationInput, currentUser: Us
   };
 
   await setDoc(doc(cloudDb, reservationCollection, id), stripUndefinedDeep(payload));
+  return { id };
 };
 
 export const updateReservationRules = async (

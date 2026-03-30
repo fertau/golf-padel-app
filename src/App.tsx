@@ -45,6 +45,7 @@ import {
 import NotificationCenter from "./components/NotificationCenter";
 import { useNotifications } from "./hooks/useNotifications";
 import { useFirebaseAuth } from "./hooks/useFirebaseAuth";
+import { triggerPushNotification } from "./lib/notifications";
 import type { AttendanceStatus, Court, Group, Reservation, Venue } from "./lib/types";
 import {
   getUserAttendance,
@@ -167,7 +168,10 @@ export default function App() {
     !!firebaseUser,
     reservations,
     activeTab,
-    (reservationId) => setExpandedReservationId(reservationId)
+    (reservationId) => {
+      setActiveTab("mis-reservas");
+      setExpandedReservationId(reservationId);
+    }
   );
   const processedInviteTokensRef = useRef<Set<string>>(new Set());
   const inFlightInviteTokenRef = useRef<string | null>(null);
@@ -916,10 +920,18 @@ export default function App() {
     if (!currentUser) return;
     try {
       setBusy(true);
-      await createReservation(payload, currentUser);
+      const created = await createReservation(payload, currentUser);
       setShowCreateForm(false);
       setActiveTab("mis-reservas");
       setToastMessage("Reserva creada.");
+      // Fire-and-forget: notify group members about the new match
+      if (created?.id) {
+        triggerPushNotification({
+          eventType: "match_created",
+          reservationId: created.id,
+          playerName: currentUser.displayName ?? currentUser.name ?? "Alguien",
+        });
+      }
     } catch (error) {
       notifyError(error, "No se pudo crear la reserva.");
     } finally {
@@ -1015,6 +1027,11 @@ export default function App() {
       setBusy(true);
       await cancelReservation(reservationId, currentUser);
       setToastMessage("Reserva cancelada.");
+      // Fire-and-forget: notify confirmed/maybe players
+      triggerPushNotification({
+        eventType: "match_cancelled",
+        reservationId,
+      });
     } catch (error) {
       notifyError(error, "No se pudo eliminar la reserva.");
     } finally {
@@ -1039,6 +1056,11 @@ export default function App() {
       await updateReservationDetails(reservationId, updates, currentUser);
       triggerHaptic("medium");
       setToastMessage("Reserva actualizada.");
+      // Fire-and-forget: notify confirmed/maybe players about changes
+      triggerPushNotification({
+        eventType: "match_updated",
+        reservationId,
+      });
     } catch (error) {
       notifyError(error, "No se pudo modificar la reserva.");
     } finally {
@@ -1088,9 +1110,44 @@ export default function App() {
     if (!currentUser) {
       return;
     }
+
+    // Capture confirmed count BEFORE the change for need_players/match_full detection
+    const reservation = reservations.find((r) => r.id === reservationId);
+    const previousConfirmedCount = reservation
+      ? reservation.signups.filter(
+          (s) => s.attendanceStatus === "confirmed" || (s as any).status === "accepted"
+        ).length
+      : 0;
+
     setAttendanceOverrides((previous) => ({ ...previous, [reservationId]: status }));
     try {
       await setAttendanceStatus(reservationId, currentUser, status);
+
+      // Fire-and-forget: notify about attendance change
+      const playerName = currentUser.displayName ?? currentUser.name ?? "Alguien";
+      const attendanceAction = status === "confirmed" ? "confirmed" : "cancelled";
+      triggerPushNotification({
+        eventType: "attendance_change",
+        reservationId,
+        playerName,
+        attendanceAction,
+        previousConfirmedCount,
+      });
+
+      // Also check for match_full or need_players transitions
+      const maxPlayers = reservation?.rules?.maxPlayersAccepted ?? 4;
+      const newConfirmedCount =
+        status === "confirmed" ? previousConfirmedCount + 1 : previousConfirmedCount - 1;
+
+      if (status === "confirmed" && newConfirmedCount >= maxPlayers && previousConfirmedCount < maxPlayers) {
+        triggerPushNotification({ eventType: "match_full", reservationId });
+      } else if (status !== "confirmed" && previousConfirmedCount >= maxPlayers && newConfirmedCount < maxPlayers) {
+        triggerPushNotification({
+          eventType: "need_players",
+          reservationId,
+          previousConfirmedCount,
+        });
+      }
     } catch (error) {
       setAttendanceOverrides((previous) => {
         const next = { ...previous };

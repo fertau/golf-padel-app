@@ -2,6 +2,7 @@ import { auth } from "./firebase";
 
 type NotificationEventType =
   | "match_created"
+  | "match_updated"
   | "attendance_change"
   | "need_players"
   | "match_full"

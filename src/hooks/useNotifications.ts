@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
+import { onMessage } from "firebase/messaging";
 import { registerPushToken, unregisterPushTokens, isPushGranted, setBadgeCount } from "../lib/push";
 import { checkAndTrigger2hReminders, shouldShowIOSInstallBanner } from "../lib/notifications";
-import { auth } from "../lib/firebase";
+import { auth, getMessagingIfSupported } from "../lib/firebase";
 import type { Reservation } from "../lib/types";
 
 type NotificationItem = {
@@ -100,6 +101,29 @@ export function useNotifications(
       navigator.serviceWorker?.removeEventListener("message", handleSWMessage);
     };
   }, [onNavigateToMatch]);
+
+  // Listen for foreground FCM messages → add to in-app notifications
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let unsubscribe: (() => void) | undefined;
+    getMessagingIfSupported().then((messaging) => {
+      if (!messaging) return;
+      unsubscribe = onMessage(messaging, (payload) => {
+        const item: NotificationItem = {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          eventType: payload.data?.eventType ?? "unknown",
+          title: payload.notification?.title ?? "Padel App",
+          body: payload.notification?.body ?? "",
+          reservationId: payload.data?.reservationId,
+          createdAt: new Date().toISOString(),
+          read: false,
+        };
+        setInAppNotifications((prev) => [item, ...prev].slice(0, 50));
+        setBadgeCount(1);
+      });
+    }).catch(() => null);
+    return () => unsubscribe?.();
+  }, [isLoggedIn]);
 
   const dismissIOSBanner = useCallback(() => {
     setShowIOSBanner(false);
