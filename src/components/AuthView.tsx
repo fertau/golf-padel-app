@@ -17,7 +17,7 @@ export default function AuthView({ onLoginWithGoogle, busy, error }: Props) {
                     <h1 className="name-logo">
                         PADEL <span>APP</span>
                     </h1>
-                    <p className="auth-tagline">Anotate!!</p>
+                    <p className="auth-tagline">Organizá partidos con tu grupo</p>
                 </header>
 
                 <section className="auth-actions">

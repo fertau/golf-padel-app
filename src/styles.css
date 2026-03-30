@@ -173,13 +173,13 @@ body::before {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 3rem;
+  gap: 2rem;
   padding: 2rem;
-  margin-top: -10vh;
+  margin-top: -5vh;
 }
 
 .auth-header {
-  margin-bottom: 3rem;
+  margin-bottom: 1.5rem;
 }
 
 .auth-logo-shell {
