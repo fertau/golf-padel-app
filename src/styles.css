@@ -476,13 +476,13 @@ body::before {
 }
 
 .sync-pill.ok .sync-dot {
-  background: #2ddf86;
-  box-shadow: 0 0 8px rgba(45, 223, 134, 0.6);
+  background: var(--success);
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
 }
 
 .sync-pill.off .sync-dot {
-  background: #ff5c6f;
-  box-shadow: 0 0 8px rgba(255, 92, 111, 0.6);
+  background: var(--danger);
+  box-shadow: 0 0 8px rgba(248, 113, 113, 0.6);
 }
 
 /* Side-Date List Layout (Phase 20) */
@@ -1497,7 +1497,7 @@ body::before {
 }
 
 .upcoming-week-status-dot-confirmed {
-  background: #34d39a;
+  background: var(--success);
 }
 
 .upcoming-week-status-dot-maybe {
@@ -1505,11 +1505,11 @@ body::before {
 }
 
 .upcoming-week-status-dot-cancelled {
-  background: #ff6f7b;
+  background: var(--danger);
 }
 
 .upcoming-week-status-dot-pending {
-  background: #85a5d8;
+  background: var(--info);
 }
 
 .upcoming-week-more {
@@ -4126,7 +4126,7 @@ ul {
   height: 18px;
   padding: 0 4px;
   border-radius: 12px;
-  background: var(--accent-red, #ef4444);
+  background: var(--danger);
   color: white;
   font-size: 11px;
   font-weight: 700;
