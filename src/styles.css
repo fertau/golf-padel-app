@@ -17,20 +17,9 @@
   --danger: #f87171;
   --info: #60a5fa;
 
-  /* Panel & Surface Tokens */
-  --panel: rgba(255, 255, 255, 0.04);
-  --stroke: rgba(255, 255, 255, 0.1);
-  --shadow-strong: 0 20px 50px -12px rgba(0, 0, 0, 0.5);
-
-  /* Elite Tokens */
-  --glass-bg: rgba(255, 255, 255, 0.04);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-stroke: rgba(255, 255, 255, 0.1);
-  --shadow-elite: 0 20px 50px -12px rgba(0, 0, 0, 0.5);
-  --radius-elite: 24px;
-  --radius-sm: 12px;
-  --radius-md: 18px;
-  --transition-elite: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  /* Athletic surface tokens */
+  --panel: rgba(255, 255, 255, 0.03);
+  --stroke: rgba(255, 255, 255, 0.06);
 }
 
 * {
@@ -235,7 +224,7 @@ body {
   font-weight: 700;
   font-size: 1.05rem;
   box-shadow: none;
-  transition: var(--transition-elite);
+  transition: transform 0.15s ease-out;
 }
 
 .google-login-btn img {
@@ -512,7 +501,7 @@ body {
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.03);
-  border-right: 1px solid var(--glass-border);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
   padding: 1rem 0;
 }
 
@@ -1755,31 +1744,46 @@ button.neutral {
   animation: fade-in-elite 220ms ease-out both;
 }
 
+/* Athletic button system */
+.btn-ath,
 .btn-elite {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(179, 207, 255, 0.35);
-  color: #f4f8ff;
-  border-radius: var(--radius-sm);
-  padding: 0.56rem 0.9rem;
-  font-size: 0.82rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 13px;
   font-weight: 700;
   box-shadow: none;
+  letter-spacing: 0.02em;
+  transition: transform 0.15s ease-out;
 }
 
+.btn-ath:hover,
 .btn-elite:hover {
   transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
 }
 
+.btn-ath-primary,
 .btn-elite-accent {
-  background: rgba(168, 255, 61, 0.08);
-  color: var(--accent);
-  border-color: rgba(168, 255, 61, 0.2);
+  background: var(--accent);
+  color: var(--blue-950);
+  border: none;
+  font-weight: 800;
 }
 
+.btn-ath-primary:hover,
+.btn-elite-accent:hover {
+  background: var(--accent);
+  transform: translateY(-1px);
+}
+
+.btn-ath-outline,
 .btn-elite-outline {
   background: transparent;
-  border: 1px solid rgba(179, 207, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
 }
 
 /* Athletic: solid inputs */
@@ -1801,8 +1805,9 @@ button.neutral {
   gap: 8px;
 }
 
-.filter-bar-elite {
-  margin-bottom: 1rem;
+.filter-bar-elite,
+.filter-bar-ath {
+  margin-bottom: 12px;
 }
 
 .history-content-elite {
@@ -1920,7 +1925,8 @@ button.neutral {
 }
 
 .btn-compact {
-  padding: 0.4rem 1rem;
+  padding: 8px 12px;
+  font-size: 12px;
 }
 
 .gap-sm {
@@ -1931,11 +1937,14 @@ button.neutral {
   opacity: 0.5;
 }
 
+/* Athletic: logout is a subtle danger button */
 .btn-logout {
-  padding: 1rem;
+  padding: 14px;
   border-radius: 12px;
-  background: var(--danger);
-  color: #fff;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.15);
+  color: var(--danger);
+  font-weight: 700;
 }
 
 @keyframes fade-in-elite {
@@ -2109,7 +2118,7 @@ button.neutral {
 
 .hero-stat-card {
   background: rgba(255, 255, 255, 0.035);
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
   padding: 0.75rem 0.78rem;
   display: flex;
@@ -2147,7 +2156,7 @@ button.neutral {
   background: rgba(255, 255, 255, 0.028);
   border-radius: 12px;
   padding: 0.9rem;
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .attendance-section-elite h3 {
@@ -2246,7 +2255,7 @@ button.neutral {
 }
 
 .player-collapse-elite {
-  border-bottom: 1px solid var(--glass-stroke);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .player-collapse-elite summary {
@@ -2337,7 +2346,7 @@ button.neutral {
 
 .btn-secondary-elite {
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   color: white;
   display: flex;
   align-items: center;
@@ -2362,7 +2371,7 @@ button.neutral {
 }
 
 .action-menu-elite {
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.03);
@@ -2686,7 +2695,7 @@ button.neutral {
   background: rgba(255, 255, 255, 0.05);
   padding: 1.5rem;
   border-radius: 18px;
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 /* Elite Form Styles */
@@ -2791,7 +2800,7 @@ button.neutral {
 
 .elite-btn-choice {
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   color: var(--text);
   padding: 12px;
   border-radius: 12px;
@@ -2818,7 +2827,7 @@ button.neutral {
 .elite-input,
 .elite-select {
   background: rgba(255, 255, 255, 0.03) !important;
-  border: 1px solid var(--glass-border) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
   color: white !important;
   padding: 16px !important;
   border-radius: 12px !important;
@@ -2855,7 +2864,7 @@ button.neutral {
   gap: 8px;
   margin-top: 8px;
   background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 18px;
   padding: 8px;
 }
@@ -2866,7 +2875,7 @@ button.neutral {
   border: 1px solid transparent;
   border-radius: 12px;
   padding: 12px 16px;
-  transition: var(--transition-elite);
+  transition: transform 0.15s ease-out;
 }
 
 .autocomplete-row-elite:hover {
@@ -3544,9 +3553,9 @@ button.neutral {
 
 .skeleton-card-elite {
   min-height: 84px;
-  border-radius: var(--radius-elite);
-  border: 1px solid var(--glass-border);
-  background: var(--glass-panel);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
   position: relative;
   overflow: hidden;
 }

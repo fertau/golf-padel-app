@@ -9,27 +9,19 @@ export function Skeleton({ className, width, height, borderRadius = "4px" }: { c
 
 export function ReservationSkeleton() {
     return (
-        <div className="reservation-card-elite skeleton-card-elite">
-            <div className="card-date-column-elite">
-                <Skeleton width="30px" height="8px" borderRadius="4px" />
-                <Skeleton width="40px" height="24px" borderRadius="6px" />
+        <div className="upcoming-row skeleton-card-elite" style={{ gap: "12px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <Skeleton width="56px" height="16px" borderRadius="6px" />
+                    <Skeleton width="100px" height="18px" borderRadius="6px" />
+                </div>
+                <Skeleton width="60px" height="28px" borderRadius="8px" />
             </div>
-            <div className="reservation-card-main">
-                <div className="card-content-top">
-                    <Skeleton width="80px" height="24px" borderRadius="6px" />
-                    <Skeleton width="70px" height="20px" borderRadius="8px" />
-                </div>
-                <div className="card-content-bottom">
-                    <div className="player-stats">
-                        <div className="avatar-stack">
-                            {[1, 2, 3].map(i => (
-                                <Skeleton key={i} width="32px" height="32px" borderRadius="11px" className="mini-avatar-sk" />
-                            ))}
-                        </div>
-                        <Skeleton width="40px" height="12px" borderRadius="4px" />
-                    </div>
-                    <Skeleton width="50px" height="24px" borderRadius="10px" />
-                </div>
+            <Skeleton width="140px" height="14px" borderRadius="6px" />
+            <div style={{ display: "flex", gap: "6px" }}>
+                {[1, 2, 3, 4].map(i => (
+                    <Skeleton key={i} width="32px" height="32px" borderRadius="10px" />
+                ))}
             </div>
         </div>
     );
