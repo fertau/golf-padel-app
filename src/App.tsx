@@ -929,7 +929,7 @@ export default function App() {
         triggerPushNotification({
           eventType: "match_created",
           reservationId: created.id,
-          playerName: currentUser.displayName ?? currentUser.name ?? "Alguien",
+          playerName: currentUser.name ?? "Alguien",
         });
       }
     } catch (error) {
@@ -1124,7 +1124,7 @@ export default function App() {
       await setAttendanceStatus(reservationId, currentUser, status);
 
       // Fire-and-forget: notify about attendance change
-      const playerName = currentUser.displayName ?? currentUser.name ?? "Alguien";
+      const playerName = currentUser.name ?? "Alguien";
       const attendanceAction = status === "confirmed" ? "confirmed" : "cancelled";
       triggerPushNotification({
         eventType: "attendance_change",
@@ -1178,7 +1178,7 @@ export default function App() {
     const isActiveReservationsWidget = title.toLowerCase().includes("reservas activas");
 
     return (
-      <section className={`panel glass-panel-elite animate-fade-in ${isActiveReservationsWidget ? "active-reservations-widget" : ""}`}>
+      <section className={`panel panel-ath animate-fade-in ${isActiveReservationsWidget ? "active-reservations-widget" : ""}`}>
         <div className="reservation-list-head">
           <h2 className="section-title">{title}</h2>
           {isActiveReservationsWidget ? (
@@ -1214,7 +1214,7 @@ export default function App() {
             <><ReservationSkeleton /><ReservationSkeleton /><ReservationSkeleton /></>
           ) : items.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-illustration">🎾</div>
+              <div className="empty-illustration"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20M2 12h20"/></svg></div>
               <p>{emptyText}</p>
               {emptyAction ? (
                 <div className="empty-state-actions">
@@ -1294,7 +1294,7 @@ export default function App() {
       <SmartHandoff />
 
       <main className="app mobile-shell">
-        <header className="header court-header glass-panel-elite animate-fade-in">
+        <header className="header court-header panel-ath animate-fade-in">
           <div className="brand-shell">
             <img src="/apple-touch-icon.png" alt="Padel App" className="brand-icon" />
             <h1 className="name-logo">PADEL <span>APP</span></h1>
@@ -1329,7 +1329,7 @@ export default function App() {
               onViewAll={markAllRead}
             />
 
-            <section className={`panel glass-panel-elite animate-fade-in inbox-panel ${myPendingResponseCount === 0 ? "inbox-panel-empty" : ""}`}>
+            <section className={`panel panel-ath animate-fade-in inbox-panel ${myPendingResponseCount === 0 ? "inbox-panel-empty" : ""}`}>
               <div className="inbox-heading">
                 <h2 className="section-title">Nuevas reservas</h2>
                 <span className={`upcoming-chip ${myPendingResponseCount > 0 ? "upcoming-chip-accent" : "upcoming-chip-muted"}`}>
@@ -1359,22 +1359,15 @@ export default function App() {
                 <ul className="inbox-list">
                   {inboxPendingReservations.map((reservation) => {
                     const start = new Date(reservation.startDateTime);
-                    const month = start.toLocaleDateString("es-AR", { month: "short" }).replace(".", "").toUpperCase();
-                    const day = start.toLocaleDateString("es-AR", { day: "2-digit" });
-                    const weekday = start
-                      .toLocaleDateString("es-AR", { weekday: "short" })
-                      .replace(".", "")
-                      .toUpperCase();
                     const dayGroup = getReservationDateGroup(reservation.startDateTime);
-                    const dayIndicator = dayGroup === "hoy" ? "HOY" : dayGroup === "manana" ? "MAÑANA" : weekday;
-                    const time = start.toLocaleTimeString("es-AR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: false
-                    });
-                    const confirmedCount = reservation.signups.filter(
-                      (signup) => signup.attendanceStatus === "confirmed"
-                    ).length;
+                    const chipLabel = dayGroup === "hoy" ? "HOY" : dayGroup === "manana" ? "MAÑANA" : dayGroup === "esta-semana" ? "ESTA SEMANA" : "";
+                    const chipClass = dayGroup === "hoy" ? "today" : dayGroup === "manana" ? "tomorrow" : "later";
+                    const fullDay = start.toLocaleDateString("es-AR", { weekday: "long" }).replace(/^\w/, (c: string) => c.toUpperCase());
+                    const dayNum = start.getDate();
+                    const time = start.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false });
+                    const confirmedCount = reservation.signups.filter((s) => s.attendanceStatus === "confirmed").length;
+                    const maybeCount = reservation.signups.filter((s) => s.attendanceStatus === "maybe").length;
+                    const emptySlots = Math.max(0, 4 - confirmedCount - maybeCount);
                     const isActive = expandedReservationId === reservation.id;
                     return (
                       <li key={`inbox-${reservation.id}`}>
@@ -1386,28 +1379,27 @@ export default function App() {
                             setExpandedReservationId(isActive ? null : reservation.id);
                           }}
                         >
-                          <div className="upcoming-date">
-                            <span>{month}</span>
-                            <strong className={isActive ? "upcoming-day-active" : ""}>{day}</strong>
-                            <small className={`upcoming-day-indicator ${dayGroup === "hoy" || dayGroup === "manana" ? "is-soon" : ""}`}>
-                              {dayIndicator}
-                            </small>
+                          <div className="ath-card-top">
+                            <div className="ath-date-block">
+                              {chipLabel && <span className={`ath-date-chip ${chipClass}`}>{chipLabel}</span>}
+                              <span className="ath-date-day">{fullDay} {dayNum}</span>
+                            </div>
+                            <span className="ath-time">{time}</span>
                           </div>
-                          <div className="upcoming-time-court">
-                            <span className="upcoming-time">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>
-                              <span>{time}</span>
-                            </span>
-                            <span className="upcoming-court">{reservation.courtName}</span>
+                          <div className="ath-venue">
+                            {reservation.courtName}
+                            {reservation.groupName && <span> · {reservation.groupName}</span>}
                           </div>
-                          <span className="upcoming-chip upcoming-chip-count">{confirmedCount}/4 jugando</span>
-                          <div className="upcoming-chip-row">
-                            {reservation.groupName ? (
-                              <span className="upcoming-chip upcoming-chip-accent">{reservation.groupName}</span>
-                            ) : (
-                              <span className="upcoming-chip upcoming-chip-muted">Sin grupo</span>
-                            )}
-                            <span className="upcoming-chip upcoming-chip-accent inbox-respond-chip">Responder</span>
+                          <div className="ath-players">
+                            {Array.from({ length: confirmedCount }).map((_, i) => (
+                              <span key={`c${i}`} className="ath-avatar confirmed">✓</span>
+                            ))}
+                            {Array.from({ length: maybeCount }).map((_, i) => (
+                              <span key={`m${i}`} className="ath-avatar maybe">?</span>
+                            ))}
+                            {Array.from({ length: emptySlots }).map((_, i) => (
+                              <span key={`e${i}`} className="ath-avatar empty">+</span>
+                            ))}
                           </div>
                         </button>
                       </li>
@@ -1417,7 +1409,7 @@ export default function App() {
               )}
             </section>
 
-            <section ref={upcomingSectionRef} className="panel upcoming-widget glass-panel-elite animate-fade-in">
+            <section ref={upcomingSectionRef} className="panel upcoming-widget panel-ath animate-fade-in">
               <div className="upcoming-header">
                 <h2 className="section-title">Próximos partidos</h2>
                 <div className="quick-chip-row quick-chip-row-tight upcoming-view-switch">
@@ -1463,23 +1455,17 @@ export default function App() {
                       <ul className="upcoming-list">
                         {visibleUpcoming.map((reservation) => {
                           const start = new Date(reservation.startDateTime);
-                          const month = start.toLocaleDateString("es-AR", { month: "short" }).replace(".", "").toUpperCase();
-                          const day = start.toLocaleDateString("es-AR", { day: "2-digit" });
-                          const weekday = start
-                            .toLocaleDateString("es-AR", { weekday: "short" })
-                            .replace(".", "")
-                            .toUpperCase();
                           const dayGroup = getReservationDateGroup(reservation.startDateTime);
-                          const dayIndicator = dayGroup === "hoy" ? "HOY" : dayGroup === "manana" ? "MAÑANA" : weekday;
-                          const time = start.toLocaleTimeString("es-AR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: false
-                          });
-                          const confirmedCount = reservation.signups.filter(
-                            (signup) => signup.attendanceStatus === "confirmed"
-                          ).length;
+                          const chipLabel = dayGroup === "hoy" ? "HOY" : dayGroup === "manana" ? "MAÑANA" : dayGroup === "esta-semana" ? "ESTA SEMANA" : "";
+                          const chipClass = dayGroup === "hoy" ? "today" : dayGroup === "manana" ? "tomorrow" : "later";
+                          const fullDay = start.toLocaleDateString("es-AR", { weekday: "long" }).replace(/^\w/, (c: string) => c.toUpperCase());
+                          const dayNum = start.getDate();
+                          const time = start.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false });
+                          const confirmedCount = reservation.signups.filter((s) => s.attendanceStatus === "confirmed").length;
+                          const maybeCount = reservation.signups.filter((s) => s.attendanceStatus === "maybe").length;
+                          const emptySlots = Math.max(0, 4 - confirmedCount - maybeCount);
                           const attendanceMeta = getUpcomingAttendanceMeta(reservation);
+                          const statusBadgeClass = attendanceMeta.statusTone === "confirmed" ? "confirmed-badge" : attendanceMeta.statusTone === "maybe" ? "maybe-badge" : attendanceMeta.statusTone === "cancelled" ? "cancelled-badge" : "pending-badge";
                           const isActive = expandedReservationId === reservation.id;
                           return (
                             <li key={`upcoming-${reservation.id}`}>
@@ -1491,30 +1477,30 @@ export default function App() {
                                   setExpandedReservationId(isActive ? null : reservation.id);
                                 }}
                               >
-                                <div className="upcoming-date">
-                                  <span>{month}</span>
-                                  <strong className={isActive ? "upcoming-day-active" : ""}>{day}</strong>
-                                  <small className={`upcoming-day-indicator ${dayGroup === "hoy" || dayGroup === "manana" ? "is-soon" : ""}`}>
-                                    {dayIndicator}
-                                  </small>
+                                <div className="ath-card-top">
+                                  <div className="ath-date-block">
+                                    {chipLabel && <span className={`ath-date-chip ${chipClass}`}>{chipLabel}</span>}
+                                    <span className="ath-date-day">{fullDay} {dayNum}</span>
+                                  </div>
+                                  <span className="ath-time">{time}</span>
                                 </div>
-                                <div className="upcoming-time-court">
-                                  <span className="upcoming-time">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>
-                                    <span>{time}</span>
-                                  </span>
-                                  <span className="upcoming-court">{reservation.courtName}</span>
+                                <div className="ath-venue">
+                                  {reservation.courtName}
+                                  {reservation.groupName && <span> · {reservation.groupName}</span>}
                                 </div>
-                                <span className="upcoming-chip upcoming-chip-count">{confirmedCount}/4 jugando</span>
-                                <div className="upcoming-chip-row">
-                                  {reservation.groupName ? (
-                                    <span className="upcoming-chip upcoming-chip-accent">{reservation.groupName}</span>
-                                  ) : (
-                                    <span className="upcoming-chip upcoming-chip-muted">Sin grupo</span>
-                                  )}
-                                  <span className={`badge badge-mine badge-elevated ${attendanceMeta.badgeClass} upcoming-status-badge`}>
-                                    {attendanceMeta.label}
-                                  </span>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                  <div className="ath-players">
+                                    {Array.from({ length: confirmedCount }).map((_, i) => (
+                                      <span key={`c${i}`} className="ath-avatar confirmed">✓</span>
+                                    ))}
+                                    {Array.from({ length: maybeCount }).map((_, i) => (
+                                      <span key={`m${i}`} className="ath-avatar maybe">?</span>
+                                    ))}
+                                    {Array.from({ length: emptySlots }).map((_, i) => (
+                                      <span key={`e${i}`} className="ath-avatar empty">+</span>
+                                    ))}
+                                  </div>
+                                  <span className={`ath-status-badge ${statusBadgeClass}`}>{attendanceMeta.label}</span>
                                 </div>
                               </button>
                             </li>
@@ -1522,7 +1508,7 @@ export default function App() {
                         })}
                       </ul>
                       {upcomingByScope.length > 3 ? (
-                        <button className="btn-elite btn-elite-outline upcoming-more-btn" onClick={() => setShowAllUpcoming(!showAllUpcoming)}>
+                        <button className="ath-btn outline upcoming-more-btn" onClick={() => setShowAllUpcoming(!showAllUpcoming)}>
                           {showAllUpcoming ? "Ver menos" : "Ver más"}
                         </button>
                       ) : null}
@@ -1668,7 +1654,7 @@ export default function App() {
         {activeTab === "mis-reservas" && (
           <>
             {!showCreateForm && (
-              <section className="panel glass-panel-elite animate-fade-in">
+              <section className="panel panel-ath animate-fade-in">
                 <div className="reservations-toolbar">
                   <button className="btn-elite btn-elite-accent btn-block" onClick={() => setShowCreateForm(true)} disabled={busy}>
                     + Reservá un partido

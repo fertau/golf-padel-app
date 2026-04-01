@@ -61,7 +61,7 @@ export const HistoryView: React.FC<Props> = ({
     };
 
     return (
-        <section className="panel history-panel glass-panel-elite animate-fade-in">
+        <section className="panel history-panel panel-ath animate-fade-in">
             <button className="history-toggle" onClick={() => setHistoryExpanded(!historyExpanded)}>
                 <span className="section-title">Historial y Estadísticas</span>
                 <span>{historyExpanded ? "▲" : "▼"}</span>
@@ -71,11 +71,11 @@ export const HistoryView: React.FC<Props> = ({
                 <div className="history-content-elite animate-fade-in">
                     {historyLoading ? <p className="private-hint">Actualizando historial...</p> : null}
                     <div className="detail-kpis">
-                        <div className="kpi-card glass-panel-elite kpi-card-compact">
+                        <div className="kpi-card panel-ath kpi-card-compact">
                             <span className="kpi-label">Jugados</span>
                             <strong>{historyStats.playedCount}</strong>
                         </div>
-                        <div className="kpi-card glass-panel-elite kpi-card-compact">
+                        <div className="kpi-card panel-ath kpi-card-compact">
                             <span className="kpi-label">Último</span>
                             <strong className="history-latest">{historyStats.latest}</strong>
                         </div>
