@@ -29,7 +29,6 @@ export default function SplashScreen({ visible }: Props) {
   const racketSrcRef = useRef(rackets[Math.floor(Math.random() * rackets.length)]);
 
   useEffect(() => {
-    // Preload assets once; the racket is selected randomly for this app launch.
     const court = new Image();
     const racket = new Image();
     court.src = "/court_texture.avif";
@@ -55,15 +54,13 @@ export default function SplashScreen({ visible }: Props) {
       return;
     }
 
-    if (!rendered) {
-      return;
-    }
+    if (!rendered) return;
     setIsHiding(true);
     const timer = window.setTimeout(() => {
       setRendered(false);
       setIsHiding(false);
       setShowContent(false);
-    }, 420);
+    }, 600);
     return () => window.clearTimeout(timer);
   }, [visible, rendered]);
 
@@ -101,16 +98,10 @@ export default function SplashScreen({ visible }: Props) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
 
-      // Logo Reveal Point
-      if (t > 0.25 && !logoShown) {
-        logoShown = true;
-        setShowContent(true);
-      }
-
-      // 1. Draw Court Background (PERSISTENT & STATIC)
+      // --- Phase 1: Court background (always visible) ---
       const courtAspect = court.width / court.height;
       const screenAspect = w / h;
-      let drawW, drawH, drawX, drawY;
+      let drawW: number, drawH: number, drawX: number, drawY: number;
 
       if (screenAspect > courtAspect) {
         drawW = w;
@@ -125,31 +116,53 @@ export default function SplashScreen({ visible }: Props) {
       }
       ctx.drawImage(court, drawX, drawY, drawW, drawH);
 
-      // Darker overlay for brand pop
-      ctx.fillStyle = "rgba(1, 6, 20, 0.4)";
+      // --- Radial spotlight overlay (brighter center, darker edges) ---
+      const gradient = ctx.createRadialGradient(
+        w / 2, h * 0.55, w * 0.1,
+        w / 2, h * 0.55, w * 0.9
+      );
+      gradient.addColorStop(0, "rgba(1, 6, 20, 0.2)");
+      gradient.addColorStop(0.6, "rgba(1, 6, 20, 0.45)");
+      gradient.addColorStop(1, "rgba(1, 6, 20, 0.7)");
+      ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, w, h);
 
-      // 2. Draw Real Racket (PERSISTENT & STATIC after fade)
-      const rackW = 340; // Slightly larger for premium feel
+      // --- Phase 2: Racket slides up + breathing zoom ---
+      // Slide-up: racket starts 60px lower and eases into position
+      const racketEntryT = clamp(t / 0.35, 0, 1);
+      const racketEased = easeInOutQuad(racketEntryT);
+      const racketAlpha = racketEased;
+      const slideOffset = (1 - racketEased) * 60;
+
+      // Breathing zoom: subtle 1.0 -> 1.02 oscillation after entry
+      const breathT = clamp((t - 0.35) / 0.65, 0, 1);
+      const breathScale = 1 + Math.sin(breathT * Math.PI * 2) * 0.012;
+
+      const rackW = 340;
       const rackH = rackW * (racket.height / racket.width);
       const racketX = w / 2;
-      const racketY = h * 0.76; // Positioned lower as a base
+      const racketY = h * 0.58 + slideOffset;
       const racketAngle = -Math.PI / 20;
-
-      const racketAlpha = easeInOutQuad(clamp(t / 0.4, 0, 1));
 
       ctx.save();
       ctx.globalAlpha = racketAlpha;
-      ctx.translate(racketX, racketY); // STATIC: NO MOVEMENT AFTER FADE
+      ctx.translate(racketX, racketY);
       ctx.rotate(racketAngle);
+      ctx.scale(breathScale, breathScale);
 
-      // Shadow
-      ctx.shadowColor = "rgba(0,0,0,0.8)";
-      ctx.shadowBlur = 70;
-      ctx.shadowOffsetY = 40;
+      // Drop shadow
+      ctx.shadowColor = "rgba(0,0,0,0.7)";
+      ctx.shadowBlur = 60;
+      ctx.shadowOffsetY = 35;
 
       ctx.drawImage(racket, -rackW / 2, -rackH / 2, rackW, rackH);
       ctx.restore();
+
+      // --- Phase 3: Logo reveal (after racket settles) ---
+      if (t > 0.3 && !logoShown) {
+        logoShown = true;
+        setShowContent(true);
+      }
 
       raf = requestAnimationFrame(render);
     };
