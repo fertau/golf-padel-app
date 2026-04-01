@@ -529,12 +529,16 @@ export default function App() {
 
   const myPendingResponseCount = inboxPendingReservations.length;
 
+  const inboxIds = useMemo(() => new Set(inboxPendingReservations.map((r) => r.id)), [inboxPendingReservations]);
+
   const upcomingByScope = useMemo(
     () =>
-      activeUpcomingReservations.sort(
-        (a, b) => parseReservationDate(a.startDateTime).getTime() - parseReservationDate(b.startDateTime).getTime()
-      ),
-    [activeUpcomingReservations]
+      activeUpcomingReservations
+        .filter((r) => !inboxIds.has(r.id))
+        .sort(
+          (a, b) => parseReservationDate(a.startDateTime).getTime() - parseReservationDate(b.startDateTime).getTime()
+        ),
+    [activeUpcomingReservations, inboxIds]
   );
 
   const visibleUpcoming = showAllUpcoming ? upcomingByScope : upcomingByScope.slice(0, 3);
