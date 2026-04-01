@@ -304,7 +304,7 @@ export default function ProfileView({
       </header>
 
       <div className="profile-content-elite animate-fade-in">
-        <section className="profile-section-elite glass-panel-elite">
+        <section className="profile-section-elite panel-ath">
           <CardIcon>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5Z" />
@@ -330,7 +330,7 @@ export default function ProfileView({
           </button>
         </section>
 
-        <section className="profile-section-elite profile-groups-section glass-panel-elite">
+        <section className="profile-section-elite profile-groups-section panel-ath">
           <CardIcon className="section-icon-groups">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M16 11a4 4 0 1 0-3.6-5.8A4 4 0 0 0 16 11ZM8 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm8 1c-2.7 0-8 1.4-8 4v2h12v-2c0-2.6-1.3-4-4-4ZM8 13c-2.7 0-6 1.4-6 4v2h6v-2a4.8 4.8 0 0 1 2.2-4.1A8.6 8.6 0 0 0 8 13Z" />
@@ -607,7 +607,7 @@ export default function ProfileView({
           </div>
         </section>
 
-        <section className="profile-section-elite glass-panel-elite notification-prefs-section">
+        <section className="profile-section-elite panel-ath notification-prefs-section">
           <CardIcon>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 2a7 7 0 0 0-7 7v2.3A3.8 3.8 0 0 0 3 15v1a3.9 3.9 0 0 0 4 4h1.2a3 3 0 0 0 5.6 0H17a3.9 3.9 0 0 0 4-4v-1a3.8 3.8 0 0 0-2-3.4V9a7 7 0 0 0-7-7Zm0 19a1 1 0 0 1-.9-.6h1.8a1 1 0 0 1-.9.6Z" />

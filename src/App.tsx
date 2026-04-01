@@ -1178,7 +1178,7 @@ export default function App() {
     const isActiveReservationsWidget = title.toLowerCase().includes("reservas activas");
 
     return (
-      <section className={`panel glass-panel-elite animate-fade-in ${isActiveReservationsWidget ? "active-reservations-widget" : ""}`}>
+      <section className={`panel panel-ath animate-fade-in ${isActiveReservationsWidget ? "active-reservations-widget" : ""}`}>
         <div className="reservation-list-head">
           <h2 className="section-title">{title}</h2>
           {isActiveReservationsWidget ? (
@@ -1294,7 +1294,7 @@ export default function App() {
       <SmartHandoff />
 
       <main className="app mobile-shell">
-        <header className="header court-header glass-panel-elite animate-fade-in">
+        <header className="header court-header panel-ath animate-fade-in">
           <div className="brand-shell">
             <img src="/apple-touch-icon.png" alt="Padel App" className="brand-icon" />
             <h1 className="name-logo">PADEL <span>APP</span></h1>
@@ -1329,7 +1329,7 @@ export default function App() {
               onViewAll={markAllRead}
             />
 
-            <section className={`panel glass-panel-elite animate-fade-in inbox-panel ${myPendingResponseCount === 0 ? "inbox-panel-empty" : ""}`}>
+            <section className={`panel panel-ath animate-fade-in inbox-panel ${myPendingResponseCount === 0 ? "inbox-panel-empty" : ""}`}>
               <div className="inbox-heading">
                 <h2 className="section-title">Nuevas reservas</h2>
                 <span className={`upcoming-chip ${myPendingResponseCount > 0 ? "upcoming-chip-accent" : "upcoming-chip-muted"}`}>
@@ -1409,7 +1409,7 @@ export default function App() {
               )}
             </section>
 
-            <section ref={upcomingSectionRef} className="panel upcoming-widget glass-panel-elite animate-fade-in">
+            <section ref={upcomingSectionRef} className="panel upcoming-widget panel-ath animate-fade-in">
               <div className="upcoming-header">
                 <h2 className="section-title">Próximos partidos</h2>
                 <div className="quick-chip-row quick-chip-row-tight upcoming-view-switch">
@@ -1654,7 +1654,7 @@ export default function App() {
         {activeTab === "mis-reservas" && (
           <>
             {!showCreateForm && (
-              <section className="panel glass-panel-elite animate-fade-in">
+              <section className="panel panel-ath animate-fade-in">
                 <div className="reservations-toolbar">
                   <button className="btn-elite btn-elite-accent btn-block" onClick={() => setShowCreateForm(true)} disabled={busy}>
                     + Reservá un partido

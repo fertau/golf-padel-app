@@ -346,7 +346,7 @@ export default function ReservationDetail({
         </section>
       ) : null}
 
-      <section className="attendance-summary-section glass-panel-elite animate-fade-in">
+      <section className="attendance-summary-section panel-ath animate-fade-in">
         <div className="attendance-summary-grid">
           <button
             type="button"
@@ -437,7 +437,7 @@ export default function ReservationDetail({
       </div>
 
       {isGroupAdminForReservation && reservationGroup && reassignCandidates.length > 0 ? (
-        <div className="edit-pane-elite glass-panel-elite animate-fade-in edit-pane-with-top-gap">
+        <div className="edit-pane-elite panel-ath animate-fade-in edit-pane-with-top-gap">
           <label className="elite-field-label">
             Reasignar creador
             <select
@@ -465,7 +465,7 @@ export default function ReservationDetail({
       ) : null}
 
       {editing && (
-        <div className="edit-pane-elite glass-panel-elite animate-fade-in edit-pane-with-top-gap">
+        <div className="edit-pane-elite panel-ath animate-fade-in edit-pane-with-top-gap">
           <label className="elite-field-label">Cancha
             <select className="select-elite" value={editCourtName} onChange={(e) => setEditCourtName(e.target.value)}>
               <option value="Cancha 1">Cancha 1</option><option value="Cancha 2">Cancha 2</option>
