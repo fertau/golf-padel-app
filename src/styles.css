@@ -4412,3 +4412,48 @@ ul {
   padding: 4px 8px;
   line-height: 1;
 }
+
+/* SW update toast */
+.sw-update-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--blue-900);
+  border: 1px solid rgba(168, 255, 61, 0.3);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  font-family: Manrope, sans-serif;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+.sw-update-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.sw-update-toast button#sw-update-btn {
+  background: var(--accent);
+  color: var(--blue-950);
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sw-update-toast button#sw-dismiss-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
