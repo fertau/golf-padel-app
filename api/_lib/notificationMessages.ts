@@ -5,7 +5,10 @@
 
 export type NotificationEventType =
   | "match_created"
+<<<<<<< HEAD
+=======
   | "match_updated"
+>>>>>>> origin/main
   | "attendance_change"
   | "need_players"
   | "match_full"
@@ -59,11 +62,14 @@ export function buildNotification(
         title: "¡Partido completo!",
         body: `Ya están los 4 para ${info.day} ${info.time}. ¡Nos vemos!`,
       };
+<<<<<<< HEAD
+=======
     case "match_updated":
       return {
         title: "Partido modificado",
         body: `Se actualizó el partido del ${info.day} ${info.time}${courtStr}`,
       };
+>>>>>>> origin/main
     case "match_cancelled":
       return {
         title: "Partido cancelado",

@@ -16,7 +16,7 @@ export const FilterBar: React.FC<Props> = ({ currentFilter, onFilterChange }) =>
     ];
 
     return (
-        <div className="quick-chip-row filter-bar-elite animate-fade-in">
+        <div className="quick-chip-row animate-fade-in">
             {filters.map(({ id, label }) => (
                 <button
                     key={id}

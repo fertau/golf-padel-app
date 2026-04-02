@@ -268,7 +268,7 @@ export default function ReservationForm({
 
       <div className="elite-field-group">
         <label className="elite-field-label">Grupo</label>
-        <select className="elite-select" value={groupId} onChange={(event) => setGroupId(event.target.value)} required>
+        <select className="select-elite" value={groupId} onChange={(event) => setGroupId(event.target.value)} required>
           <option value={LINK_ONLY_GROUP_VALUE}>Solo por link</option>
           {groups.map((group) => (
             <option key={group.id} value={group.id}>
@@ -472,7 +472,7 @@ export default function ReservationForm({
 
       <div className="elite-field-group">
         <label className="elite-field-label">Duración</label>
-        <select className="elite-select" value={durationMinutes} onChange={(e) => setDurationMinutes(Number(e.target.value))}>
+        <select className="select-elite" value={durationMinutes} onChange={(e) => setDurationMinutes(Number(e.target.value))}>
           <option value={60}>60 minutos</option>
           <option value={90}>90 minutos</option>
           <option value={120}>120 minutos</option>
@@ -480,8 +480,8 @@ export default function ReservationForm({
       </div>
 
       <footer className="form-actions-elite">
-        <button type="submit" className="btn-elite btn-elite-accent btn-block" disabled={!canSubmit}>Confirmar reserva</button>
-        <button type="button" className="btn-elite btn-elite-outline btn-block" onClick={onCancel}>Cancelar</button>
+        <button type="submit" className="btn-ath btn-ath-primary btn-block" disabled={!canSubmit}>Confirmar reserva</button>
+        <button type="button" className="btn-ath btn-ath-outline btn-block" onClick={onCancel}>Cancelar</button>
       </footer>
     </form>
   );
