@@ -1392,6 +1392,12 @@ body {
   color: rgba(255, 255, 255, 0.4);
 }
 
+.card-badges-ath {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
 /* Section labels — Athletic */
 .ath-section-label {
   padding: 24px 20px 10px;
