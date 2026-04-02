@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { triggerHaptic } from "../lib/utils";
 
 type NotificationItem = {
@@ -14,7 +13,6 @@ type NotificationItem = {
 type Props = {
   notifications: NotificationItem[];
   onTapNotification: (item: NotificationItem) => void;
-  onMarkAllRead: () => void;
   onViewAll: () => void;
 };
 
@@ -42,8 +40,7 @@ const timeAgo = (iso: string): string => {
   return `${days}d`;
 };
 
-export default function NotificationCenter({ notifications, onTapNotification, onMarkAllRead, onViewAll }: Props) {
-  const [visible, setVisible] = useState(true);
+export default function NotificationCenter({ notifications, onTapNotification, onViewAll }: Props) {
   const unreadCount = notifications.filter(n => !n.read).length;
   const recent = notifications.slice(0, 5);
 

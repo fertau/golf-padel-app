@@ -1325,7 +1325,6 @@ export default function App() {
             <NotificationCenter
               notifications={inAppNotifications}
               onTapNotification={handleTapNotification}
-              onMarkAllRead={markAllRead}
               onViewAll={markAllRead}
             />
 
